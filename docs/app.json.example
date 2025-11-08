@@ -1,0 +1,57 @@
+// Example app.json configuration with all auth providers
+// Copy the relevant sections to your app.json
+
+{
+  "expo": {
+    "name": "Math Game App",
+    "slug": "MathGameApp",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#ffffff"
+    },
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.yourcompany.mathgameapp",
+      "googleServicesFile": "./GoogleService-Info.plist",
+      "infoPlist": {
+        "FacebookAppID": "YOUR_FACEBOOK_APP_ID",
+        "FacebookDisplayName": "Math Game App",
+        "LSApplicationQueriesSchemes": ["fbauth2", "fb"]
+      }
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#ffffff"
+      },
+      "package": "com.yourcompany.mathgameapp",
+      "googleServicesFile": "./google-services.json"
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "plugins": [
+      [
+        "react-native-fbsdk-next",
+        {
+          "appID": "YOUR_FACEBOOK_APP_ID",
+          "clientToken": "YOUR_FACEBOOK_CLIENT_TOKEN",
+          "displayName": "Math Game App",
+          "scheme": "fbYOUR_FACEBOOK_APP_ID",
+          "advertiserIDCollectionEnabled": false,
+          "autoLogAppEventsEnabled": false,
+          "isAutoInitEnabled": false
+        }
+      ],
+      "expo-apple-authentication"
+    ]
+  }
+}

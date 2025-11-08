@@ -1,0 +1,586 @@
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as AppleAuthentication from 'expo-apple-authentication';
+import * as AuthSession from 'expo-auth-session';
+import * as Crypto from 'expo-crypto';
+import { Platform } from 'react-native';
+
+export type AuthProvider = 
+  | 'offline' 
+  | 'google' 
+  | 'facebook' 
+  | 'apple' 
+  | 'game-center' 
+  | 'google-play' 
+  | 'email';
+
+export interface AuthUser {
+  id: string;
+  displayName: string;
+  email?: string;
+  provider: AuthProvider;
+  isOffline: boolean;
+  photoUrl?: string;
+}
+
+const AUTH_STORAGE_KEY = '@auth_user';
+
+class AuthService {
+  private currentUser: AuthUser | null = null;
+
+  /**
+   * Initialize auth service and restore previous session
+   */
+  async initialize(): Promise<AuthUser | null> {
+    try {
+      const stored = await AsyncStorage.getItem(AUTH_STORAGE_KEY);
+      if (stored) {
+        const user: AuthUser = JSON.parse(stored);
+        
+        // Verify email accounts still exist
+        if (user.provider === 'email') {
+          const EMAIL_ACCOUNTS_KEY = '@email_accounts';
+          const accountsData = await AsyncStorage.getItem(EMAIL_ACCOUNTS_KEY);
+          
+          if (accountsData) {
+            const accounts = JSON.parse(accountsData);
+            const emailKey = user.email?.toLowerCase();
+            
+            if (!emailKey || !accounts[emailKey]) {
+              // Account was deleted, clear session
+              console.log('[Auth] Email account no longer exists, clearing session');
+              await AsyncStorage.removeItem(AUTH_STORAGE_KEY);
+              return null;
+            }
+          } else {
+            // No accounts exist, clear session
+            console.log('[Auth] No email accounts found, clearing session');
+            await AsyncStorage.removeItem(AUTH_STORAGE_KEY);
+            return null;
+          }
+        }
+        
+        this.currentUser = user;
+        return this.currentUser;
+      }
+    } catch (error) {
+      console.error('Failed to restore auth session:', error);
+    }
+    return null;
+  }
+
+  /**
+   * Get current authenticated user
+   */
+  getCurrentUser(): AuthUser | null {
+    return this.currentUser;
+  }
+
+  /**
+   * Check if user is authenticated
+   */
+  isAuthenticated(): boolean {
+    return this.currentUser !== null;
+  }
+
+  /**
+   * Sign in with offline/guest mode
+   */
+  async signInOffline(displayName?: string): Promise<AuthUser> {
+    const guestId = await this.getOrCreateGuestId();
+    const user: AuthUser = {
+      id: guestId,
+      displayName: displayName || 'Guest Player',
+      provider: 'offline',
+      isOffline: true,
+    };
+
+    await this.saveUser(user);
+    return user;
+  }
+
+  /**
+   * Sign in with Google
+   * 
+   * SETUP INSTRUCTIONS:
+   * 1. Go to https://console.cloud.google.com/
+   * 2. Create a new project or select existing
+   * 3. Enable Google+ API
+   * 4. Go to Credentials → Create OAuth 2.0 Client IDs
+   * 5. For Android: Add your app's package name and SHA-1 certificate fingerprint
+   *    Get SHA-1: Run `keytool -list -v -keystore ~/.android/debug.keystore -alias androiddebugkey -storepass android -keypass android`
+   * 6. For iOS: Add your bundle identifier
+   * 7. Download the configuration files and add Client IDs below
+   */
+//   async signInWithGoogle(): Promise<AuthUser> {
+//     try {
+//       const { GoogleSignin } = await import('@react-native-google-signin/google-signin');
+      
+//       // Configure Google Sign-In
+//       // Replace these with your actual Client IDs from Google Cloud Console
+//       GoogleSignin.configure({
+//         webClientId: 'YOUR_WEB_CLIENT_ID.apps.googleusercontent.com', // From Google Cloud Console
+//         iosClientId: 'YOUR_IOS_CLIENT_ID.apps.googleusercontent.com', // Optional, for iOS
+//         offlineAccess: false,
+//       });
+
+//       // Check if device supports Google Play Services
+//       await GoogleSignin.hasPlayServices();
+
+//       // Sign in
+//       const response = await GoogleSignin.signIn();
+      
+//       // Get user data
+//       const googleUser = response.data;
+//       if (!googleUser) {
+//         throw new Error('No user data received from Google');
+//       }
+
+//       const user: AuthUser = {
+//         id: googleUser.user.id,
+//         displayName: googleUser.user.name || googleUser.user.email?.split('@')[0] || 'Google User',
+//         email: googleUser.user.email || undefined,
+//         photoUrl: googleUser.user.photo || undefined,
+//         provider: 'google',
+//         isOffline: false,
+//       };
+
+//       await this.saveUser(user);
+//       return user;
+//     } catch (error: any) {
+//       console.error('Google sign-in failed:', error);
+//       if (error.code === 'SIGN_IN_CANCELLED') {
+//         throw new Error('Sign in was cancelled');
+//       }
+//       throw error;
+//     }
+//   }
+
+//   /**
+//    * Sign in with Facebook
+//    * 
+//    * SETUP INSTRUCTIONS:
+//    * 1. Go to https://developers.facebook.com/
+//    * 2. Create a new app or select existing
+//    * 3. Add Facebook Login product
+//    * 4. Configure OAuth redirect URLs
+//    * 5. Get your App ID and App Secret
+//    * 6. Add to app.json:
+//    *    "plugins": [
+//    *      ["react-native-fbsdk-next", {
+//    *        "appID": "YOUR_FACEBOOK_APP_ID",
+//    *        "clientToken": "YOUR_CLIENT_TOKEN",
+//    *        "displayName": "YOUR_APP_NAME"
+//    *      }]
+//    *    ]
+//    * 7. For Android: Add key hashes in Facebook dashboard
+//    *    Get hash: keytool -exportcert -alias androiddebugkey -keystore ~/.android/debug.keystore | openssl sha1 -binary | openssl base64
+//    * 8. For iOS: Add bundle identifier in Facebook dashboard
+//    */
+//   async signInWithFacebook(): Promise<AuthUser> {
+//     try {
+//       const { LoginManager, AccessToken, Profile } = await import('react-native-fbsdk-next');
+      
+//       // Request permissions and login
+//       const result = await LoginManager.logInWithPermissions(['public_profile', 'email']);
+      
+//       if (result.isCancelled) {
+//         throw new Error('Facebook sign-in was cancelled');
+//       }
+
+//       // Get access token
+//       const token = await AccessToken.getCurrentAccessToken();
+      
+//       if (!token) {
+//         throw new Error('Failed to get Facebook access token');
+//       }
+
+//       // Fetch user profile
+//       const profile = await Profile.getCurrentProfile();
+
+//       // Fetch email from Graph API
+//       const response = await fetch(
+//         `https://graph.facebook.com/me?fields=id,name,email,picture&access_token=${token.accessToken}`
+//       );
+//       const userData = await response.json();
+
+//       const user: AuthUser = {
+//         id: userData.id,
+//         displayName: userData.name || profile?.name || 'Facebook User',
+//         email: userData.email || undefined,
+//         photoUrl: userData.picture?.data?.url || profile?.imageURL || undefined,
+//         provider: 'facebook',
+//         isOffline: false,
+//       };
+
+//       await this.saveUser(user);
+//       return user;
+//     } catch (error: any) {
+//       console.error('Facebook sign-in failed:', error);
+//       throw error;
+//     }
+//   }
+
+  /**
+   * Sign in with Apple (iOS only)
+   */
+  async signInWithApple(): Promise<AuthUser> {
+    try {
+      if (Platform.OS !== 'ios') {
+        throw new Error('Apple Sign-In is only available on iOS');
+      }
+
+      const credential = await AppleAuthentication.signInAsync({
+        requestedScopes: [
+          AppleAuthentication.AppleAuthenticationScope.FULL_NAME,
+          AppleAuthentication.AppleAuthenticationScope.EMAIL,
+        ],
+      });
+
+      // Check if we already have this user saved
+      const existingUser = this.currentUser;
+      let displayName = 'Apple User';
+      
+      if (existingUser && existingUser.id === credential.user) {
+        // Use existing display name
+        displayName = existingUser.displayName;
+      } else if (credential.fullName?.givenName) {
+        // Use name from Apple (only provided on first sign-in)
+        displayName = `${credential.fullName.givenName} ${credential.fullName.familyName || ''}`.trim();
+      }
+      // Note: On subsequent sign-ins, Apple doesn't provide the name again
+      // The player profile will use the stored displayName
+      
+      const user: AuthUser = {
+        id: credential.user,
+        displayName,
+        email: credential.email || undefined,
+        provider: 'apple',
+        isOffline: false,
+      };
+
+      await this.saveUser(user);
+      return user;
+    } catch (error: any) {
+      if (error.code === 'ERR_CANCELED') {
+        throw new Error('Apple Sign-In was cancelled');
+      }
+      console.error('Apple sign-in failed:', error);
+      throw error;
+    }
+  }
+
+//   /**
+//    * Sign in with Game Center (iOS only)
+//    */
+//   async signInWithGameCenter(): Promise<AuthUser> {
+//     try {
+//       if (Platform.OS !== 'ios') {
+//         throw new Error('Game Center is only available on iOS');
+//       }
+
+//       // Game Center requires native module integration
+//       // You would typically use expo-game-center or a custom native module
+//       // This is a placeholder for the implementation
+      
+//       throw new Error('Game Center integration requires additional native setup');
+//     } catch (error) {
+//       console.error('Game Center sign-in failed:', error);
+//       throw error;
+//     }
+//   }
+
+//   /**
+//    * Sign in with Google Play Games (Android only)
+//    * 
+//    * SETUP INSTRUCTIONS:
+//    * 1. Install: expo install expo-auth-session expo-web-browser
+//    * 2. Go to Google Play Console: https://play.google.com/console
+//    * 3. Create or select your app
+//    * 4. Go to "Play Games Services" → "Setup and management" → "Configuration"
+//    * 5. Create credentials and link your app
+//    * 6. Add OAuth 2.0 Client IDs (same as Google Sign-In)
+//    * 7. For testing, add test accounts in Play Console
+//    * 
+//    * NOTE: For full Play Games features (achievements, leaderboards), you need:
+//    * - expo install @react-native-google-signin/google-signin (already installed)
+//    * - Additional native configuration in app.json
+//    */
+//   async signInWithGooglePlay(): Promise<AuthUser> {
+//     try {
+//       if (Platform.OS !== 'android') {
+//         throw new Error('Google Play Games is only available on Android');
+//       }
+
+//       // Use Google Sign-In for Play Games authentication
+//       // Play Games Services uses the same underlying Google account
+//       const { GoogleSignin } = await import('@react-native-google-signin/google-signin');
+      
+//       // Configure with Play Games scopes
+//       GoogleSignin.configure({
+//         webClientId: 'YOUR_WEB_CLIENT_ID.apps.googleusercontent.com',
+//         offlineAccess: false,
+//         scopes: ['https://www.googleapis.com/auth/games'], // Play Games scope
+//       });
+
+//       await GoogleSignin.hasPlayServices();
+//       const response = await GoogleSignin.signIn();
+//       const googleUser = response.data;
+      
+//       if (!googleUser) {
+//         throw new Error('No user data received from Google Play Games');
+//       }
+
+//       const user: AuthUser = {
+//         id: googleUser.user.id,
+//         displayName: googleUser.user.name || googleUser.user.email?.split('@')[0] || 'Player',
+//         email: googleUser.user.email || undefined,
+//         photoUrl: googleUser.user.photo || undefined,
+//         provider: 'google-play',
+//         isOffline: false,
+//       };
+
+//       await this.saveUser(user);
+//       return user;
+//     } catch (error: any) {
+//       console.error('Google Play Games sign-in failed:', error);
+//       throw error;
+//     }
+//   }
+
+  /**
+   * Sign in with email and password
+   */
+  async signInWithEmail(email: string, password: string): Promise<AuthUser> {
+    try {
+      // Simple validation
+      if (!email || !password) {
+        throw new Error('Email and password are required');
+      }
+
+      if (!this.isValidEmail(email)) {
+        throw new Error('Invalid email format');
+      }
+
+      if (password.length < 6) {
+        throw new Error('Password must be at least 6 characters');
+      }
+
+      // Load stored accounts
+      const EMAIL_ACCOUNTS_KEY = '@email_accounts';
+      const accountsData = await AsyncStorage.getItem(EMAIL_ACCOUNTS_KEY);
+      
+      if (!accountsData) {
+        throw new Error('No account found with this email. Please sign up first.');
+      }
+
+      const accounts = JSON.parse(accountsData);
+      const emailKey = email.toLowerCase();
+      const storedAccount = accounts[emailKey];
+
+      if (!storedAccount) {
+        throw new Error('No account found with this email. Please sign up first.');
+      }
+
+      // Hash the provided password and compare
+      const passwordHash = await Crypto.digestStringAsync(
+        Crypto.CryptoDigestAlgorithm.SHA256,
+        password
+      );
+
+      if (passwordHash !== storedAccount.passwordHash) {
+        throw new Error('Incorrect password');
+      }
+
+      // Create user object from stored account
+      const user: AuthUser = {
+        id: storedAccount.userId,
+        displayName: storedAccount.displayName,
+        email: email,
+        provider: 'email',
+        isOffline: false,
+      };
+
+      await this.saveUser(user);
+      return user;
+    } catch (error) {
+      console.error('Email sign-in failed:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Create account with email and password
+   */
+  async createAccountWithEmail(email: string, password: string, displayName: string): Promise<AuthUser> {
+    try {
+      // Simple validation
+      if (!email || !password || !displayName) {
+        throw new Error('All fields are required');
+      }
+
+      if (!this.isValidEmail(email)) {
+        throw new Error('Invalid email format');
+      }
+
+      if (password.length < 6) {
+        throw new Error('Password must be at least 6 characters');
+      }
+
+      if (displayName.length < 2) {
+        throw new Error('Display name must be at least 2 characters');
+      }
+
+      // Check if email already exists
+      const EMAIL_ACCOUNTS_KEY = '@email_accounts';
+      const accountsData = await AsyncStorage.getItem(EMAIL_ACCOUNTS_KEY);
+      const accounts = accountsData ? JSON.parse(accountsData) : {};
+      const emailKey = email.toLowerCase();
+
+      if (accounts[emailKey]) {
+        throw new Error('An account with this email already exists. Please sign in instead.');
+      }
+
+      // Hash the password
+      const passwordHash = await Crypto.digestStringAsync(
+        Crypto.CryptoDigestAlgorithm.SHA256,
+        password
+      );
+
+      // Create unique user ID
+      const userId = `email_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+
+      // Store account with hashed password
+      accounts[emailKey] = {
+        userId,
+        displayName,
+        email,
+        passwordHash,
+        createdAt: new Date().toISOString(),
+      };
+
+      await AsyncStorage.setItem(EMAIL_ACCOUNTS_KEY, JSON.stringify(accounts));
+
+      const user: AuthUser = {
+        id: userId,
+        displayName: displayName,
+        email: email,
+        provider: 'email',
+        isOffline: false,
+      };
+
+      await this.saveUser(user);
+      return user;
+    } catch (error) {
+      console.error('Account creation failed:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Sign out current user
+   */
+  async signOut(): Promise<void> {
+    this.currentUser = null;
+    await AsyncStorage.removeItem(AUTH_STORAGE_KEY);
+  }
+
+  /**
+   * Clear all email accounts (for testing/reset purposes)
+   */
+  async clearAllEmailAccounts(): Promise<void> {
+    const EMAIL_ACCOUNTS_KEY = '@email_accounts';
+    await AsyncStorage.removeItem(EMAIL_ACCOUNTS_KEY);
+    console.log('[Auth] All email accounts cleared');
+  }
+
+  /**
+   * Get all email accounts (for admin/debug purposes)
+   */
+  async getAllEmailAccounts(): Promise<Array<{ email: string; displayName: string; createdAt: string }>> {
+    try {
+      const EMAIL_ACCOUNTS_KEY = '@email_accounts';
+      const accountsData = await AsyncStorage.getItem(EMAIL_ACCOUNTS_KEY);
+      
+      if (!accountsData) {
+        return [];
+      }
+
+      const accounts = JSON.parse(accountsData);
+      return Object.keys(accounts).map(email => ({
+        email,
+        displayName: accounts[email].displayName,
+        createdAt: accounts[email].createdAt,
+      }));
+    } catch (error) {
+      console.error('[Auth] Error getting email accounts:', error);
+      return [];
+    }
+  }
+
+  /**
+   * Update user display name
+   */
+  async updateDisplayName(displayName: string): Promise<void> {
+    if (!this.currentUser) {
+      throw new Error('No user is signed in');
+    }
+
+    if (displayName.length < 2) {
+      throw new Error('Display name must be at least 2 characters');
+    }
+
+    this.currentUser.displayName = displayName;
+    await this.saveUser(this.currentUser);
+  }
+
+  /**
+   * Check if Apple Sign-In is available
+   */
+  async isAppleSignInAvailable(): Promise<boolean> {
+    if (Platform.OS !== 'ios') return false;
+    try {
+      return await AppleAuthentication.isAvailableAsync();
+    } catch {
+      return false;
+    }
+  }
+
+  // Private helper methods
+
+  private async saveUser(user: AuthUser): Promise<void> {
+    this.currentUser = user;
+    await AsyncStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(user));
+  }
+
+  private async getOrCreateGuestId(): Promise<string> {
+    const GUEST_ID_KEY = '@guest_id';
+    let guestId = await AsyncStorage.getItem(GUEST_ID_KEY);
+    
+    if (!guestId) {
+      guestId = `guest_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+      await AsyncStorage.setItem(GUEST_ID_KEY, guestId);
+    }
+    
+    return guestId;
+  }
+
+  private isValidEmail(email: string): boolean {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      return false;
+    }
+
+    // Check for obviously invalid domains
+    const invalidDomains = ['test.com', 'example.com', 'fake.com', 'asdf.com'];
+    const domain = email.split('@')[1]?.toLowerCase();
+    
+    if (invalidDomains.includes(domain)) {
+      return false;
+    }
+
+    return true;
+  }
+}
+
+// Export singleton instance
+export const authService = new AuthService();
