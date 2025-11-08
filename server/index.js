@@ -740,6 +740,19 @@ app.post('/api/friends/remove', async (req, res) => {
 
 const PORT = process.env.PORT || 3000;
 
+// Graceful shutdown
+process.on('SIGTERM', async () => {
+  console.log('[Server] SIGTERM received, closing gracefully...');
+  if (database.client) {
+    await database.client.close();
+    console.log('[Database] MongoDB connection closed');
+  }
+  server.close(() => {
+    console.log('[Server] Server closed');
+    process.exit(0);
+  });
+});
+
 // Initialize database and start server
 database.connect().then(() => {
   server.listen(PORT, '0.0.0.0', () => {

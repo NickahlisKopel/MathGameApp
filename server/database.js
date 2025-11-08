@@ -6,19 +6,44 @@ class DatabaseService {
     this.db = null;
   }
 
-  async connect(uri = 'mongodb://localhost:27017') {
+  async connect(uri) {
     try {
-      // For now, we'll use in-memory storage (no MongoDB required)
-      // This simulates a database but data is lost on server restart
-      console.log('[Database] Using in-memory storage (no MongoDB required)');
+      // Use environment variable if available
+      const mongoUri = process.env.MONGODB_URI || uri;
+      
+      if (!mongoUri || mongoUri === 'mongodb://localhost:27017') {
+        // No MongoDB URI provided, use in-memory storage
+        console.log('[Database] No MongoDB URI provided - using in-memory storage');
+        console.log('[Database] WARNING: Data will be lost on server restart!');
+        console.log('[Database] Set MONGODB_URI environment variable for persistent storage');
+        this.inMemoryStorage = {
+          players: new Map(),
+          friendRequests: new Map(),
+        };
+        return true;
+      }
+
+      // Try to connect to MongoDB
+      console.log('[Database] Connecting to MongoDB...');
+      this.client = new MongoClient(mongoUri);
+      await this.client.connect();
+      this.db = this.client.db('mathgame');
+      console.log('[Database] ✅ Connected to MongoDB successfully!');
+      
+      // Create indexes for better performance
+      await this.db.collection('players').createIndex({ id: 1 }, { unique: true });
+      await this.db.collection('players').createIndex({ username: 1 });
+      console.log('[Database] Indexes created');
+      
+      return true;
+    } catch (error) {
+      console.error('[Database] MongoDB connection failed:', error.message);
+      console.log('[Database] Falling back to in-memory storage');
       this.inMemoryStorage = {
         players: new Map(),
         friendRequests: new Map(),
       };
-      return true;
-    } catch (error) {
-      console.error('[Database] Connection failed:', error.message);
-      return false;
+      return true; // Return true to allow server to continue
     }
   }
 
