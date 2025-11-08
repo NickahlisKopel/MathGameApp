@@ -2,7 +2,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { PlayerProfile, FriendRequest } from '../types/Player';
 import { PlayerStorageService } from './PlayerStorageService';
 
-const SERVER_URL = 'http://192.168.1.214:3000'; // Your server IP
+const SERVER_URL = 'https://mathgameapp.onrender.com';
 
 const STORAGE_KEYS = {
   FRIENDS: '@mathgame_friends',

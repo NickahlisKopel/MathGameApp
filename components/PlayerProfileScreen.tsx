@@ -745,7 +745,7 @@ export default function PlayerProfileScreen({ player, onPlayerUpdated, onClose, 
               }
               
               Alert.alert('Connecting...', 'Connecting to multiplayer server...');
-              const connected = await socketMultiplayerService.connect('http://192.168.1.214:3000', user, player.id);
+              const connected = await socketMultiplayerService.connect('https://mathgameapp.onrender.com', user, player.id);
               
               if (connected) {
                 Alert.alert('✅ Online', 'Successfully connected! You can now see online friends and receive challenges.');

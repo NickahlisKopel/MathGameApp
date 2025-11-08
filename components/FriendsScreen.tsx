@@ -99,7 +99,7 @@ const FriendsScreen: React.FC<FriendsScreenProps> = ({
       // Connect if not connected
       if (!socketMultiplayerService.getIsConnected()) {
         console.log('[FriendsScreen] Connecting to socket server...');
-        const connected = await socketMultiplayerService.connect('http://192.168.1.214:3000', user, playerProfile.id);
+        const connected = await socketMultiplayerService.connect('https://mathgameapp.onrender.com', user, playerProfile.id);
         if (!connected) {
           console.error('[FriendsScreen] Failed to connect to socket server');
           return;

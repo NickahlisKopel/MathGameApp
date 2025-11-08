@@ -318,7 +318,7 @@ function AppContent() {
     
     // Make sure we're connected
     if (!socketMultiplayerService.getIsConnected() && authenticatedUser && playerProfile) {
-      const connected = await socketMultiplayerService.connect('http://192.168.1.214:3000', authenticatedUser, playerProfile.id);
+      const connected = await socketMultiplayerService.connect('https://mathgameapp.onrender.com', authenticatedUser, playerProfile.id);
       if (!connected) {
         Alert.alert('Error', 'Could not connect to multiplayer server');
         return;

@@ -25,8 +25,17 @@ class DatabaseService {
 
       // Try to connect to MongoDB
       console.log('[Database] Connecting to MongoDB...');
-      this.client = new MongoClient(mongoUri);
+      this.client = new MongoClient(mongoUri, {
+        tls: true,
+        tlsAllowInvalidCertificates: false,
+        serverSelectionTimeoutMS: 10000,
+        connectTimeoutMS: 10000,
+      });
       await this.client.connect();
+      
+      // Verify connection
+      await this.client.db('admin').command({ ping: 1 });
+      
       this.db = this.client.db('mathgame');
       console.log('[Database] ✅ Connected to MongoDB successfully!');
       

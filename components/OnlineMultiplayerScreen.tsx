@@ -268,7 +268,7 @@ export const OnlineMultiplayerScreen: React.FC<OnlineMultiplayerScreenProps> = (
       // Connect to Socket.IO server
       // For physical devices on same WiFi: use your computer's IP address
       // For emulator: use localhost (Android) or 10.0.2.2 (Android emulator bridge)
-      const serverUrl = 'http://192.168.1.214:3000';
+      const serverUrl = 'https://mathgameapp.onrender.com';
       const connected = await socketMultiplayerService.connect(serverUrl, authUser, playerProfile.id);
       
       if (!connected) {
