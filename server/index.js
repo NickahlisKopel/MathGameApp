@@ -9,6 +9,19 @@ const server = http.createServer(app);
 // Add JSON body parser
 app.use(express.json());
 
+// Health check endpoint
+app.get('/', (req, res) => {
+  res.json({ 
+    status: 'ok', 
+    message: 'Math Game Multiplayer Server', 
+    timestamp: new Date().toISOString() 
+  });
+});
+
+app.get('/health', (req, res) => {
+  res.json({ status: 'healthy' });
+});
+
 const io = new Server(server, {
   cors: {
     origin: '*', // Allow all origins for development
