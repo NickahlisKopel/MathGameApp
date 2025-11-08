@@ -58,6 +58,7 @@ export interface PlayerSettings {
   musicEnabled: boolean;
   vibrationEnabled: boolean;
   darkMode: boolean;
+  reduceMotion: boolean;
   difficulty: 'easy' | 'medium' | 'hard';
   gameTime: number; // in seconds
   showHints: boolean;
@@ -122,6 +123,7 @@ export const DEFAULT_PLAYER_SETTINGS: PlayerSettings = {
   musicEnabled: true,
   vibrationEnabled: true,
   darkMode: false,
+  reduceMotion: false,
   difficulty: 'easy',
   gameTime: 60,
   showHints: true,

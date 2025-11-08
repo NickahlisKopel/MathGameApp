@@ -110,7 +110,7 @@ function AppContent() {
   const [showStreakModal, setShowStreakModal] = useState(false);
   const [streakValue, setStreakValue] = useState(0);
   const { backgroundColors, backgroundType, animationType, refreshBackground } = useBackground();
-  const { theme, isDarkMode } = useTheme();
+  const { theme, isDarkMode, reduceMotion } = useTheme();
   const [gameState, setGameState] = useState<string>('loading');
   const [gamePlayer, setGamePlayer] = useState<{ id: number; name: string; score: number; currentAnswer: string; isCorrect: boolean | null; timeSpent: number }>({
     id: 1,
@@ -217,8 +217,13 @@ function AppContent() {
       (async () => {
         const streakResult = await PlayerStorageService.updateDailyStreak();
         if (streakResult && streakResult.checkedInToday) {
-          setStreakValue(playerProfile.currentStreak);
-          setTimeout(() => setShowStreakModal(true), 500);
+          // Reload profile to get the updated streak value
+          const updatedProfile = await PlayerStorageService.loadPlayerProfile();
+          if (updatedProfile) {
+            setPlayerProfile(updatedProfile);
+            setStreakValue(updatedProfile.currentStreak);
+            setTimeout(() => setShowStreakModal(true), 500);
+          }
         }
       })();
     }
@@ -506,8 +511,8 @@ function AppContent() {
     setTextFeedbackMessage(isCorrect ? 'Correct!' : `Wrong! Answer was ${currentEquation.answer}`);
     setShowTextFeedback(true);
 
-    // Trigger space background feedback if space theme is active
-    if (backgroundType === 'animated' && animationType === 'space') {
+    // Trigger space background feedback if space theme is active (skip if reduceMotion)
+    if (!reduceMotion && backgroundType === 'animated' && animationType === 'space') {
       if (isCorrect) {
         setSpaceCorrectFeedback(true);
       } else {
@@ -518,16 +523,18 @@ function AppContent() {
     // Dismiss keyboard after submission
     Keyboard.dismiss();
 
-    // Show feedback animation
-    Animated.sequence([
-      Animated.timing(fadeAnim, { toValue: 0.3, duration: 200, useNativeDriver: true }),
-      Animated.timing(fadeAnim, { toValue: 1, duration: 200, useNativeDriver: true }),
-    ]).start();
+    // Show feedback animation (skip if reduceMotion)
+    if (!reduceMotion) {
+      Animated.sequence([
+        Animated.timing(fadeAnim, { toValue: 0.3, duration: 200, useNativeDriver: true }),
+        Animated.timing(fadeAnim, { toValue: 1, duration: 200, useNativeDriver: true }),
+      ]).start();
+    }
 
-    // Hide text feedback after delay
+    // Hide text feedback after delay (keep visible longer if reduceMotion)
     setTimeout(() => {
       setShowTextFeedback(false);
-    }, 1500);
+    }, reduceMotion ? 3000 : 1500);
 
     // Generate new equation after short delay
     setTimeout(() => {
@@ -621,14 +628,16 @@ function AppContent() {
       // Show achievement notifications if any
       // This could be enhanced with a modal or toast notification
       
-      // Reload player profile to get updated stats
+      // Check for streak update FIRST before reloading profile
+      const previousStreak = playerProfile?.currentStreak || 0;
+      const streakResult = await PlayerStorageService.updateDailyStreak();
+      
+      // Reload player profile to get updated stats (including updated streak)
       const updatedProfile = await PlayerStorageService.loadPlayerProfile();
       if (updatedProfile) {
-        const previousStreak = playerProfile?.currentStreak || 0;
         setPlayerProfile(updatedProfile);
         
-        // Check for streak update after completing a game
-        const streakResult = await PlayerStorageService.updateDailyStreak();
+        // Show streak modal if this was their first check-in today
         if (streakResult && streakResult.checkedInToday) {
           // Only show modal if streak actually increased or if it's their first streak
           if (updatedProfile.currentStreak > previousStreak || updatedProfile.currentStreak === 1) {
@@ -1171,12 +1180,28 @@ function AppContent() {
               </View>
 
               {/* Text Feedback Display */}
-              {showTextFeedback && (
-                <View style={styles.textFeedbackContainer}>
-                  <Text style={[styles.textFeedbackText, textFeedbackCorrect ? styles.correctFeedback : styles.incorrectFeedback]}>
-                    {textFeedbackMessage}
-                  </Text>
+              {reduceMotion ? (
+                // Static feedback area for reduced motion
+                <View style={[styles.textFeedbackContainer, styles.textFeedbackStatic]}>
+                  {showTextFeedback ? (
+                    <Text style={[styles.textFeedbackText, textFeedbackCorrect ? styles.correctFeedback : styles.incorrectFeedback]}>
+                      {textFeedbackMessage}
+                    </Text>
+                  ) : (
+                    <Text style={[styles.textFeedbackText, { opacity: 0 }]}>
+                      Placeholder
+                    </Text>
+                  )}
                 </View>
+              ) : (
+                // Dynamic feedback (original behavior)
+                showTextFeedback && (
+                  <View style={styles.textFeedbackContainer}>
+                    <Text style={[styles.textFeedbackText, textFeedbackCorrect ? styles.correctFeedback : styles.incorrectFeedback]}>
+                      {textFeedbackMessage}
+                    </Text>
+                  </View>
+                )
               )}
 
               {/* Custom Numeric Keypad */}
@@ -1186,7 +1211,7 @@ function AppContent() {
 
               {/* Debug display removed for cleaner UI */}
 
-              {gamePlayer.isCorrect !== null && (
+              {!reduceMotion && gamePlayer.isCorrect !== null && (
                 <Animated.View style={styles.feedbackContainer}>
                   <Text style={[
                     styles.feedback,
@@ -2565,6 +2590,10 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     borderRadius: 8,
     alignItems: 'center',
+  },
+  textFeedbackStatic: {
+    minHeight: 50,
+    justifyContent: 'center',
   },
   textFeedbackText: {
     fontSize: 18,

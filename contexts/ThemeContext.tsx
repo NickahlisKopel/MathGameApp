@@ -99,6 +99,8 @@ interface ThemeContextType {
   theme: Theme;
   toggleTheme: () => void;
   isDarkMode: boolean;
+  reduceMotion: boolean;
+  toggleReduceMotion: () => void;
 }
 
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
@@ -109,20 +111,26 @@ interface ThemeProviderProps {
 
 export const ThemeProvider: React.FC<ThemeProviderProps> = ({ children }) => {
   const [isDarkMode, setIsDarkMode] = useState(false);
+  const [reduceMotion, setReduceMotion] = useState(false);
 
   useEffect(() => {
-    // Load theme preference from player settings
-    loadThemePreference();
+    // Load theme and motion preferences from player settings
+    loadPreferences();
   }, []);
 
-  const loadThemePreference = async () => {
+  const loadPreferences = async () => {
     try {
       const player = await PlayerStorageService.loadPlayerProfile();
-      if (player && player.settings.darkMode !== undefined) {
-        setIsDarkMode(player.settings.darkMode);
+      if (player) {
+        if (player.settings.darkMode !== undefined) {
+          setIsDarkMode(player.settings.darkMode);
+        }
+        if (player.settings.reduceMotion !== undefined) {
+          setReduceMotion(player.settings.reduceMotion);
+        }
       }
     } catch (error) {
-      console.error('Error loading theme preference:', error);
+      console.error('Error loading preferences:', error);
     }
   };
 
@@ -138,13 +146,25 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({ children }) => {
     }
   };
 
+  const toggleReduceMotion = async () => {
+    const newReduceMotion = !reduceMotion;
+    setReduceMotion(newReduceMotion);
+    
+    try {
+      // Save motion preference to player settings
+      await PlayerStorageService.updatePlayerSettings({ reduceMotion: newReduceMotion });
+    } catch (error) {
+      console.error('Error saving motion preference:', error);
+    }
+  };
+
   const theme: Theme = {
     isDark: isDarkMode,
     colors: isDarkMode ? darkTheme : lightTheme,
   };
 
   return (
-    <ThemeContext.Provider value={{ theme, toggleTheme, isDarkMode }}>
+    <ThemeContext.Provider value={{ theme, toggleTheme, isDarkMode, reduceMotion, toggleReduceMotion }}>
       {children}
     </ThemeContext.Provider>
   );

@@ -606,6 +606,15 @@ export default function PlayerProfileScreen({ player, onPlayerUpdated, onClose, 
         </View>
         
         <View style={styles.settingRow}>
+          <Text style={[styles.settingLabel, { color: theme.colors.textSecondary }]}>Reduce Motion</Text>
+          <Switch
+            value={player.settings.reduceMotion}
+            onValueChange={(value) => updateSetting('reduceMotion', value)}
+            disabled={loading}
+          />
+        </View>
+        
+        <View style={styles.settingRow}>
           <Text style={[styles.settingLabel, { color: theme.colors.textSecondary }]}>Sound Effects</Text>
           <Switch
             value={player.settings.soundEnabled}

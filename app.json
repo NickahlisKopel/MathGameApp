@@ -2,13 +2,13 @@
   "expo": {
     "name": "MathGameApp",
     "slug": "MathGameApp",
-    "version": "1.7.0",
+    "version": "1.8.0",
     "orientation": "portrait",
-    "icon": "./assets/icon.png",
+    "icon": "./assets/VsMathLogo.png",
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
     "splash": {
-      "image": "./assets/splash-icon.png",
+      "image": "./assets/VsMathLogo.png",
       "resizeMode": "contain",
       "backgroundColor": "#ffffff"
     },
@@ -21,7 +21,7 @@
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./assets/adaptive-icon.png",
+        "foregroundImage": "./assets/VsMathLogo.png",
         "backgroundColor": "#ffffff"
       },
       "edgeToEdgeEnabled": true,
@@ -29,7 +29,7 @@
       "package": "com.nickkopel.MathGameApp"
     },
     "web": {
-      "favicon": "./assets/favicon.png"
+      "favicon": "./assets/VsMathLogo.png"
     },
     "plugins": [
       "expo-dev-client"

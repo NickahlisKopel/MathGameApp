@@ -90,7 +90,7 @@ export const SimpleMultiplayerGameScreen: React.FC<SimpleMultiplayerGameScreenPr
 }) => {
   // Background and theme hooks
   const { backgroundColors, backgroundType, animationType } = useBackground();
-  const { theme, isDarkMode } = useTheme();
+  const { theme, isDarkMode, reduceMotion } = useTheme();
   
   const [gameState, setGameState] = useState<'setup' | 'playing' | 'finished'>('setup');
   const [currentEquation, setCurrentEquation] = useState<Equation | null>(null);
@@ -499,12 +499,28 @@ export const SimpleMultiplayerGameScreen: React.FC<SimpleMultiplayerGameScreenPr
             </View>
             
             {/* Feedback Display - Positioned above keypad */}
-            {showFeedback && (
-              <View style={styles.feedbackContainer}>
-                <Text style={[styles.feedbackText, isCorrectAnswer ? styles.correctFeedback : styles.incorrectFeedback]}>
-                  {feedbackText}
-                </Text>
+            {reduceMotion ? (
+              // Static feedback area for reduced motion
+              <View style={[styles.feedbackContainer, styles.feedbackStatic]}>
+                {showFeedback ? (
+                  <Text style={[styles.feedbackText, isCorrectAnswer ? styles.correctFeedback : styles.incorrectFeedback]}>
+                    {feedbackText}
+                  </Text>
+                ) : (
+                  <Text style={[styles.feedbackText, { opacity: 0 }]}>
+                    Placeholder
+                  </Text>
+                )}
               </View>
+            ) : (
+              // Dynamic feedback (original behavior)
+              showFeedback && (
+                <View style={styles.feedbackContainer}>
+                  <Text style={[styles.feedbackText, isCorrectAnswer ? styles.correctFeedback : styles.incorrectFeedback]}>
+                    {feedbackText}
+                  </Text>
+                </View>
+              )
             )}
           </View>
 
@@ -727,6 +743,10 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     borderRadius: 8,
     alignItems: 'center',
+  },
+  feedbackStatic: {
+    minHeight: 50,
+    justifyContent: 'center',
   },
   feedbackText: {
     fontSize: 18,
