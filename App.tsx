@@ -844,49 +844,46 @@ function AppContent() {
           <View style={styles.gameModesSection}>
             <Text style={[styles.sectionTitle, { color: getContrastColor(backgroundType, theme) }]}>🎮 Game Modes</Text>
             
-            {/* Game Mode Selection */}
+            {/* Game Mode Selection - Island Style */}
             <View style={styles.gameModeSelection}>
               <TouchableOpacity
                 style={[
-                  styles.modeButton,
-                  { backgroundColor: theme.colors.card, borderColor: '#ffffff' },
-                  gameMode === 'classic' && [styles.selectedModeButton, { borderColor: '#4CAF50', borderWidth: 3 }]
+                  styles.modeButtonIsland,
+                  gameMode === 'classic' && styles.selectedModeButtonIsland,
                 ]}
                 onPress={() => setGameMode('classic')}
               >
                 <Text style={styles.modeIcon}>⚡</Text>
-                <Text style={[styles.modeTitle, { color: '#ffffff' }]} numberOfLines={1}>Classic</Text>
-                <Text style={[styles.modeDescription, { color: theme.colors.textTertiary }]} numberOfLines={1}>
+                <Text style={[styles.modeTitleIsland, gameMode === 'classic' && styles.selectedModeTitleIsland]} numberOfLines={1}>Classic</Text>
+                <Text style={[styles.modeDescriptionIsland, gameMode === 'classic' && styles.selectedModeDescriptionIsland]} numberOfLines={1}>
                   Mixed arithmetic
                 </Text>
               </TouchableOpacity>
               
               <TouchableOpacity
                 style={[
-                  styles.modeButton,
-                  { backgroundColor: theme.colors.card, borderColor: '#ffffff' },
-                  gameMode === 'times_tables' && [styles.selectedModeButton, { borderColor: '#4CAF50', borderWidth: 3 }]
+                  styles.modeButtonIsland,
+                  gameMode === 'times_tables' && styles.selectedModeButtonIsland,
                 ]}
                 onPress={() => setGameMode('times_tables')}
               >
                 <Text style={styles.modeIcon}>🔢</Text>
-                <Text style={[styles.modeTitle, { color: '#ffffff' }]} numberOfLines={1}>Times Tables</Text>
-                <Text style={[styles.modeDescription, { color: theme.colors.textTertiary }]} numberOfLines={1}>
+                <Text style={[styles.modeTitleIsland, gameMode === 'times_tables' && styles.selectedModeTitleIsland]} numberOfLines={1}>Times Tables</Text>
+                <Text style={[styles.modeDescriptionIsland, gameMode === 'times_tables' && styles.selectedModeDescriptionIsland]} numberOfLines={1}>
                   1×1 to 15×15
                 </Text>
               </TouchableOpacity>
 
               <TouchableOpacity
                 style={[
-                  styles.modeButton,
-                  { backgroundColor: theme.colors.card, borderColor: '#ffffff' },
-                  gameMode === 'multiplayer' && [styles.selectedModeButton, { borderColor: '#4CAF50', borderWidth: 3 }]
+                  styles.modeButtonIsland,
+                  gameMode === 'multiplayer' && styles.selectedModeButtonIsland,
                 ]}
                 onPress={() => setGameMode('multiplayer')}
               >
                 <Text style={styles.modeIcon}>👥</Text>
-                <Text style={[styles.modeTitle, { color: '#ffffff' }]} numberOfLines={1}>Multiplayer</Text>
-                <Text style={[styles.modeDescription, { color: theme.colors.textTertiary }]} numberOfLines={1}>
+                <Text style={[styles.modeTitleIsland, gameMode === 'multiplayer' && styles.selectedModeTitleIsland]} numberOfLines={1}>Multiplayer</Text>
+                <Text style={[styles.modeDescriptionIsland, gameMode === 'multiplayer' && styles.selectedModeDescriptionIsland]} numberOfLines={1}>
                   Battle vs AI
                 </Text>
               </TouchableOpacity>
@@ -1232,60 +1229,60 @@ function AppContent() {
           </Text>
           
           <View style={styles.statsContainer}>
-            <View style={[styles.statCard, { backgroundColor: theme.colors.card }]}>
+            <IslandCard variant="elevated" padding={20} style={styles.statCardIsland}>
               <Text style={styles.statNumber}>{gamePlayer.score}</Text>
-              <Text style={[styles.statLabel, { color: theme.colors.textTertiary }]}>Correct Answers</Text>
-            </View>
+              <Text style={[styles.statLabel, { color: '#666' }]}>Correct Answers</Text>
+            </IslandCard>
             
-            <View style={[styles.statCard, { backgroundColor: theme.colors.card }]}>
+            <IslandCard variant="elevated" padding={20} style={styles.statCardIsland}>
               <Text style={styles.statNumber}>{accuracy}%</Text>
-              <Text style={[styles.statLabel, { color: theme.colors.textTertiary }]}>Accuracy</Text>
-            </View>
+              <Text style={[styles.statLabel, { color: '#666' }]}>Accuracy</Text>
+            </IslandCard>
             
-            <View style={[styles.statCard, { backgroundColor: theme.colors.card }]}>
+            <IslandCard variant="elevated" padding={20} style={styles.statCardIsland}>
               <Text style={styles.statNumber}>{avgTimePerEquation}s</Text>
-              <Text style={[styles.statLabel, { color: theme.colors.textTertiary }]}>Avg Time</Text>
-            </View>
+              <Text style={[styles.statLabel, { color: '#666' }]}>Avg Time</Text>
+            </IslandCard>
           </View>
 
-          <View style={[styles.scoreboardContainer, { backgroundColor: theme.colors.card }]}>
-            <Text style={[styles.scoreboardTitle, { color: '#ffffff' }]}>
+          <IslandCard variant="elevated" style={styles.scoreboardIsland}>
+            <Text style={[styles.scoreboardTitle, { color: '#333' }]}>
               {gameMode === 'times_tables' ? 'Times Tables Summary' : 'Game Summary'}
             </Text>
             {gameMode === 'times_tables' ? (
               <>
                 <View style={styles.summaryRow}>
-                  <Text style={[styles.summaryLabel, { color: theme.colors.textTertiary }]}>Tables Completed:</Text>
-                  <Text style={[styles.summaryValue, { color: '#ffffff' }]}>{completedTables.length}/15</Text>
+                  <Text style={[styles.summaryLabel, { color: '#666' }]}>Tables Completed:</Text>
+                  <Text style={[styles.summaryValue, { color: '#333' }]}>{completedTables.length}/15</Text>
                 </View>
                 <View style={styles.summaryRow}>
-                  <Text style={[styles.summaryLabel, { color: theme.colors.textTertiary }]}>Current Table:</Text>
-                  <Text style={[styles.summaryValue, { color: '#ffffff' }]}>{currentTable}×</Text>
+                  <Text style={[styles.summaryLabel, { color: '#666' }]}>Current Table:</Text>
+                  <Text style={[styles.summaryValue, { color: '#333' }]}>{currentTable}×</Text>
                 </View>
                 <View style={styles.summaryRow}>
-                  <Text style={[styles.summaryLabel, { color: theme.colors.textTertiary }]}>Progress:</Text>
-                  <Text style={[styles.summaryValue, { color: '#ffffff' }]}>{currentMultiplier}/15</Text>
+                  <Text style={[styles.summaryLabel, { color: '#666' }]}>Progress:</Text>
+                  <Text style={[styles.summaryValue, { color: '#333' }]}>{currentMultiplier}/15</Text>
                 </View>
               </>
             ) : (
               <>
                 <View style={styles.summaryRow}>
-                  <Text style={[styles.summaryLabel, { color: theme.colors.textTertiary }]}>Total Equations:</Text>
-                  <Text style={[styles.summaryValue, { color: '#ffffff' }]}>{equationCount}</Text>
+                  <Text style={[styles.summaryLabel, { color: '#666' }]}>Total Equations:</Text>
+                  <Text style={[styles.summaryValue, { color: '#333' }]}>{equationCount}</Text>
                 </View>
                 <View style={styles.summaryRow}>
-                  <Text style={[styles.summaryLabel, { color: theme.colors.textTertiary }]}>Difficulty:</Text>
-                  <Text style={[styles.summaryValue, { color: '#ffffff' }]}>{difficulty.toUpperCase()}</Text>
+                  <Text style={[styles.summaryLabel, { color: '#666' }]}>Difficulty:</Text>
+                  <Text style={[styles.summaryValue, { color: '#333' }]}>{difficulty.toUpperCase()}</Text>
                 </View>
                 <View style={styles.summaryRow}>
-                  <Text style={[styles.summaryLabel, { color: theme.colors.textTertiary }]}>Time Played:</Text>
-                  <Text style={[styles.summaryValue, { color: '#ffffff' }]}>{gameTime - timeLeft}s</Text>
+                  <Text style={[styles.summaryLabel, { color: '#666' }]}>Time Played:</Text>
+                  <Text style={[styles.summaryValue, { color: '#333' }]}>{gameTime - timeLeft}s</Text>
                 </View>
               </>
             )}
-          </View>
+          </IslandCard>
 
-          <TouchableOpacity style={styles.playAgainButton} onPress={() => setGameState('setup')}>
+          <TouchableOpacity style={styles.playAgainButtonIsland} onPress={() => setGameState('setup')}>
             <Text style={styles.playAgainButtonText}>🔄 Play Again</Text>
           </TouchableOpacity>
           </ScrollView>
@@ -2674,5 +2671,66 @@ const styles = StyleSheet.create({
   },
   equationIslandCard: {
     marginBottom: 16,
+  },
+  modeButtonIsland: {
+    flex: 1,
+    marginHorizontal: 5,
+    padding: 15,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255, 255, 255, 0.9)',
+    alignItems: 'center',
+    elevation: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 6,
+  },
+  selectedModeButtonIsland: {
+    backgroundColor: 'rgba(76, 175, 80, 0.15)',
+    borderWidth: 3,
+    borderColor: '#4CAF50',
+    elevation: 8,
+    shadowOpacity: 0.25,
+    shadowRadius: 10,
+  },
+  modeTitleIsland: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#333',
+    marginBottom: 2,
+    textAlign: 'center',
+  },
+  selectedModeTitleIsland: {
+    color: '#4CAF50',
+  },
+  modeDescriptionIsland: {
+    fontSize: 12,
+    color: '#666',
+    textAlign: 'center',
+    flexWrap: 'nowrap',
+  },
+  selectedModeDescriptionIsland: {
+    color: '#4CAF50',
+    fontWeight: '600',
+  },
+  statCardIsland: {
+    minWidth: 80,
+    alignItems: 'center',
+    marginHorizontal: 5,
+  },
+  scoreboardIsland: {
+    marginBottom: 30,
+    minWidth: width * 0.8,
+  },
+  playAgainButtonIsland: {
+    backgroundColor: '#4CAF50',
+    borderRadius: 20,
+    paddingHorizontal: 40,
+    paddingVertical: 16,
+    elevation: 6,
+    shadowColor: '#4CAF50',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
   },
 });
