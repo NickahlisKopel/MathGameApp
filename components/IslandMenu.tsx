@@ -79,7 +79,6 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 6 },
     shadowOpacity: 0.25,
     shadowRadius: 16,
-    backdropFilter: 'blur(10px)',
   },
   menuItem: {
     flex: 1,

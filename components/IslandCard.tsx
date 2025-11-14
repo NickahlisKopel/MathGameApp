@@ -62,6 +62,5 @@ export const IslandCard: React.FC<IslandCardProps> = ({
 const styles = StyleSheet.create({
   islandCard: {
     borderRadius: 24,
-    backdropFilter: 'blur(10px)',
   },
 });
