@@ -45,6 +45,9 @@ import { ThemeProvider, useTheme, getContrastColor } from './contexts/ThemeConte
 import { localAuth, LocalUser } from './services/localAuth';
 import { authService, AuthUser } from './services/AuthService';
 import AuthenticationScreen from './components/AuthenticationScreen';
+import { IslandButton } from './components/IslandButton';
+import { IslandCard } from './components/IslandCard';
+import { IslandMenu } from './components/IslandMenu';
 
 // Types
 interface Equation {
@@ -777,64 +780,65 @@ function AppContent() {
             <Text style={[styles.subtitle, { color: getContrastColor(backgroundType, theme) }]}>Challenge Your Mind</Text>
           </View>
 
-          {/* Player Profile Card */}
+          {/* Player Profile Card - Island Style */}
           {playerProfile && (
             <TouchableOpacity 
-              style={[styles.profileCard, { backgroundColor: theme.colors.card }]}
               onPress={() => {
                 setProfileInitialTab('overview');
                 setShowProfile(true);
               }}
+              activeOpacity={0.9}
             >
-              <View style={styles.profileCardContent}>
-                <View style={styles.profileAvatar}>
-                  <Text style={styles.profileAvatarText}>👤</Text>
+              <IslandCard variant="elevated" style={styles.profileCardIsland}>
+                <View style={styles.profileCardContent}>
+                  <View style={styles.profileAvatar}>
+                    <Text style={styles.profileAvatarText}>👤</Text>
+                  </View>
+                  <View style={styles.profileInfo}>
+                    <Text style={[styles.profileName, { color: '#333' }]}>{playerProfile.username}</Text>
+                    <Text style={[styles.profileStats, { color: '#666' }]}>
+                      Level {getCurrentLevel(playerProfile.experience)} • {playerProfile.coins} 🪙 • {playerProfile.currentStreak || 0}🔥
+                    </Text>
+                    <Text style={[styles.profileSubtext, { color: '#999' }]}>
+                      {playerProfile.gamesPlayed} games • {Math.round((playerProfile.totalCorrectAnswers / Math.max(playerProfile.totalQuestions, 1)) * 100)}% accuracy
+                    </Text>
+                  </View>
+                  <View style={styles.profileArrow}>
+                    <Text style={styles.profileArrowText}>▶</Text>
+                  </View>
                 </View>
-                <View style={styles.profileInfo}>
-                  <Text style={[styles.profileName, { color: theme.colors.textSecondary }]}>{playerProfile.username}</Text>
-                  <Text style={[styles.profileStats, { color: theme.colors.textTertiary }]}>
-                    Level {getCurrentLevel(playerProfile.experience)} • {playerProfile.coins} 🪙 • {playerProfile.currentStreak || 0}🔥
-                  </Text>
-                  <Text style={[styles.profileSubtext, { color: theme.colors.textTertiary }]}>
-                    {playerProfile.gamesPlayed} games • {Math.round((playerProfile.totalCorrectAnswers / Math.max(playerProfile.totalQuestions, 1)) * 100)}% accuracy
-                  </Text>
-                </View>
-                <View style={styles.profileArrow}>
-                  <Text style={styles.profileArrowText}>▶</Text>
-                </View>
-              </View>
+              </IslandCard>
             </TouchableOpacity>
           )}
 
-          {/* Quick Actions Row */}
-          <View style={styles.quickActionsRow}>
-            <TouchableOpacity 
-              style={[styles.quickActionButton, { backgroundColor: theme.colors.card }]}
-              onPress={() => setShowShop(true)}
-            >
-              <Text style={styles.quickActionIcon}>🛍️</Text>
-              <Text style={[styles.quickActionText, { color: theme.colors.textSecondary }]}>Shop</Text>
-            </TouchableOpacity>
-            
-            <TouchableOpacity 
-              style={[styles.quickActionButton, { backgroundColor: theme.colors.card }]}
-              onPress={() => {
-                setProfileInitialTab('settings');
-                setShowProfile(true);
-              }}
-            >
-              <Text style={styles.quickActionIcon}>⚙️</Text>
-              <Text style={[styles.quickActionText, { color: theme.colors.textSecondary }]}>Settings</Text>
-            </TouchableOpacity>
-            
-            <TouchableOpacity 
-              style={[styles.quickActionButton, { backgroundColor: theme.colors.card }]}
-              onPress={() => setShowFriends(true)}
-            >
-              <Text style={styles.quickActionIcon}>�</Text>
-              <Text style={[styles.quickActionText, { color: theme.colors.textSecondary }]}>Friends</Text>
-            </TouchableOpacity>
-          </View>
+          {/* Quick Actions - Island Navigation Menu */}
+          <IslandMenu
+            variant="floating"
+            style={styles.quickActionsIsland}
+            items={[
+              {
+                id: 'shop',
+                icon: '🛍️',
+                label: 'Shop',
+                onPress: () => setShowShop(true),
+              },
+              {
+                id: 'settings',
+                icon: '⚙️',
+                label: 'Settings',
+                onPress: () => {
+                  setProfileInitialTab('settings');
+                  setShowProfile(true);
+                },
+              },
+              {
+                id: 'friends',
+                icon: '👥',
+                label: 'Friends',
+                onPress: () => setShowFriends(true),
+              },
+            ]}
+          />
 
           {/* Game Modes Section */}
           <View style={styles.gameModesSection}>
@@ -890,40 +894,32 @@ function AppContent() {
             
             {/* Classic Mode Card */}
             {gameMode === 'classic' && (
-            <View style={[styles.gameModeCard, { backgroundColor: theme.colors.card }]}>
+            <IslandCard variant="elevated" style={styles.gameModeCardIsland}>
               <View style={styles.gameModeHeader}>
                 <Text style={styles.gameModeIcon}>⚡</Text>
                 <View style={styles.gameModeInfo}>
-                  <Text style={[styles.gameModeTitle, { color: '#ffffff' }]}>Classic Mode</Text>
-                  <Text style={[styles.gameModeDescription, { color: theme.colors.textTertiary }]}>
+                  <Text style={[styles.gameModeTitle, { color: '#333' }]}>Classic Mode</Text>
+                  <Text style={[styles.gameModeDescription, { color: '#666' }]}>
                     Fast-paced arithmetic challenges
                   </Text>
                 </View>
               </View>
               
               <View style={styles.difficultySection}>
-                <Text style={[styles.difficultyLabel, { color: '#ffffff' }]}>Difficulty:</Text>
+                <Text style={[styles.difficultyLabel, { color: '#333' }]}>Difficulty:</Text>
                 <View style={styles.difficultyButtons}>
                   {(['easy', 'medium', 'hard'] as const).map((level) => (
                     <TouchableOpacity
                       key={level}
                       style={[
-                        styles.difficultyChip,
-                        { 
-                          backgroundColor: theme.colors.card,
-                          borderColor: '#ffffff',
-                          borderWidth: 2,
-                        },
-                        difficulty === level && [
-                          styles.selectedDifficultyChip,
-                          { borderColor: '#ffffff', borderWidth: 3 }
-                        ]
+                        styles.difficultyChipIsland,
+                        difficulty === level && styles.selectedDifficultyChipIsland,
                       ]}
                       onPress={() => setDifficulty(level)}
                     >
                       <Text style={[
                         styles.difficultyChipText,
-                        { color: theme.colors.textSecondary },
+                        { color: '#666' },
                         difficulty === level && styles.selectedDifficultyChipText
                       ]}>
                         {level.charAt(0).toUpperCase() + level.slice(1)}
@@ -933,27 +929,27 @@ function AppContent() {
                 </View>
               </View>
               
-              <TouchableOpacity style={styles.playButton} onPress={startGame}>
+              <TouchableOpacity style={styles.playButtonIsland} onPress={startGame}>
                 <Text style={styles.playButtonText}>🎯 Play Now</Text>
               </TouchableOpacity>
-            </View>
+            </IslandCard>
             )}
             
             {/* Times Tables Mode Card */}
             {gameMode === 'times_tables' && (
-            <View style={[styles.gameModeCard, { backgroundColor: theme.colors.card }]}>
+            <IslandCard variant="elevated" style={styles.gameModeCardIsland}>
               <View style={styles.gameModeHeader}>
                 <Text style={styles.gameModeIcon}>🔢</Text>
                 <View style={styles.gameModeInfo}>
-                  <Text style={[styles.gameModeTitle, { color: '#ffffff' }]}>Times Tables Mode</Text>
-                  <Text style={[styles.gameModeDescription, { color: theme.colors.textTertiary }]}>
+                  <Text style={[styles.gameModeTitle, { color: '#333' }]}>Times Tables Mode</Text>
+                  <Text style={[styles.gameModeDescription, { color: '#666' }]}>
                     Master multiplication from 1×1 to 15×15
                   </Text>
                 </View>
               </View>
               
               <View style={styles.timesTableInfo}>
-                <Text style={[styles.timesTableDescription, { color: '#ffffff' }]}>
+                <Text style={[styles.timesTableDescription, { color: '#333' }]}>
                   • Complete each times table from 1 to 15{'\n'}
                   • Get checkpoints for each completed table{'\n'}
                   • Progress is automatically saved{'\n'}
@@ -962,46 +958,42 @@ function AppContent() {
                 </Text>
               </View>
               
-              <TouchableOpacity style={styles.playButton} onPress={startGame}>
+              <TouchableOpacity style={styles.playButtonIsland} onPress={startGame}>
                 <Text style={styles.playButtonText}>🔢 Start Times Tables</Text>
               </TouchableOpacity>
-            </View>
+            </IslandCard>
             )}
 
             {/* Multiplayer Mode Card */}
             {gameMode === 'multiplayer' && (
-            <View style={[styles.gameModeCard, { backgroundColor: theme.colors.card }]}>
+            <IslandCard variant="elevated" style={styles.gameModeCardIsland}>
               <View style={styles.gameModeHeader}>
                 <Text style={styles.gameModeIcon}>👥</Text>
                 <View style={styles.gameModeInfo}>
-                  <Text style={[styles.gameModeTitle, { color: '#ffffff' }]}>Multiplayer Modes</Text>
-                  <Text style={[styles.gameModeDescription, { color: theme.colors.textTertiary }]}>
+                  <Text style={[styles.gameModeTitle, { color: '#333' }]}>Multiplayer Modes</Text>
+                  <Text style={[styles.gameModeDescription, { color: '#666' }]}>
                     Choose your battle style
                   </Text>
                 </View>
               </View>
               
               <View style={styles.difficultySection}>
-                <Text style={[styles.difficultyLabel, { color: '#ffffff' }]}>Difficulty:</Text>
+                <Text style={[styles.difficultyLabel, { color: '#333' }]}>Difficulty:</Text>
                 <View style={styles.difficultyButtons}>
                   {(['easy', 'medium', 'hard'] as const).map((level) => (
                     <TouchableOpacity
                       key={level}
                       style={[
-                        styles.difficultyChip,
-                        { 
-                          backgroundColor: theme.colors.card,
-                          borderColor: '#ffffff',
-                          borderWidth: 2,
-                        },
-                        difficulty === level && [
-                          styles.selectedDifficultyChip,
-                          { borderColor: '#ffffff', borderWidth: 3 }
-                        ]
+                        styles.difficultyChipIsland,
+                        difficulty === level && styles.selectedDifficultyChipIsland,
                       ]}
                       onPress={() => setDifficulty(level)}
                     >
-                      <Text style={[styles.difficultyText, { color: '#ffffff' }]}>
+                      <Text style={[
+                        styles.difficultyChipText,
+                        { color: '#666' },
+                        difficulty === level && styles.selectedDifficultyChipText
+                      ]}>
                         {level.charAt(0).toUpperCase() + level.slice(1)}
                       </Text>
                     </TouchableOpacity>
@@ -1011,7 +1003,7 @@ function AppContent() {
 
               {/* Bot Battle Mode */}
               <TouchableOpacity 
-                style={[styles.multiplayerModeButton, { backgroundColor: '#4CAF50', marginBottom: 12 }]} 
+                style={[styles.multiplayerModeButtonIsland, { backgroundColor: '#4CAF50', marginBottom: 12 }]} 
                 onPress={() => setGameState('bot-battle')}
               >
                 <View style={styles.multiplayerModeContent}>
@@ -1025,7 +1017,7 @@ function AppContent() {
 
               {/* Local 1v1 Mode */}
               <TouchableOpacity 
-                style={[styles.multiplayerModeButton, { backgroundColor: '#FF9800', marginBottom: 12 }]} 
+                style={[styles.multiplayerModeButtonIsland, { backgroundColor: '#FF9800', marginBottom: 12 }]} 
                 onPress={() => setGameState('local-1v1')}
               >
                 <View style={styles.multiplayerModeContent}>
@@ -1040,7 +1032,7 @@ function AppContent() {
               {/* Online PvP Mode - Only for authenticated users */}
               {authenticatedUser && !authenticatedUser.isOffline ? (
                 <TouchableOpacity 
-                  style={[styles.multiplayerModeButton, { backgroundColor: '#2196F3' }]} 
+                  style={[styles.multiplayerModeButtonIsland, { backgroundColor: '#2196F3' }]} 
                   onPress={() => setGameState('online-pvp')}
                 >
                   <View style={styles.multiplayerModeContent}>
@@ -1053,7 +1045,7 @@ function AppContent() {
                 </TouchableOpacity>
               ) : (
                 <View 
-                  style={[styles.multiplayerModeButton, { backgroundColor: '#666666', opacity: 0.6 }]}
+                  style={[styles.multiplayerModeButtonIsland, { backgroundColor: '#666666', opacity: 0.6 }]}
                 >
                   <View style={styles.multiplayerModeContent}>
                     <Text style={styles.multiplayerModeIcon}>🔒</Text>
@@ -1064,16 +1056,16 @@ function AppContent() {
                   </View>
                 </View>
               )}
-            </View>
+            </IslandCard>
             )}
 
             {/* Coming Soon Modes */}
-            <View style={[styles.comingSoonCard, { backgroundColor: theme.colors.card }]}>
+            <IslandCard variant="subtle" style={styles.comingSoonCardIsland}>
               <View style={styles.comingSoonHeader}>
                 <Text style={styles.comingSoonIcon}>🔒</Text>
                 <View style={styles.comingSoonInfo}>
-                  <Text style={[styles.comingSoonTitle, { color: '#ffffff' }]}>More Modes Coming Soon!</Text>
-                  <Text style={[styles.comingSoonDescription, { color: theme.colors.textTertiary }]}>
+                  <Text style={[styles.comingSoonTitle, { color: '#666' }]}>More Modes Coming Soon!</Text>
+                  <Text style={[styles.comingSoonDescription, { color: '#999' }]}>
                     • Daily Challenges{'\n'}
                     • Endless Mode{'\n'}
                     • Custom Challenges{'\n'}
@@ -1081,7 +1073,7 @@ function AppContent() {
                   </Text>
                 </View>
               </View>
-            </View>
+            </IslandCard>
           </View>
         </ScrollView>
       </SafeAreaView>
@@ -1106,55 +1098,46 @@ function AppContent() {
         >
           <SafeAreaView style={styles.gameContainer} edges={['top', 'left', 'right']}>
             <View style={styles.gameContent}>
-              <View style={styles.header}>
-              <TouchableOpacity 
-                style={styles.quitButton}
-                onPress={handleQuitGame}
-              >
-                <Text style={styles.quitButtonText}>✕</Text>
-              </TouchableOpacity>
-              
-              <View style={styles.centerInfo}>
-                <Text style={[styles.score, { color: getContrastColor(backgroundType, theme) }]}>Score: {gamePlayer.score}</Text>
-                {gameMode === 'times_tables' && (
-                  <Text style={[styles.timesTableProgress, { color: getContrastColor(backgroundType, theme) }]}>
-                    {currentTable}× Table: {currentMultiplier}/15
-                  </Text>
-                )}
+              {/* Floating Island Buttons - Top Row */}
+              <View style={styles.gameHeaderIsland}>
+                <IslandButton
+                  icon="✕"
+                  size="small"
+                  variant="danger"
+                  onPress={handleQuitGame}
+                />
+                
+                <IslandCard variant="floating" padding={12} style={styles.scoreIslandCard}>
+                  <Text style={[styles.scoreIsland, { color: '#333' }]}>Score: {gamePlayer.score}</Text>
+                  {gameMode === 'times_tables' && (
+                    <Text style={[styles.timesTableProgressIsland, { color: '#666' }]}>
+                      {currentTable}× Table: {currentMultiplier}/15
+                    </Text>
+                  )}
+                </IslandCard>
+                
+                <IslandButton
+                  icon="📝"
+                  size="small"
+                  variant="primary"
+                  onPress={() => setShowNotepad(true)}
+                />
               </View>
-              
-              <View style={styles.equationCounterContainer}>
-                <Text style={[styles.equationCounter, { color: getContrastColor(backgroundType, theme) }]}>#{equationCount + 1}</Text>
-              </View>
-            </View>
             
-            {/* Floating Timer */}
+            {/* Floating Timer Island */}
             {gameMode === 'classic' && (
-              <Text style={styles.timer}>⏱️ {timeLeft}s</Text>
+              <IslandCard variant="floating" padding={10} style={styles.timerIsland}>
+                <Text style={styles.timerIslandText}>⏱️ {timeLeft}s</Text>
+              </IslandCard>
             )}
-            
-            {/* Compact Notepad Button */}
-            <TouchableOpacity 
-              style={[
-                styles.notepadButton,
-                { backgroundColor: isDarkMode ? '#000000' : 'rgba(255, 255, 255, 0.9)' }
-              ]} 
-              onPress={() => setShowNotepad(true)}
-            >
-              <Text style={styles.notepadButtonText}>📝</Text>
-            </TouchableOpacity>
 
-            <Animated.View style={[
-              styles.equationContainer, 
-              { 
-                opacity: fadeAnim,
-                backgroundColor: isDarkMode ? '#000000' : 'rgba(255, 255, 255, 0.95)'
-              }
-            ]}>
-              <Text style={[
-                styles.equation,
-                { color: isDarkMode ? '#ffffff' : '#333' }
-              ]}>{currentEquation.question}</Text>
+            <Animated.View style={{ opacity: fadeAnim, alignSelf: 'center' }}>
+              <IslandCard variant="floating" padding={16} style={styles.equationIslandCard}>
+                <Text style={[
+                  styles.equation,
+                  { color: isDarkMode ? '#ffffff' : '#333' }
+                ]}>{currentEquation.question}</Text>
+              </IslandCard>
             </Animated.View>
 
             <View style={styles.singlePlayerContainer}>
@@ -2599,5 +2582,97 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: 'bold',
     textAlign: 'center',
+  },
+
+  // Island Layout Styles
+  profileCardIsland: {
+    marginBottom: 20,
+  },
+  quickActionsIsland: {
+    marginBottom: 30,
+  },
+  gameModeCardIsland: {
+    marginBottom: 20,
+  },
+  comingSoonCardIsland: {
+    borderWidth: 2,
+    borderColor: '#e0e0e0',
+    borderStyle: 'dashed',
+  },
+  difficultyChipIsland: {
+    backgroundColor: '#f5f5f5',
+    borderRadius: 20,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    marginHorizontal: 6,
+    minWidth: 70,
+    alignItems: 'center',
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+  },
+  selectedDifficultyChipIsland: {
+    backgroundColor: '#4CAF50',
+    elevation: 4,
+    shadowOpacity: 0.2,
+    shadowRadius: 6,
+  },
+  playButtonIsland: {
+    backgroundColor: '#4CAF50',
+    borderRadius: 16,
+    paddingVertical: 16,
+    alignItems: 'center',
+    elevation: 4,
+    shadowColor: '#4CAF50',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+  },
+  multiplayerModeButtonIsland: {
+    borderRadius: 16,
+    padding: 18,
+    elevation: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+  },
+  gameHeaderIsland: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 20,
+    paddingTop: 10,
+  },
+  scoreIslandCard: {
+    flex: 1,
+    marginHorizontal: 12,
+    alignItems: 'center',
+  },
+  scoreIsland: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    textAlign: 'center',
+  },
+  timesTableProgressIsland: {
+    fontSize: 13,
+    fontWeight: '600',
+    marginTop: 4,
+    textAlign: 'center',
+  },
+  timerIsland: {
+    alignSelf: 'center',
+    marginBottom: 16,
+  },
+  timerIslandText: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#FF4757',
+    textAlign: 'center',
+  },
+  equationIslandCard: {
+    marginBottom: 16,
   },
 });
