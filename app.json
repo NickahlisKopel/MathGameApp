@@ -19,6 +19,12 @@
         "ITSAppUsesNonExemptEncryption": false
       }
     },
+    "notification": {
+      "icon": "./assets/MathGameAppLogoRedesign.png",
+      "color": "#4CAF50",
+      "androidMode": "default",
+      "androidCollapsedTitle": "{{unread_count}} new notifications"
+    },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/MathGameAppLogoRedesign.png",
@@ -32,7 +38,15 @@
       "favicon": "./assets/MathGameAppLogoRedesign.png"
     },
     "plugins": [
-      "expo-dev-client"
+      "expo-dev-client",
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/MathGameAppLogoRedesign.png",
+          "color": "#4CAF50",
+          "sounds": []
+        }
+      ]
     ],
     "extra": {
       "eas": {
