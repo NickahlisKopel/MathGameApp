@@ -90,9 +90,20 @@ class DatabaseService {
 
     if (!this.db) return false;
     const players = this.db.collection('players');
+    
+    // Get existing player to preserve server-managed fields
+    const existingPlayer = await players.findOne({ id: player.id });
+    
+    // Prepare update: preserve friends and friendRequests from server
+    const updateData = {
+      ...player,
+      friends: existingPlayer?.friends || player.friends || [],
+      friendRequests: existingPlayer?.friendRequests || player.friendRequests || [],
+    };
+    
     await players.updateOne(
       { id: player.id },
-      { $set: player },
+      { $set: updateData },
       { upsert: true }
     );
     return true;

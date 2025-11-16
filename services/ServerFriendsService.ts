@@ -199,8 +199,12 @@ export class ServerFriendsService {
       const localPlayer = await PlayerStorageService.loadPlayerProfile();
       console.log('[ServerFriends] Getting friends for player:', localPlayer?.id, localPlayer?.username);
       const player = await this.getPlayerFromServer(localPlayer?.id || '');
-      console.log('[ServerFriends] Player from server:', player?.id, 'Friends:', player?.friends);
-      return player?.friends || [];
+      console.log('[ServerFriends] Player from server:', player?.id, 'Friends array:', player?.friends);
+      console.log('[ServerFriends] Friends array type:', typeof player?.friends, 'isArray:', Array.isArray(player?.friends));
+      console.log('[ServerFriends] Friends count:', player?.friends?.length || 0);
+      const friendsList = player?.friends || [];
+      console.log('[ServerFriends] Returning friends list:', friendsList);
+      return friendsList;
     } catch (error) {
       console.error('[ServerFriends] Error getting friends:', error);
       return [];

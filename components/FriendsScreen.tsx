@@ -167,6 +167,8 @@ const FriendsScreen: React.FC<FriendsScreenProps> = ({
       console.log('[FriendsScreen] Loading friends...');
       const friends = await ServerFriendsService.getFriends();
       const requests = await ServerFriendsService.getFriendRequests();
+      console.log('[FriendsScreen] Raw friends array:', friends);
+      console.log('[FriendsScreen] Friend requests:', requests);
       setFriendIds(friends);
       
       console.log('[FriendsScreen] Fetching usernames for', friends.length, 'friends');
@@ -174,7 +176,7 @@ const FriendsScreen: React.FC<FriendsScreenProps> = ({
       const friendsWithNames = await Promise.all(
         friends.map(async (friendId) => {
           const friendData = await ServerFriendsService.getPlayerFromServer(friendId);
-          console.log('[FriendsScreen] Friend data:', friendId, friendData?.username, friendData?.customization?.avatar);
+          console.log('[FriendsScreen] Friend data for', friendId, ':', friendData?.username, friendData?.customization?.avatar);
           return {
             id: friendId,
             username: friendData?.username || friendId,
@@ -182,9 +184,11 @@ const FriendsScreen: React.FC<FriendsScreenProps> = ({
           };
         })
       );
-      console.log('[FriendsScreen] Friends loaded:', friendsWithNames);
+      console.log('[FriendsScreen] Friends loaded with names:', friendsWithNames);
+      console.log('[FriendsScreen] Setting friendsData state to:', friendsWithNames.length, 'friends');
       setFriendsData(friendsWithNames);
       setFriendRequests(requests);
+      console.log('[FriendsScreen] State updated - friendsData length should be:', friendsWithNames.length);
     } catch (error) {
       console.error('[FriendsScreen] Error loading friends:', error);
     } finally {
@@ -328,7 +332,13 @@ const FriendsScreen: React.FC<FriendsScreenProps> = ({
     const success = await ServerFriendsService.acceptFriendRequest(requestId);
     if (success) {
       Alert.alert('Success', `You are now friends with ${username}!`);
+      // Force a complete reload of friends data
+      setIsLoadingFriends(false); // Reset loading flag in case it's stuck
       await loadFriends();
+      // Also trigger a refresh to ensure everything is synced
+      onRefresh?.();
+    } else {
+      Alert.alert('Error', 'Failed to accept friend request. Please try again.');
     }
   };
 
