@@ -48,6 +48,7 @@ export interface DailyChallengeSubmission {
   hexCode: string;
   guess: string;
   isCorrect: boolean;
+  similarity: number; // 0-100 percentage of how close the guess was
   submittedAt: Date;
 }
 

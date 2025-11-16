@@ -44,12 +44,12 @@ You'll see a "Security Quickstart" screen:
 3. Select **Node.js** and version **4.1 or later**
 4. Copy the connection string - it looks like:
    ```
-   mongodb+srv://mathgameuser:<password>@cluster0.xxxxx.mongodb.net/?retryWrites=true&w=majority
+   mongodb+srv://USERNAME:<PASSWORD>@cluster0.xxxxx.mongodb.net/?retryWrites=true&w=majority
    ```
 5. **Replace `<password>` with your actual password**
 6. **Add database name**: Change the string to:
    ```
-   mongodb+srv://mathgameuser:YOUR_PASSWORD@cluster0.xxxxx.mongodb.net/mathgame?retryWrites=true&w=majority
+   mongodb+srv://USERNAME:YOUR_PASSWORD@cluster0.xxxxx.mongodb.net/mathgame?retryWrites=true&w=majority
    ```
 
 ## Step 6: Add to Render Environment Variables
@@ -103,7 +103,7 @@ mongodb+srv://USERNAME:PASSWORD@CLUSTER.xxxxx.mongodb.net/DATABASE?retryWrites=t
 
 Example (with fake data):
 ```
-mongodb+srv://mathgameuser:MyP@ssw0rd123@cluster0.abc123.mongodb.net/mathgame?retryWrites=true&w=majority
+mongodb+srv://USERNAME:YOUR_SECURE_PASSWORD@cluster0.abc123.mongodb.net/mathgame?retryWrites=true&w=majority
 ```
 
 If password has special characters, URL encode them:

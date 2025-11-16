@@ -855,6 +855,39 @@ app.post('/api/friends/remove', async (req, res) => {
 
 // Daily Challenge Endpoints
 
+// Helper function to calculate color similarity percentage (0-100)
+function calculateColorSimilarity(guess, target) {
+  const normalizeHex = (hex) => hex.replace('#', '').toLowerCase();
+  const guessHex = normalizeHex(guess);
+  const targetHex = normalizeHex(target);
+  
+  // Convert hex to RGB
+  const hexToRgb = (hex) => {
+    const r = parseInt(hex.substring(0, 2), 16);
+    const g = parseInt(hex.substring(2, 4), 16);
+    const b = parseInt(hex.substring(4, 6), 16);
+    return { r, g, b };
+  };
+  
+  const guessRgb = hexToRgb(guessHex);
+  const targetRgb = hexToRgb(targetHex);
+  
+  // Calculate Euclidean distance in RGB space
+  const distance = Math.sqrt(
+    Math.pow(guessRgb.r - targetRgb.r, 2) +
+    Math.pow(guessRgb.g - targetRgb.g, 2) +
+    Math.pow(guessRgb.b - targetRgb.b, 2)
+  );
+  
+  // Maximum possible distance in RGB space is sqrt(255^2 + 255^2 + 255^2) = ~441
+  const maxDistance = Math.sqrt(255 * 255 * 3);
+  
+  // Convert to percentage (100% = perfect match, 0% = furthest away)
+  const similarity = Math.max(0, Math.min(100, 100 - (distance / maxDistance) * 100));
+  
+  return Math.round(similarity * 10) / 10; // Round to 1 decimal place
+}
+
 // Helper function to generate daily hex code
 function generateDailyHexCode(date) {
   // Generate deterministic random hex based on date
@@ -901,11 +934,13 @@ app.get('/api/daily-challenge/:date', async (req, res) => {
         playerName: s.playerName,
         guess: s.guess,
         isCorrect: s.isCorrect,
+        similarity: s.similarity || 0,
         submittedAt: s.submittedAt,
       })),
       playerSubmission: playerSubmission ? {
         guess: playerSubmission.guess,
         isCorrect: playerSubmission.isCorrect,
+        similarity: playerSubmission.similarity || 0,
         submittedAt: playerSubmission.submittedAt,
       } : null,
     });
@@ -920,8 +955,11 @@ app.post('/api/daily-challenge/submit', async (req, res) => {
   try {
     const { playerId, playerName, date, guess } = req.body;
     
+    console.log('[API] Daily challenge submit request:', { playerId, playerName, date, guess });
+    
     if (!playerId || !playerName || !date || !guess) {
-      return res.status(400).json({ error: 'Missing required fields' });
+      console.log('[API] Missing fields:', { hasPlayerId: !!playerId, hasPlayerName: !!playerName, hasDate: !!date, hasGuess: !!guess });
+      return res.status(400).json({ error: 'Missing required fields', details: { playerId: !!playerId, playerName: !!playerName, date: !!date, guess: !!guess } });
     }
     
     // Validate hex code format
@@ -941,6 +979,11 @@ app.post('/api/daily-challenge/submit', async (req, res) => {
     const normalizeHex = (hex) => hex.replace('#', '').toLowerCase();
     const isCorrect = normalizeHex(guess) === normalizeHex(hexCode);
     
+    // Calculate color similarity percentage
+    const similarity = calculateColorSimilarity(guess, hexCode);
+    
+    console.log('[API] Guess analysis:', { guess, hexCode, isCorrect, similarity });
+    
     // Submit to database
     const result = await database.submitDailyChallenge({
       playerId,
@@ -949,6 +992,7 @@ app.post('/api/daily-challenge/submit', async (req, res) => {
       hexCode,
       guess: guess.toUpperCase().startsWith('#') ? guess.toUpperCase() : `#${guess.toUpperCase()}`,
       isCorrect,
+      similarity,
     });
     
     if (!result.success) {
@@ -962,11 +1006,13 @@ app.post('/api/daily-challenge/submit', async (req, res) => {
       success: true,
       isCorrect,
       hexCode,
+      similarity,
       submissions: submissions.map(s => ({
         playerId: s.playerId,
         playerName: s.playerName,
         guess: s.guess,
         isCorrect: s.isCorrect,
+        similarity: s.similarity || 0,
         submittedAt: s.submittedAt,
       })),
     });

@@ -508,6 +508,9 @@ export default function ShopScreen({ visible, onClose, player, onPlayerUpdated, 
                         <Text style={[styles.leaderboardGuess, { color: theme.colors.textSecondary }]}>
                           Guess: {submission.guess}
                         </Text>
+                        <Text style={[styles.leaderboardSimilarity, { color: submission.isCorrect ? '#4CAF50' : '#FFA726' }]}>
+                          {submission.similarity?.toFixed(1) || '0.0'}% match
+                        </Text>
                       </View>
                       
                       <View 
@@ -1206,6 +1209,11 @@ const styles = StyleSheet.create({
   },
   leaderboardGuess: {
     fontSize: 13,
+    marginBottom: 2,
+  },
+  leaderboardSimilarity: {
+    fontSize: 12,
+    fontWeight: 'bold',
   },
   leaderboardColorSwatch: {
     width: 40,

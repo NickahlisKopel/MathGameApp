@@ -441,7 +441,7 @@ class DatabaseService {
 
   async submitDailyChallenge(submission) {
     try {
-      const { playerId, playerName, date, hexCode, guess, isCorrect } = submission;
+      const { playerId, playerName, date, hexCode, guess, isCorrect, similarity } = submission;
       
       if (this.inMemoryStorage) {
         const dateSubmissions = this.inMemoryStorage.dailyChallengeSubmissions.get(date) || [];
@@ -459,6 +459,7 @@ class DatabaseService {
           hexCode,
           guess,
           isCorrect,
+          similarity: similarity || 0,
           submittedAt: new Date(),
         };
         
@@ -485,6 +486,7 @@ class DatabaseService {
         hexCode,
         guess,
         isCorrect,
+        similarity: similarity || 0,
         submittedAt: new Date(),
       };
 

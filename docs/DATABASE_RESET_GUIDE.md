@@ -285,7 +285,7 @@ Before running a reset, you may want to back up the data:
 ### MongoDB Backup
 ```bash
 # If using MongoDB
-mongodump --uri="mongodb+srv://user:pass@cluster.mongodb.net/mathgame" --out=./backup
+mongodump --uri="mongodb+srv://USERNAME:PASSWORD@cluster.mongodb.net/mathgame" --out=./backup
 ```
 
 ### In-Memory Backup
