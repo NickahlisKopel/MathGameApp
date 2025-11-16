@@ -188,11 +188,41 @@ function AppContent() {
           setShowAuthScreen(true);
         } else {
           setLoadingMessage('Loading profile...');
-          // Ensure player profile exists linked to auth user displayName
+          // Ensure player profile exists linked to auth user
           let profile = await PlayerStorageService.loadPlayerProfile();
           if (!profile) {
-            const displayName = restored.displayName || 'Player';
-            profile = await PlayerStorageService.createNewPlayer(displayName, undefined);
+            // Check if a profile exists with the auth user ID (for returning users)
+            const authUserIdKey = `@player_profile_${restored.id}`;
+            const existingProfileData = await AsyncStorage.getItem(authUserIdKey);
+            
+            if (existingProfileData) {
+              // Restore existing profile for this auth user
+              console.log('[App] Restoring existing profile for auth user:', restored.id);
+              profile = JSON.parse(existingProfileData);
+              // Convert date strings back to Date objects
+              profile.createdAt = new Date(profile.createdAt);
+              profile.lastActive = new Date(profile.lastActive);
+              if (profile.achievements) {
+                profile.achievements = profile.achievements.map(a => ({
+                  ...a,
+                  unlockedAt: a.unlockedAt ? new Date(a.unlockedAt) : undefined,
+                }));
+              }
+              // Save as current profile
+              await PlayerStorageService.savePlayerProfile(profile);
+            } else {
+              // Create new profile for this auth user
+              console.log('[App] Creating new profile for auth user:', restored.id);
+              const displayName = restored.displayName || 'Player';
+              profile = await PlayerStorageService.createNewPlayer(displayName, undefined);
+              
+              // Link this profile to the auth user ID
+              await AsyncStorage.setItem(authUserIdKey, JSON.stringify(profile));
+            }
+          } else {
+            // Profile exists as current, ensure it's linked to auth user
+            const authUserIdKey = `@player_profile_${restored.id}`;
+            await AsyncStorage.setItem(authUserIdKey, JSON.stringify(profile));
           }
           
           setLoadingUsername(profile.username);
