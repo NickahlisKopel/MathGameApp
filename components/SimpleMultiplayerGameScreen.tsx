@@ -455,7 +455,10 @@ export const SimpleMultiplayerGameScreen: React.FC<SimpleMultiplayerGameScreenPr
         </Text>
         <View style={styles.headerRight}>
           <TouchableOpacity 
-            style={styles.notepadButton} 
+            style={[
+              styles.notepadButton,
+              { backgroundColor: isDarkMode ? 'rgba(255, 255, 255, 0.15)' : 'rgba(255, 255, 255, 0.9)' }
+            ]} 
             onPress={() => setShowNotepad(true)}
           >
             <Text style={styles.notepadButtonText}>📝</Text>
@@ -577,7 +580,6 @@ const styles = StyleSheet.create({
     minWidth: 60,
   },
   notepadButton: {
-    backgroundColor: 'rgba(255, 255, 255, 0.9)',
     borderRadius: 8,
     paddingHorizontal: 8,
     paddingVertical: 4,

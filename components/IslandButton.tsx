@@ -23,7 +23,7 @@ export const IslandButton: React.FC<IslandButtonProps> = ({
   style,
   testID,
 }) => {
-  const { theme } = useTheme();
+  const { theme, isDarkMode } = useTheme();
   const sizeStyles = {
     small: { width: 44, height: 44, borderRadius: 22 },
     medium: { width: 56, height: 56, borderRadius: 28 },
@@ -31,7 +31,7 @@ export const IslandButton: React.FC<IslandButtonProps> = ({
   };
 
   const variantStyles = {
-    primary: { backgroundColor: 'rgba(255, 255, 255, 0.95)' },
+    primary: { backgroundColor: isDarkMode ? 'rgba(255, 255, 255, 0.15)' : 'rgba(255, 255, 255, 0.95)' },
     secondary: { backgroundColor: 'rgba(0, 0, 0, 0.7)' },
     danger: { backgroundColor: 'rgba(255, 71, 87, 0.9)' },
   };
@@ -44,8 +44,8 @@ export const IslandButton: React.FC<IslandButtonProps> = ({
 
   const iconColor = (() => {
     if (variant === 'secondary' || variant === 'danger') return '#ffffff';
-    // primary has light background; prefer dark icon for contrast
-    return '#000000';
+    // primary: in dark mode use white icon, in light mode use dark icon
+    return isDarkMode ? '#ffffff' : '#000000';
   })();
 
   return (
