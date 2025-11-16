@@ -187,8 +187,8 @@ export default function ShopScreen({ visible, onClose, player, onPlayerUpdated, 
     
     setLoading(true);
     try {
-      // Auto-prepend # if user didn't include it
-      const formattedHex = hexCodeInput.trim().startsWith('#') ? hexCodeInput.trim() : `#${hexCodeInput.trim()}`;
+      // Auto-prepend # since input strips it
+      const formattedHex = `#${hexCodeInput.trim()}`;
       const result = await ShopService.submitDailyChallenge(formattedHex);
       
       if (result.success) {
@@ -434,10 +434,10 @@ export default function ShopScreen({ visible, onClose, player, onPlayerUpdated, 
                   <TextInput
                     style={[styles.hexInput, { backgroundColor: theme.colors.inputBackground, borderColor: theme.colors.border, color: theme.colors.inputText }]}
                     value={hexCodeInput}
-                    onChangeText={setHexCodeInput}
+                    onChangeText={(text) => setHexCodeInput(text.replace('#', ''))}
                     placeholder="FF6B6B"
                     placeholderTextColor={theme.colors.placeholderText}
-                    maxLength={7}
+                    maxLength={6}
                     autoCapitalize="characters"
                   />
                 </View>

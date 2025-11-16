@@ -368,7 +368,7 @@ export class ShopService {
         return { success: false, message: 'Player profile not found', background: null as any };
       }
       
-      console.log('[ShopService] Player:', { id: player.id, name: player.name });
+      console.log('[ShopService] Player:', { id: player.id, username: player.username });
       
       const shopData = await this.loadShopData();
       const today = new Date().toISOString().split('T')[0];
@@ -397,7 +397,7 @@ export class ShopService {
       const SERVER_URL = getServerUrl();
       const payload = {
         playerId: player.id,
-        playerName: player.name,
+        playerName: player.username,
         date: today,
         guess: hexCode,
       };

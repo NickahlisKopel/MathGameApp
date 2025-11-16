@@ -860,9 +860,9 @@ function AppContent() {
         </View>
         {showOnlineDifficultySelect && (
           <View style={styles.difficultyModalOverlay}>
-            <View style={styles.difficultyModalContainer}>
-              <Text style={styles.difficultyModalTitle}>Select Difficulty</Text>
-              <Text style={styles.difficultyModalSubtitle}>Choose your challenge for Online PvP</Text>
+            <View style={[styles.difficultyModalContainer, { backgroundColor: theme.colors.card }]}>
+              <Text style={[styles.difficultyModalTitle, { color: theme.colors.text }]}>Select Difficulty</Text>
+              <Text style={[styles.difficultyModalSubtitle, { color: theme.colors.textSecondary }]}>Choose your challenge for Online PvP</Text>
               <View style={styles.difficultyOptionsRow}>
                 <TouchableOpacity
                   style={[styles.difficultyOptionButton, styles.difficultyEasy]}
@@ -896,10 +896,10 @@ function AppContent() {
                 </TouchableOpacity>
               </View>
               <TouchableOpacity
-                style={styles.difficultyCancelButton}
+                style={[styles.difficultyCancelButton, { backgroundColor: theme.colors.surface }]}
                 onPress={() => setShowOnlineDifficultySelect(false)}
               >
-                <Text style={styles.difficultyCancelText}>Cancel</Text>
+                <Text style={[styles.difficultyCancelText, { color: theme.colors.text }]}>Cancel</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -1657,7 +1657,6 @@ const styles = StyleSheet.create({
   difficultyModalContainer: {
     width: '90%',
     maxWidth: 400,
-    backgroundColor: 'white',
     borderRadius: 20,
     padding: 24,
     shadowColor: '#000',
@@ -1670,13 +1669,11 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     textAlign: 'center',
     marginBottom: 8,
-    color: '#333',
   },
   difficultyModalSubtitle: {
     fontSize: 14,
     textAlign: 'center',
     marginBottom: 20,
-    color: '#555',
   },
   difficultyOptionsRow: {
     flexDirection: 'row',
@@ -1703,11 +1700,9 @@ const styles = StyleSheet.create({
     marginTop: 4,
     paddingVertical: 12,
     borderRadius: 12,
-    backgroundColor: '#ddd',
     alignItems: 'center',
   },
   difficultyCancelText: {
-    color: '#333',
     fontSize: 14,
     fontWeight: '600',
   },
