@@ -361,40 +361,53 @@ export class ShopService {
   // Submit daily challenge hex code (to server)
   static async submitDailyChallenge(hexCode: string): Promise<{ success: boolean; message: string; background: Background; isCorrect?: boolean; submissions?: DailyChallengeSubmission[] }> {
     try {
+      console.log('[ShopService] submitDailyChallenge called with:', hexCode);
+      
       const player = await PlayerStorageService.loadPlayerProfile();
       if (!player) {
         return { success: false, message: 'Player profile not found', background: null as any };
       }
       
+      console.log('[ShopService] Player:', { id: player.id, name: player.name });
+      
       const shopData = await this.loadShopData();
       const today = new Date().toISOString().split('T')[0];
       
+      console.log('[ShopService] Today:', today);
+      
       const todayChallenge = shopData.dailyChallenges.find(c => c.date === today);
       if (!todayChallenge) {
+        console.log('[ShopService] No challenge found for today');
         return { success: false, message: 'No daily challenge available', background: null as any };
       }
       
       if (todayChallenge.isCompleted) {
+        console.log('[ShopService] Challenge already completed');
         return { success: false, message: 'Daily challenge already completed', background: null as any };
       }
       
       // Validate hex code format
       const hexPattern = /^#?[0-9A-Fa-f]{6}$/;
       if (!hexPattern.test(hexCode)) {
+        console.log('[ShopService] Invalid hex code format:', hexCode);
         return { success: false, message: 'Please enter a valid hex code (like #FF6B6B)', background: null as any };
       }
       
       // Submit to server
       const SERVER_URL = getServerUrl();
+      const payload = {
+        playerId: player.id,
+        playerName: player.name,
+        date: today,
+        guess: hexCode,
+      };
+      
+      console.log('[ShopService] Submitting to server:', SERVER_URL, payload);
+      
       const response = await fetch(`${SERVER_URL}/api/daily-challenge/submit`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          playerId: player.id,
-          playerName: player.name,
-          date: today,
-          guess: hexCode,
-        }),
+        body: JSON.stringify(payload),
       });
       
       if (!response.ok) {

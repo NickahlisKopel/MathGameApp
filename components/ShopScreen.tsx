@@ -187,7 +187,9 @@ export default function ShopScreen({ visible, onClose, player, onPlayerUpdated, 
     
     setLoading(true);
     try {
-      const result = await ShopService.submitDailyChallenge(hexCodeInput);
+      // Auto-prepend # if user didn't include it
+      const formattedHex = hexCodeInput.trim().startsWith('#') ? hexCodeInput.trim() : `#${hexCodeInput.trim()}`;
+      const result = await ShopService.submitDailyChallenge(formattedHex);
       
       if (result.success) {
         const title = result.isCorrect ? 'Perfect Match! 🎯' : 'New Color Unlocked! 🎨';
@@ -433,7 +435,7 @@ export default function ShopScreen({ visible, onClose, player, onPlayerUpdated, 
                     style={[styles.hexInput, { backgroundColor: theme.colors.inputBackground, borderColor: theme.colors.border, color: theme.colors.inputText }]}
                     value={hexCodeInput}
                     onChangeText={setHexCodeInput}
-                    placeholder="#FF6B6B"
+                    placeholder="FF6B6B"
                     placeholderTextColor={theme.colors.placeholderText}
                     maxLength={7}
                     autoCapitalize="characters"
@@ -457,7 +459,7 @@ export default function ShopScreen({ visible, onClose, player, onPlayerUpdated, 
                 </TouchableOpacity>
                 
                 <Text style={styles.hint}>
-                  💡 Format: #RRGGBB (like #FF6B6B). You get one guess per day - make it count!
+                  💡 Format: RRGGBB (# is optional). You get one guess per day - make it count!
                 </Text>
               </>
             ) : (
