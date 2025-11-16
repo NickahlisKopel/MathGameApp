@@ -352,7 +352,11 @@ class AuthService {
    */
   async signInWithEmail(email: string, password: string): Promise<AuthUser> {
     try {
-      // Simple validation
+      // Trim inputs
+      email = email.trim();
+      password = password.trim();
+
+      // Validation
       if (!email || !password) {
         throw new Error('Email and password are required');
       }
@@ -363,6 +367,10 @@ class AuthService {
 
       if (password.length < 6) {
         throw new Error('Password must be at least 6 characters');
+      }
+
+      if (password.length > 100) {
+        throw new Error('Password is too long');
       }
 
       // Load stored accounts
@@ -413,21 +421,36 @@ class AuthService {
    */
   async createAccountWithEmail(email: string, password: string, displayName: string): Promise<AuthUser> {
     try {
-      // Simple validation
+      // Trim inputs
+      email = email.trim();
+      password = password.trim();
+      displayName = displayName.trim();
+
+      // Validation
       if (!email || !password || !displayName) {
         throw new Error('All fields are required');
       }
 
       if (!this.isValidEmail(email)) {
-        throw new Error('Invalid email format');
+        throw new Error('Invalid email format. Please use a valid email address.');
       }
 
       if (password.length < 6) {
         throw new Error('Password must be at least 6 characters');
       }
 
-      if (displayName.length < 2) {
-        throw new Error('Display name must be at least 2 characters');
+      if (password.length > 100) {
+        throw new Error('Password is too long');
+      }
+
+      // Check for common weak passwords
+      const weakPasswords = ['123456', 'password', 'qwerty', '111111', 'abc123', 'password123'];
+      if (weakPasswords.includes(password.toLowerCase())) {
+        throw new Error('Please choose a stronger password');
+      }
+
+      if (!this.isValidDisplayName(displayName)) {
+        throw new Error('Display name must be 2-20 characters, contain at least one letter, and use only letters, numbers, spaces, dots, underscores, or hyphens');
       }
 
       // Check if email already exists
@@ -606,17 +629,59 @@ class AuthService {
   }
 
   private isValidEmail(email: string): boolean {
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    // More robust email validation
+    const emailRegex = /^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$/;
     if (!emailRegex.test(email)) {
       return false;
     }
 
-    // Check for obviously invalid domains
-    const invalidDomains = ['test.com', 'example.com', 'fake.com', 'asdf.com'];
-    const domain = email.split('@')[1]?.toLowerCase();
+    // Must have a valid TLD (at least 2 characters)
+    const parts = email.split('@');
+    if (parts.length !== 2) return false;
     
+    const domain = parts[1].toLowerCase();
+    const domainParts = domain.split('.');
+    
+    if (domainParts.length < 2) return false;
+    if (domainParts[domainParts.length - 1].length < 2) return false;
+
+    // Check for obviously invalid domains
+    const invalidDomains = ['test.com', 'example.com', 'fake.com', 'asdf.com', 'temp.com', 'throw.away'];
     if (invalidDomains.includes(domain)) {
       return false;
+    }
+
+    return true;
+  }
+
+  private isValidDisplayName(name: string): boolean {
+    // Check length
+    if (name.length < 2 || name.length > 20) {
+      return false;
+    }
+
+    // Must contain at least one letter
+    if (!/[a-zA-Z]/.test(name)) {
+      return false;
+    }
+
+    // Only allow letters, numbers, spaces, and basic punctuation
+    if (!/^[a-zA-Z0-9\s._-]+$/.test(name)) {
+      return false;
+    }
+
+    // No excessive whitespace
+    if (/\s{2,}/.test(name) || name.startsWith(' ') || name.endsWith(' ')) {
+      return false;
+    }
+
+    // Basic profanity filter (add more as needed)
+    const profanityList = ['fuck', 'shit', 'ass', 'damn', 'bitch', 'bastard', 'crap'];
+    const lowerName = name.toLowerCase();
+    for (const word of profanityList) {
+      if (lowerName.includes(word)) {
+        return false;
+      }
     }
 
     return true;

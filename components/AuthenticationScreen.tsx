@@ -13,6 +13,7 @@ import {
 } from 'react-native';
 import { authService, AuthProvider } from '../services/AuthService';
 import * as AppleAuthentication from 'expo-apple-authentication';
+import { Ionicons } from '@expo/vector-icons';
 
 interface AuthenticationScreenProps {
   onAuthComplete: () => void;
@@ -31,6 +32,7 @@ export default function AuthenticationScreen({
   const [displayName, setDisplayName] = useState('');
   const [loading, setLoading] = useState(false);
   const [appleSignInAvailable, setAppleSignInAvailable] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   useEffect(() => {
     checkAppleSignIn();
@@ -197,15 +199,27 @@ export default function AuthenticationScreen({
           autoCorrect={false}
         />
 
-        <TextInput
-          style={styles.input}
-          placeholder="Password"
-          placeholderTextColor="#999"
-          value={password}
-          onChangeText={setPassword}
-          secureTextEntry
-          autoCapitalize="none"
-        />
+        <View style={styles.passwordContainer}>
+          <TextInput
+            style={[styles.input, styles.passwordInput]}
+            placeholder="Password"
+            placeholderTextColor="#999"
+            value={password}
+            onChangeText={setPassword}
+            secureTextEntry={!showPassword}
+            autoCapitalize="none"
+          />
+          <TouchableOpacity
+            style={styles.eyeIcon}
+            onPress={() => setShowPassword(!showPassword)}
+          >
+            <Ionicons
+              name={showPassword ? 'eye-off' : 'eye'}
+              size={24}
+              color="#999"
+            />
+          </TouchableOpacity>
+        </View>
 
         <TouchableOpacity
           style={[styles.authButton, styles.primaryButton]}
@@ -265,15 +279,27 @@ export default function AuthenticationScreen({
           autoCorrect={false}
         />
 
-        <TextInput
-          style={styles.input}
-          placeholder="Password (min 6 characters)"
-          placeholderTextColor="#999"
-          value={password}
-          onChangeText={setPassword}
-          secureTextEntry
-          autoCapitalize="none"
-        />
+        <View style={styles.passwordContainer}>
+          <TextInput
+            style={[styles.input, styles.passwordInput]}
+            placeholder="Password (min 6 characters)"
+            placeholderTextColor="#999"
+            value={password}
+            onChangeText={setPassword}
+            secureTextEntry={!showPassword}
+            autoCapitalize="none"
+          />
+          <TouchableOpacity
+            style={styles.eyeIcon}
+            onPress={() => setShowPassword(!showPassword)}
+          >
+            <Ionicons
+              name={showPassword ? 'eye-off' : 'eye'}
+              size={24}
+              color="#999"
+            />
+          </TouchableOpacity>
+        </View>
 
         <TouchableOpacity
           style={[styles.authButton, styles.primaryButton]}
@@ -426,6 +452,20 @@ const styles = StyleSheet.create({
     marginBottom: 15,
     borderWidth: 1,
     borderColor: '#444',
+  },
+  passwordContainer: {
+    position: 'relative',
+    marginBottom: 15,
+  },
+  passwordInput: {
+    marginBottom: 0,
+    paddingRight: 55,
+  },
+  eyeIcon: {
+    position: 'absolute',
+    right: 15,
+    top: 16,
+    padding: 5,
   },
   switchModeButton: {
     marginTop: 20,
