@@ -19,6 +19,7 @@ import { useTheme } from '../contexts/ThemeContext';
 import { IslandButton } from './IslandButton';
 import { IslandCard } from './IslandCard';
 import { IslandMenu } from './IslandMenu';
+import { BackgroundWrapper } from './BackgroundWrapper';
 
 interface FriendsScreenProps {
   playerProfile: PlayerProfile;
@@ -37,7 +38,7 @@ const FriendsScreen: React.FC<FriendsScreenProps> = ({
   backgroundType: propBackgroundType,
   onChallengeFriend,
 }) => {
-  const { backgroundColors: hookColors, backgroundType: hookType } = useBackground();
+  const { backgroundColors: hookColors, backgroundType: hookType, animationType: hookAnimationType } = useBackground();
   const { theme } = useTheme();
   
   // Use prop colors if provided, otherwise use hook
@@ -45,6 +46,7 @@ const FriendsScreen: React.FC<FriendsScreenProps> = ({
     ? propBackgroundColors 
     : (hookColors.length >= 2 ? hookColors : ['#4A90E2', '#63B3ED']);
   const backgroundType = propBackgroundType || hookType;
+  const animationType = hookAnimationType;
   const [selectedTab, setSelectedTab] = useState<'friends' | 'requests'>('friends');
   const [friendIds, setFriendIds] = useState<string[]>([]);
   const [friendsData, setFriendsData] = useState<{ id: string; username: string; avatar?: string }[]>([]);
@@ -523,7 +525,7 @@ const FriendsScreen: React.FC<FriendsScreenProps> = ({
 
   return (
     <Modal visible={true} animationType="slide" presentationStyle="fullScreen">
-      <LinearGradient colors={backgroundColors as [string, string, ...string[]]} style={styles.container}>
+      <BackgroundWrapper colors={backgroundColors} type={backgroundType} animationType={animationType} style={styles.container}>
         <SafeAreaView style={styles.container} edges={['left', 'right']}>
           {/* Header - Island Style */}
           <View style={styles.header}>
@@ -706,7 +708,7 @@ const FriendsScreen: React.FC<FriendsScreenProps> = ({
           <Text style={styles.myIdSubtext}>Friends can search for you by username!</Text>
         </IslandCard>
       </SafeAreaView>
-    </LinearGradient>
+    </BackgroundWrapper>
 
     {/* Challenge Modal */}
     {showChallengeModal && selectedFriend && (
