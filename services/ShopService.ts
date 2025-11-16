@@ -2,11 +2,13 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { 
   Background, 
   ShopData, 
-  DailyChallenge, 
+  DailyChallenge,
+  DailyChallengeSubmission, 
   DEFAULT_SHOP_DATA,
   DEFAULT_BACKGROUNDS 
 } from '../types/Shop';
 import { PlayerStorageService } from './PlayerStorageService';
+import { getServerUrl } from '../config/ServerConfig';
 
 const STORAGE_KEYS = {
   SHOP_DATA: 'shop_data',
@@ -293,22 +295,47 @@ export class ShopService {
     };
   }
 
-  // Check for new daily challenge
-  static async checkDailyChallenge(): Promise<DailyChallenge | null> {
+  // Check for new daily challenge (from server)
+  static async checkDailyChallenge(): Promise<DailyChallenge & { submissions?: DailyChallengeSubmission[] } | null> {
     try {
-      const shopData = await this.loadShopData();
+      const player = await PlayerStorageService.loadPlayerProfile();
       const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
       
-      // Check if we already checked today
-      const lastCheck = shopData.lastDailyCheck.toISOString().split('T')[0];
-      if (lastCheck === today) {
-        // Return today's challenge if it exists
-        return shopData.dailyChallenges.find(c => c.date === today) || null;
+      // Fetch from server
+      const SERVER_URL = getServerUrl();
+      const url = `${SERVER_URL}/api/daily-challenge/${today}${player ? `?playerId=${player.id}` : ''}`;
+      const response = await fetch(url);
+      
+      if (!response.ok) {
+        console.error('Failed to fetch daily challenge from server');
+        return null;
       }
       
-      // Generate new daily challenge
-      const todayChallenge = this.generateDailyChallenge(today);
-      shopData.dailyChallenges.push(todayChallenge);
+      const data = await response.json();
+      
+      // Update local storage
+      const shopData = await this.loadShopData();
+      let todayChallenge = shopData.dailyChallenges.find(c => c.date === today);
+      
+      if (!todayChallenge) {
+        todayChallenge = {
+          id: `daily_${today}`,
+          date: today,
+          hexCode: data.hexCode,
+          backgroundName: 'Daily Wonder',
+          isCompleted: !!data.playerSubmission,
+          completedAt: data.playerSubmission?.submittedAt ? new Date(data.playerSubmission.submittedAt) : undefined,
+          userGuess: data.playerSubmission?.guess,
+        };
+        shopData.dailyChallenges.push(todayChallenge);
+      } else {
+        // Update with server data
+        todayChallenge.hexCode = data.hexCode;
+        todayChallenge.isCompleted = !!data.playerSubmission;
+        todayChallenge.completedAt = data.playerSubmission?.submittedAt ? new Date(data.playerSubmission.submittedAt) : undefined;
+        todayChallenge.userGuess = data.playerSubmission?.guess;
+      }
+      
       shopData.lastDailyCheck = new Date();
       
       // Keep only last 30 days of challenges
@@ -320,16 +347,25 @@ export class ShopService {
       });
       
       await this.saveShopData(shopData);
-      return todayChallenge;
+      
+      return {
+        ...todayChallenge,
+        submissions: data.submissions || [],
+      };
     } catch (error) {
       console.error('Error checking daily challenge:', error);
       return null;
     }
   }
 
-  // Submit daily challenge hex code
-  static async submitDailyChallenge(hexCode: string): Promise<{ success: boolean; message: string; background: Background; isCorrect?: boolean }> {
+  // Submit daily challenge hex code (to server)
+  static async submitDailyChallenge(hexCode: string): Promise<{ success: boolean; message: string; background: Background; isCorrect?: boolean; submissions?: DailyChallengeSubmission[] }> {
     try {
+      const player = await PlayerStorageService.loadPlayerProfile();
+      if (!player) {
+        return { success: false, message: 'Player profile not found', background: null as any };
+      }
+      
       const shopData = await this.loadShopData();
       const today = new Date().toISOString().split('T')[0];
       
@@ -348,13 +384,31 @@ export class ShopService {
         return { success: false, message: 'Please enter a valid hex code (like #FF6B6B)', background: null as any };
       }
       
-      // Normalize hex codes for comparison
+      // Submit to server
+      const SERVER_URL = getServerUrl();
+      const response = await fetch(`${SERVER_URL}/api/daily-challenge/submit`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          playerId: player.id,
+          playerName: player.name,
+          date: today,
+          guess: hexCode,
+        }),
+      });
+      
+      if (!response.ok) {
+        const error = await response.json();
+        return { success: false, message: error.error || 'Failed to submit', background: null as any };
+      }
+      
+      const serverResult = await response.json();
+      const { isCorrect, hexCode: targetHexCode, submissions } = serverResult;
+      
+      // Normalize hex codes
       const normalizeHex = (hex: string) => hex.replace('#', '').toLowerCase();
       const inputHex = normalizeHex(hexCode);
-      const targetHex = normalizeHex(todayChallenge.hexCode);
       const normalizedInputColor = `#${inputHex.toUpperCase()}`;
-      
-      const isCorrect = inputHex === targetHex;
       
       // Create multiple background variations for the user's input color
       const baseColorName = isCorrect ? todayChallenge.backgroundName : `Your Color ${new Date().toLocaleDateString()}`;
@@ -437,6 +491,7 @@ export class ShopService {
       // Mark challenge as completed after any attempt (one try per day)
       todayChallenge.isCompleted = true;
       todayChallenge.completedAt = new Date();
+      todayChallenge.userGuess = hexCode;
       
       await this.saveShopData(shopData);
       
@@ -452,7 +507,8 @@ export class ShopService {
               isUnlocked: true,
               unlockedAt: new Date(),
             },
-        isCorrect
+        isCorrect,
+        submissions,
       };
     } catch (error) {
       console.error('Error submitting daily challenge:', error);

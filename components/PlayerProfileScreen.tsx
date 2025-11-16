@@ -18,7 +18,11 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { PlayerProfile, Achievement, GameResult } from '../types/Player';
 import { PlayerStorageService } from '../services/PlayerStorageService';
 import { useTheme } from '../contexts/ThemeContext';
+import { StorageResetService } from '../services/StorageResetService';
 import * as ImagePicker from 'expo-image-picker';
+import { IslandButton } from './IslandButton';
+import { IslandCard } from './IslandCard';
+import { IslandMenu } from './IslandMenu';
 
 interface Props {
   player: PlayerProfile;
@@ -347,7 +351,7 @@ export default function PlayerProfileScreen({ player, onPlayerUpdated, onClose, 
             </TouchableOpacity>
           </View>
           <View style={styles.playerInfo}>
-            <Text style={[styles.username, { color: '#ffffff' }]}>{player.username}</Text>
+            <Text style={[styles.username, { color: theme.colors.text }]}>{player.username}</Text>
             <Text style={[styles.playerDetail, { color: theme.colors.textTertiary }]}>Level {getCurrentLevel()}</Text>
             <Text style={[styles.playerDetail, { color: theme.colors.textTertiary }]}>Joined {formatDate(player.createdAt)}</Text>
             {/* Streak Display (left-aligned, stacked) */}
@@ -363,7 +367,7 @@ export default function PlayerProfileScreen({ player, onPlayerUpdated, onClose, 
         
         {/* Level Progress */}
         <View style={styles.progressContainer}>
-          <Text style={[styles.progressLabel, { color: '#ffffff' }]}> 
+          <Text style={[styles.progressLabel, { color: theme.colors.text }]}> 
             Progress to Level {getCurrentLevel() + 1}
           </Text>
           <View style={styles.progressBar}>
@@ -379,7 +383,7 @@ export default function PlayerProfileScreen({ player, onPlayerUpdated, onClose, 
 
       {/* Currency and Stats */}
       <View style={[styles.card, { backgroundColor: theme.colors.card }]}>
-        <Text style={[[styles.cardTitle, { color: '#ffffff' }], { color: '#ffffff' }]}>💰 Currency & Stats</Text>
+        <Text style={[styles.cardTitle, { color: theme.colors.text }]}>💰 Currency & Stats</Text>
         <View style={styles.statsGrid}>
           <View style={styles.statItem}>
             <Text style={styles.statValue}>{player.coins}</Text>
@@ -412,7 +416,7 @@ export default function PlayerProfileScreen({ player, onPlayerUpdated, onClose, 
         >
           <Text style={styles.friendsCardIcon}>👥</Text>
           <View style={styles.friendsCardContent}>
-            <Text style={[styles.friendsCardTitle, { color: '#ffffff' }]}>Friends</Text>
+            <Text style={[styles.friendsCardTitle, { color: theme.colors.text }]}>Friends</Text>
             <Text style={[styles.friendsCardSubtitle, { color: theme.colors.textTertiary }]}>
               {player.friends?.length || 0} friends • {player.friendRequests?.filter(r => r.status === 'pending').length || 0} requests
             </Text>
@@ -423,7 +427,7 @@ export default function PlayerProfileScreen({ player, onPlayerUpdated, onClose, 
 
       {/* Recent Achievements */}
       <View style={[styles.card, { backgroundColor: theme.colors.card }]}>
-        <Text style={[styles.cardTitle, { color: '#ffffff' }]}>🏆 Recent Achievements</Text>
+        <Text style={[styles.cardTitle, { color: theme.colors.text }]}>🏆 Recent Achievements</Text>
         {player.achievements
           .filter(a => a.isUnlocked)
           .slice(0, 3)
@@ -431,7 +435,7 @@ export default function PlayerProfileScreen({ player, onPlayerUpdated, onClose, 
             <View key={achievement.id} style={styles.achievementItem}>
               <Text style={styles.achievementIcon}>{achievement.icon}</Text>
               <View style={styles.achievementText}>
-                <Text style={[styles.achievementName, { color: '#ffffff' }]}>{achievement.name}</Text>
+                <Text style={[styles.achievementName, { color: theme.colors.text }]}>{achievement.name}</Text>
                 <Text style={[styles.achievementDescription, { color: theme.colors.textTertiary }]}>
                   {achievement.description}
                 </Text>
@@ -450,7 +454,7 @@ export default function PlayerProfileScreen({ player, onPlayerUpdated, onClose, 
   const renderStats = () => (
     <ScrollView style={styles.tabContent} showsVerticalScrollIndicator={false}>
       <View style={[styles.card, { backgroundColor: theme.colors.card }]}>
-        <Text style={[styles.cardTitle, { color: '#ffffff' }]}>📊 Detailed Statistics</Text>
+        <Text style={[styles.cardTitle, { color: theme.colors.text }]}>📊 Detailed Statistics</Text>
         
         <View style={styles.statRow}>
           <Text style={[styles.statRowLabel, { color: theme.colors.textSecondary }]}>Total Games Played</Text>
@@ -509,7 +513,7 @@ export default function PlayerProfileScreen({ player, onPlayerUpdated, onClose, 
   const renderAchievements = () => (
     <ScrollView style={styles.tabContent} showsVerticalScrollIndicator={false}>
       <View style={[styles.card, { backgroundColor: theme.colors.card }]}>
-        <Text style={[styles.cardTitle, { color: '#ffffff' }]}>🏆 Achievements</Text>
+        <Text style={[styles.cardTitle, { color: theme.colors.text }]}>🏆 Achievements</Text>
         <Text style={[styles.achievementProgress, { color: theme.colors.textTertiary }]}>
           {player.achievements.filter(a => a.isUnlocked).length} / {player.achievements.length} Unlocked
         </Text>
@@ -594,7 +598,7 @@ export default function PlayerProfileScreen({ player, onPlayerUpdated, onClose, 
   const renderSettings = () => (
     <ScrollView style={styles.tabContent} showsVerticalScrollIndicator={false}>
       <View style={[styles.card, { backgroundColor: theme.colors.card }]}>
-        <Text style={[[styles.cardTitle, { color: '#ffffff' }], { color: '#ffffff' }]}>⚙️ Game Settings</Text>
+        <Text style={[styles.cardTitle, { color: theme.colors.text }]}>⚙️ Game Settings</Text>
         
         <View style={styles.settingRow}>
           <Text style={[styles.settingLabel, { color: theme.colors.textSecondary }]}>Dark Mode</Text>
@@ -676,7 +680,7 @@ export default function PlayerProfileScreen({ player, onPlayerUpdated, onClose, 
       </View>
       
       <View style={[styles.card, { backgroundColor: theme.colors.card }]}>
-        <Text style={[styles.cardTitle, { color: '#ffffff' }]}>🔧 Advanced</Text>
+        <Text style={[styles.cardTitle, { color: theme.colors.text }]}>🔧 Advanced</Text>
         
         {/* Clear All Email Accounts */}
         <TouchableOpacity
@@ -786,6 +790,90 @@ export default function PlayerProfileScreen({ player, onPlayerUpdated, onClose, 
           </Text>
         </TouchableOpacity>
 
+        {/* Clear Local Storage (Admin/Debug) */}
+        <TouchableOpacity
+          style={[styles.warningButton, loading && styles.dangerButtonDisabled]}
+          onPress={() => {
+            Alert.alert(
+              'Clear Local Storage',
+              'This will remove ALL local app data and return you to the sign-up screen. The server data will NOT be affected. This is useful for testing or syncing with a database reset.\n\nContinue?',
+              [
+                { text: 'Cancel', style: 'cancel' },
+                {
+                  text: 'Clear Storage',
+                  style: 'destructive',
+                  onPress: async () => {
+                    try {
+                      const success = await StorageResetService.clearAllData();
+                      if (success) {
+                        Alert.alert(
+                          'Storage Cleared',
+                          'All local data has been removed. The app will now restart to the sign-up screen.',
+                          [
+                            {
+                              text: 'OK',
+                              onPress: () => {
+                                onClose();
+                                onLogout && onLogout(true);
+                              }
+                            }
+                          ]
+                        );
+                      } else {
+                        Alert.alert('Error', 'Failed to clear local storage.');
+                      }
+                    } catch (error) {
+                      console.error('Clear storage error:', error);
+                      Alert.alert('Error', 'Failed to clear local storage.');
+                    }
+                  }
+                }
+              ]
+            );
+          }}
+          disabled={loading}
+        >
+          <Text style={styles.warningButtonText}>🔄 Clear Local Storage</Text>
+        </TouchableOpacity>
+
+        {/* Delete Account */}
+        <TouchableOpacity
+          style={[styles.dangerButton, loading && styles.dangerButtonDisabled]}
+          onPress={() => {
+            Alert.alert(
+              'Delete Account',
+              'This will permanently delete your account from this device and remove all local game data. This cannot be undone. Continue?',
+              [
+                { text: 'Cancel', style: 'cancel' },
+                {
+                  text: 'Delete',
+                  style: 'destructive',
+                  onPress: async () => {
+                    try {
+                      const { authService } = await import('../services/AuthService');
+                      // Delete auth account (email/offline) and clear session
+                      await authService.deleteCurrentAccount();
+                      // Clear local player data and shop cache
+                      const { PlayerStorageService } = await import('../services/PlayerStorageService');
+                      await PlayerStorageService.resetPlayerProfile();
+                      // Close and signal logout with reset
+                      onClose();
+                      onLogout && onLogout(true);
+                      Alert.alert('Account Deleted', 'Your account and local data have been removed.');
+                    } catch (error) {
+                      console.error('Delete account error:', error);
+                      Alert.alert('Error', 'Failed to delete account.');
+                    }
+                  }
+                }
+              ]
+            );
+          }}
+          disabled={loading}
+        >
+          <Text style={styles.dangerButtonText}>🗑️ Delete My Account</Text>
+        </TouchableOpacity>
+
         {/* Logout */}
         <TouchableOpacity 
           style={[styles.logoutButton]}
@@ -824,7 +912,7 @@ export default function PlayerProfileScreen({ player, onPlayerUpdated, onClose, 
   const renderHistory = () => (
     <ScrollView style={styles.tabContent} showsVerticalScrollIndicator={false}>
       <View style={[styles.card, { backgroundColor: theme.colors.card }]}>
-        <Text style={[styles.cardTitle, { color: '#ffffff' }]}>📈 Recent Games</Text>
+        <Text style={[styles.cardTitle, { color: theme.colors.text }]}>📈 Recent Games</Text>
         
         {gameHistory.length > 0 ? (
           gameHistory.map((game, index) => (
@@ -883,12 +971,17 @@ export default function PlayerProfileScreen({ player, onPlayerUpdated, onClose, 
     <Modal visible={visible} animationType="slide" presentationStyle="fullScreen">
       <BackgroundWrapper colors={backgroundColors} type={backgroundType} style={styles.container}>
         <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
-          {/* Header */}
+          {/* Header - Island Style */}
           <View style={styles.header}>
-            <TouchableOpacity style={styles.closeButton} onPress={onClose}>
-              <Text style={styles.closeButtonText}>✕</Text>
-            </TouchableOpacity>
-            <Text style={styles.headerTitle}>Player Profile</Text>
+            <IslandButton
+              icon="✕"
+              size="small"
+              variant="danger"
+              onPress={onClose}
+            />
+            <IslandCard variant="elevated" padding={12} style={styles.headerTitleCard}>
+              <Text style={styles.headerTitle}>👤 Profile</Text>
+            </IslandCard>
             <View style={styles.placeholder} />
           </View>
 
@@ -916,7 +1009,7 @@ export default function PlayerProfileScreen({ player, onPlayerUpdated, onClose, 
       <Modal visible={showUsernameModal} animationType="fade" transparent>
         <View style={styles.modalOverlay}>
           <View style={[styles.usernameModal, { backgroundColor: theme.colors.card }]}>
-            <Text style={[styles.usernameModalTitle, { color: '#ffffff' }]}>Change Username</Text>
+            <Text style={[styles.usernameModalTitle, { color: theme.colors.text }]}>Change Username</Text>
             <Text style={[styles.usernameModalSubtitle, { color: theme.colors.textTertiary }]}>
               Current: {player.username}
             </Text>
@@ -1350,6 +1443,18 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: 'bold',
   },
+  warningButton: {
+    backgroundColor: '#ff9800',
+    borderRadius: 10,
+    paddingVertical: 15,
+    alignItems: 'center',
+    marginTop: 10,
+  },
+  warningButtonText: {
+    color: 'white',
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
   dangerButton: {
     backgroundColor: '#ff6b6b',
     borderRadius: 10,
@@ -1567,5 +1672,9 @@ const styles = StyleSheet.create({
   friendsCardArrow: {
     fontSize: 24,
     color: 'rgba(255, 255, 255, 0.5)',
+  },
+  headerTitleCard: {
+    flex: 1,
+    marginHorizontal: 10,
   },
 });

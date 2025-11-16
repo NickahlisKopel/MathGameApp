@@ -13,10 +13,13 @@ import {
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Background, DailyChallenge, RARITY_COLORS } from '../types/Shop';
+import { Background, DailyChallenge, DailyChallengeSubmission, RARITY_COLORS } from '../types/Shop';
 import { PlayerProfile } from '../types/Player';
 import { ShopService } from '../services/ShopService';
 import { useTheme, getContrastColor } from '../contexts/ThemeContext';
+import { IslandButton } from './IslandButton';
+import { IslandCard } from './IslandCard';
+import { IslandMenu } from './IslandMenu';
 
 interface Props {
   visible: boolean;
@@ -62,7 +65,7 @@ export default function ShopScreen({ visible, onClose, player, onPlayerUpdated, 
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set(['Blue'])); // Default expand Blue category
   const [selectedBackground, setSelectedBackground] = useState<string>('');
   const [loading, setLoading] = useState(false);
-  const [dailyChallenge, setDailyChallenge] = useState<DailyChallenge | null>(null);
+  const [dailyChallenge, setDailyChallenge] = useState<(DailyChallenge & { submissions?: DailyChallengeSubmission[] }) | null>(null);
   const [hexCodeInput, setHexCodeInput] = useState('');
   const [showPreview, setShowPreview] = useState(false);
   const [previewBackground, setPreviewBackground] = useState<Background | null>(null);
@@ -225,42 +228,43 @@ export default function ShopScreen({ visible, onClose, player, onPlayerUpdated, 
     
     return (
       <TouchableOpacity
-        style={[
-          styles.backgroundItem,
-          { backgroundColor: theme.colors.card },
-          isSelected && styles.selectedBackground,
-          { borderColor: getRarityColor(background.rarity) },
-        ]}
         onPress={() => isUnlocked ? handleSetActive(background.id) : showBackgroundPreview(background)}
         disabled={loading}
+        activeOpacity={0.9}
+        style={{ minWidth: 90, maxWidth: 110, marginRight: 8 }}
       >
+        <IslandCard
+          variant={isSelected ? "floating" : "elevated"}
+          padding={8}
+          style={styles.backgroundItem}
+        >
         {background.type === 'solid' ? (
           <View
             style={[
               styles.backgroundPreview,
-              { backgroundColor: background.colors[0] }
+              { backgroundColor: background.colors[0], minHeight: 45, maxHeight: 60 }
             ]}
           >
-            <Text style={styles.backgroundEmoji}>{background.preview}</Text>
-            {isSelected && <Text style={styles.activeIndicator}>✓</Text>}
+            <Text style={[styles.backgroundEmoji, { fontSize: 22 }]}>{background.preview}</Text>
+            {isSelected && <Text style={[styles.activeIndicator, { fontSize: 16 }]}>✓</Text>}
             {!isUnlocked && <View style={styles.lockedOverlay} />}
           </View>
         ) : (
           <LinearGradient
             colors={background.colors as [string, string, ...string[]]}
-            style={styles.backgroundPreview}
+            style={[styles.backgroundPreview, { minHeight: 45, maxHeight: 60 }]}
           >
-            <Text style={styles.backgroundEmoji}>{background.preview}</Text>
-            {isSelected && <Text style={styles.activeIndicator}>✓</Text>}
+            <Text style={[styles.backgroundEmoji, { fontSize: 22 }]}>{background.preview}</Text>
+            {isSelected && <Text style={[styles.activeIndicator, { fontSize: 16 }]}>✓</Text>}
             {!isUnlocked && <View style={styles.lockedOverlay} />}
           </LinearGradient>
         )}
         
         <View style={styles.backgroundInfo}>
-          <Text style={[styles.backgroundName, { color: theme.colors.textSecondary }, !isUnlocked && styles.lockedText]}>
+          <Text style={[styles.backgroundName, { color: theme.colors.textSecondary, fontSize: 10 }, !isUnlocked && styles.lockedText]} numberOfLines={1}>
             {background.name}
           </Text>
-          <Text style={[styles.backgroundRarity, { color: getRarityColor(background.rarity) }]}>
+          <Text style={[styles.backgroundRarity, { color: getRarityColor(background.rarity), fontSize: 9 }]}>
             {background.rarity.toUpperCase()}
           </Text>
           
@@ -271,6 +275,7 @@ export default function ShopScreen({ visible, onClose, player, onPlayerUpdated, 
                   style={[
                     styles.purchaseButton,
                     player.coins < background.price && styles.purchaseButtonDisabled,
+                    { paddingVertical: 3, paddingHorizontal: 6 }
                   ]}
                   onPress={() => handlePurchase(background)}
                   disabled={loading || player.coins < background.price}
@@ -278,6 +283,7 @@ export default function ShopScreen({ visible, onClose, player, onPlayerUpdated, 
                   <Text style={[
                     styles.purchaseButtonText,
                     player.coins < background.price && styles.purchaseButtonTextDisabled,
+                    { fontSize: 10 }
                   ]}>
                     {background.price} 🪙
                   </Text>
@@ -285,25 +291,26 @@ export default function ShopScreen({ visible, onClose, player, onPlayerUpdated, 
               )}
               
               {background.unlockType === 'achievement' && background.requirement && (
-                <Text style={styles.requirementText}>
+                <Text style={[styles.requirementText, { fontSize: 9 }]} numberOfLines={2}>
                   {background.requirement.description}
                 </Text>
               )}
               
               {background.unlockType === 'challenge' && background.requirement && (
-                <Text style={styles.requirementText}>
+                <Text style={[styles.requirementText, { fontSize: 9 }]} numberOfLines={2}>
                   {background.requirement.description}
                 </Text>
               )}
               
               {background.unlockType === 'daily' && (
-                <Text style={styles.requirementText}>
-                  Daily Challenge Reward
+                <Text style={[styles.requirementText, { fontSize: 9 }]}>
+                  Daily Challenge
                 </Text>
               )}
             </View>
           )}
         </View>
+        </IslandCard>
       </TouchableOpacity>
     );
   };
@@ -312,7 +319,14 @@ export default function ShopScreen({ visible, onClose, player, onPlayerUpdated, 
     const sortedCategories = Object.keys(backgrounds).sort();
     
     return (
-      <ScrollView style={styles.tabContent} showsVerticalScrollIndicator={false}>
+      <ScrollView style={styles.tabContent} showsVerticalScrollIndicator={true}>
+        {!sortedCategories.some(cat => expandedCategories.has(cat)) && (
+          <View style={{ paddingHorizontal: 16, paddingVertical: 8 }}>
+            <Text style={{ textAlign: 'center', opacity: 0.7, color: theme.colors.textSecondary }}>
+              Tap a category to view backgrounds
+            </Text>
+          </View>
+        )}
         {sortedCategories.map(category => {
           const categoryData = backgrounds[category];
           const totalUnlocked = categoryData.unlocked.length;
@@ -322,17 +336,17 @@ export default function ShopScreen({ visible, onClose, player, onPlayerUpdated, 
           return (
             <View key={category} style={styles.categorySection}>
               <TouchableOpacity 
-                style={[styles.categoryHeader, { backgroundColor: theme.colors.card }]}
+                style={[styles.categoryHeader, { backgroundColor: theme.colors.card, paddingVertical: 10, paddingHorizontal: 12 }]}
                 onPress={() => toggleCategory(category)}
               >
                 <View style={styles.categoryTitleRow}>
-                  <Text style={styles.categoryEmoji}>{getCategoryEmoji(category)}</Text>
-                  <Text style={[styles.categoryTitle, { color: '#ffffff' }]}>{category}</Text>
-                  <Text style={[styles.categoryCount, { color: theme.colors.textTertiary, backgroundColor: theme.colors.surface }]}>
+                  <Text style={[styles.categoryEmoji, { fontSize: 16 }]}>{getCategoryEmoji(category)}</Text>
+                  <Text style={[styles.categoryTitle, { color: theme.colors.text, fontSize: 14 }]}>{category}</Text>
+                  <Text style={[styles.categoryCount, { color: theme.colors.textTertiary, backgroundColor: theme.colors.surface, fontSize: 11, paddingHorizontal: 6, paddingVertical: 2 }]}>
                     {totalUnlocked}/{totalUnlocked + totalLocked}
                   </Text>
                 </View>
-                <Text style={[styles.categoryToggle, { color: theme.colors.textSecondary }]}>
+                <Text style={[styles.categoryToggle, { color: theme.colors.textSecondary, fontSize: 12 }]}>
                   {isExpanded ? '▼' : '▶'}
                 </Text>
               </TouchableOpacity>
@@ -341,38 +355,36 @@ export default function ShopScreen({ visible, onClose, player, onPlayerUpdated, 
                 <View style={styles.categoryContent}>
                   {totalUnlocked > 0 && (
                     <>
-                      <View style={styles.sectionHeader}>
-                        <Text style={[styles.sectionTitle, { color: '#ffffff' }]}>🔓 Unlocked ({totalUnlocked})</Text>
+                      <View style={[styles.sectionHeader, { paddingVertical: 6 }]}>
+                        <Text style={[styles.sectionTitle, { color: theme.colors.text, fontSize: 12 }]}>🔓 Unlocked ({totalUnlocked})</Text>
                       </View>
                       
                       <FlatList
                         data={categoryData.unlocked}
                         renderItem={renderBackgroundItem}
                         keyExtractor={(item) => item.id}
-                        numColumns={2}
-                        columnWrapperStyle={styles.row}
-                        showsVerticalScrollIndicator={false}
-                        contentContainerStyle={styles.backgroundGrid}
-                        scrollEnabled={false}
+                        horizontal
+                        showsHorizontalScrollIndicator={true}
+                        contentContainerStyle={styles.horizontalGrid}
+                        style={styles.horizontalScroll}
                       />
                     </>
                   )}
                   
                   {totalLocked > 0 && (
                     <>
-                      <View style={styles.sectionHeader}>
-                        <Text style={[styles.sectionTitle, { color: '#ffffff' }]}>🔒 Locked ({totalLocked})</Text>
+                      <View style={[styles.sectionHeader, { paddingVertical: 6 }]}>
+                        <Text style={[styles.sectionTitle, { color: theme.colors.text, fontSize: 12 }]}>🔒 Locked ({totalLocked})</Text>
                       </View>
                       
                       <FlatList
                         data={categoryData.locked}
                         renderItem={renderBackgroundItem}
                         keyExtractor={(item) => item.id}
-                        numColumns={2}
-                        columnWrapperStyle={styles.row}
-                        showsVerticalScrollIndicator={false}
-                        contentContainerStyle={styles.backgroundGrid}
-                        scrollEnabled={false}
+                        horizontal
+                        showsHorizontalScrollIndicator={true}
+                        contentContainerStyle={styles.horizontalGrid}
+                        style={styles.horizontalScroll}
                       />
                     </>
                   )}
@@ -388,7 +400,7 @@ export default function ShopScreen({ visible, onClose, player, onPlayerUpdated, 
   const renderDailyChallenge = () => (
     <ScrollView style={styles.tabContent} showsVerticalScrollIndicator={false}>
       <View style={[styles.card, { backgroundColor: theme.colors.card }]}>
-        <Text style={[styles.cardTitle, { color: '#ffffff' }]}>🎨 Daily Color Challenge</Text>
+        <Text style={[styles.cardTitle, { color: theme.colors.text }]}>🎨 Daily Color Challenge</Text>
         <Text style={[styles.cardSubtitle, { color: theme.colors.textTertiary }]}>
           One guess per day! Your color gets unlocked, plus bonus for exact match! 🎯
         </Text>
@@ -409,7 +421,7 @@ export default function ShopScreen({ visible, onClose, player, onPlayerUpdated, 
                 
                 <View style={styles.inputContainer}>
                   <View style={styles.inputLabelRow}>
-                    <Text style={[styles.inputLabel, { color: '#ffffff' }]}>Enter Hex Code:</Text>
+                    <Text style={[styles.inputLabel, { color: theme.colors.text }]}>Enter Hex Code:</Text>
                     <TouchableOpacity 
                       style={styles.tipButton}
                       onPress={() => setShowHexCheatSheet(true)}
@@ -452,11 +464,61 @@ export default function ShopScreen({ visible, onClose, player, onPlayerUpdated, 
               <View style={styles.completedChallenge}>
                 <Text style={styles.completedText}>✅ Today's challenge completed!</Text>
                 <Text style={styles.completedSubtext}>
-                  You've made your guess for today
+                  You submitted: {dailyChallenge.userGuess || 'Unknown'}
                 </Text>
                 <Text style={styles.nextChallengeText}>
                   Come back in 24 hours for a new color challenge!
                 </Text>
+              </View>
+            )}
+            
+            {/* Leaderboard Section */}
+            {dailyChallenge.submissions && dailyChallenge.submissions.length > 0 && (
+              <View style={styles.leaderboardSection}>
+                <Text style={[styles.leaderboardTitle, { color: '#ffffff' }]}>
+                  🏆 Today's Submissions
+                </Text>
+                <Text style={[styles.leaderboardSubtitle, { color: theme.colors.textTertiary }]}>
+                  {dailyChallenge.submissions.filter(s => s.isCorrect).length} correct guess{dailyChallenge.submissions.filter(s => s.isCorrect).length !== 1 ? 'es' : ''} so far!
+                </Text>
+                
+                <ScrollView 
+                  style={styles.leaderboardScroll}
+                  showsVerticalScrollIndicator={true}
+                  nestedScrollEnabled={true}
+                >
+                  {dailyChallenge.submissions.map((submission, index) => (
+                    <View 
+                      key={`${submission.playerId}-${submission.submittedAt}`}
+                      style={[
+                        styles.leaderboardItem,
+                        { backgroundColor: submission.isCorrect ? 'rgba(76, 175, 80, 0.15)' : 'rgba(255, 255, 255, 0.05)' }
+                      ]}
+                    >
+                      <View style={styles.leaderboardRank}>
+                        <Text style={styles.leaderboardRankText}>
+                          {submission.isCorrect ? '✅' : '📝'}
+                        </Text>
+                      </View>
+                      
+                      <View style={styles.leaderboardInfo}>
+                        <Text style={[styles.leaderboardPlayerName, { color: '#ffffff' }]}>
+                          {submission.playerName}
+                        </Text>
+                        <Text style={[styles.leaderboardGuess, { color: theme.colors.textSecondary }]}>
+                          Guess: {submission.guess}
+                        </Text>
+                      </View>
+                      
+                      <View 
+                        style={[
+                          styles.leaderboardColorSwatch,
+                          { backgroundColor: submission.guess }
+                        ]}
+                      />
+                    </View>
+                  ))}
+                </ScrollView>
               </View>
             )}
           </>
@@ -474,65 +536,69 @@ export default function ShopScreen({ visible, onClose, player, onPlayerUpdated, 
       <BackgroundWrapper 
         colors={activeBackgroundColors.length >= 1 ? activeBackgroundColors : ['#667eea', '#764ba2']} 
         type={activeBackgroundType} 
-        style={styles.container}
+        style={[styles.container, { justifyContent: 'center', alignItems: 'center', paddingTop: 0 }]}
       >
-        <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
-          {/* Header */}
-          <View style={styles.header}>
-            <TouchableOpacity style={styles.closeButton} onPress={onClose}>
-              <Text style={styles.closeButtonText}>✕</Text>
-            </TouchableOpacity>
-            <Text style={[styles.headerTitle, { color: getContrastColor(activeBackgroundType, theme) }]}>🛍️ Shop</Text>
-            <View style={styles.coinsContainer}>
-              <Text style={[styles.coinsText, { color: getContrastColor(activeBackgroundType, theme) }]}>{player.coins} 🪙</Text>
-            </View>
+        <SafeAreaView style={[styles.safeArea, { justifyContent: 'center', alignItems: 'center' }]} edges={['top', 'left', 'right']}>
+          {/* Header - Bubble Island Style */}
+          <View style={styles.headerBubbleRow}>
+            <IslandCard variant="floating" padding={16} style={styles.headerTitleBubble}>
+              <Text style={[styles.headerTitle, { color: theme.colors.text }]}>🛍️ Shop</Text>
+            </IslandCard>
+            <IslandCard variant="floating" padding={14} style={styles.coinsBubble}>
+              <Text style={[styles.coinsText, { color: theme.colors.text }]}>{player.coins} 🪙</Text>
+            </IslandCard>
+            <IslandButton
+              icon="✕"
+              size="small"
+              variant="danger"
+              onPress={onClose}
+              style={styles.closeBubble}
+            />
           </View>
 
-          {/* Tab Navigation */}
-          <View style={styles.tabContainer}>
+          {/* Tab Navigation - Bubble Islands */}
+          <View style={styles.tabBubbleRow}>
             <TouchableOpacity
-              style={[
-                styles.tabButton, 
-                { backgroundColor: activeTab === 'backgrounds' ? theme.colors.accent : theme.colors.card },
-                activeTab === 'backgrounds' && styles.activeTabButton
-              ]}
+              style={styles.tabButtonBubble}
               onPress={() => setActiveTab('backgrounds')}
+              activeOpacity={0.8}
             >
-              <Text style={[
-                styles.tabText, 
-                { color: activeTab === 'backgrounds' ? '#ffffff' : theme.colors.textSecondary },
-                activeTab === 'backgrounds' && styles.activeTabText
-              ]}>
-                🎨 Backgrounds
-              </Text>
+              <IslandCard
+                variant={activeTab === 'backgrounds' ? "floating" : "elevated"}
+                padding={16}
+                style={activeTab === 'backgrounds' ? styles.activeTabBubble : styles.tabBubble}
+              >
+                <Text style={[activeTab === 'backgrounds' ? styles.activeTabText : styles.tabText, { color: theme.colors.text }]}>
+                  🎨 Backgrounds
+                </Text>
+              </IslandCard>
             </TouchableOpacity>
             <TouchableOpacity
-              style={[
-                styles.tabButton, 
-                { backgroundColor: activeTab === 'daily' ? theme.colors.accent : theme.colors.card },
-                activeTab === 'daily' && styles.activeTabButton
-              ]}
+              style={styles.tabButtonBubble}
               onPress={() => setActiveTab('daily')}
+              activeOpacity={0.8}
             >
-              <Text style={[
-                styles.tabText, 
-                { color: activeTab === 'daily' ? '#ffffff' : theme.colors.textSecondary },
-                activeTab === 'daily' && styles.activeTabText
-              ]}>
-                📅 Daily Challenge
-              </Text>
+              <IslandCard
+                variant={activeTab === 'daily' ? "floating" : "elevated"}
+                padding={16}
+                style={activeTab === 'daily' ? styles.activeTabBubble : styles.tabBubble}
+              >
+                <Text style={[activeTab === 'daily' ? styles.activeTabText : styles.tabText, { color: theme.colors.text }]}>
+                  📅 Daily Challenge
+                </Text>
+              </IslandCard>
             </TouchableOpacity>
           </View>
 
           {/* Content */}
-          {activeTab === 'backgrounds' ? renderBackgrounds() : renderDailyChallenge()}
+          <View style={{ width: '100%', flex: 1 }}>{activeTab === 'backgrounds' ? renderBackgrounds() : renderDailyChallenge()}</View>
         </SafeAreaView>
       </BackgroundWrapper>
 
       {/* Background Preview Modal */}
       <Modal visible={showPreview} animationType="fade" transparent>
         <View style={styles.previewOverlay}>
-          <View style={[styles.previewContainer, { backgroundColor: theme.colors.card }]}>
+          <View style={[styles.previewContainer, { backgroundColor: theme.colors.surface }]}>
             {previewBackground && (
               <>
                 {previewBackground.type === 'solid' ? (
@@ -552,7 +618,7 @@ export default function ShopScreen({ visible, onClose, player, onPlayerUpdated, 
                     <Text style={styles.previewEmoji}>{previewBackground.preview}</Text>
                   </LinearGradient>
                 )}
-                <Text style={[styles.previewName, { color: '#ffffff' }]}>{previewBackground.name}</Text>
+                <Text style={[styles.previewName, { color: theme.colors.text }]}>{previewBackground.name}</Text>
                 <Text style={[styles.previewRarity, { color: getRarityColor(previewBackground.rarity) }]}>
                   {previewBackground.rarity.toUpperCase()}
                 </Text>
@@ -560,7 +626,7 @@ export default function ShopScreen({ visible, onClose, player, onPlayerUpdated, 
                   style={styles.previewCloseButton}
                   onPress={() => setShowPreview(false)}
                 >
-                  <Text style={[styles.previewCloseText, { color: '#ffffff' }]}>Close</Text>
+                  <Text style={[styles.previewCloseText, { color: theme.colors.text }]}>Close</Text>
                 </TouchableOpacity>
               </>
             )}
@@ -571,8 +637,8 @@ export default function ShopScreen({ visible, onClose, player, onPlayerUpdated, 
       {/* Hex Code Cheat Sheet Modal */}
       <Modal visible={showHexCheatSheet} animationType="fade" transparent>
         <View style={styles.previewOverlay}>
-          <View style={styles.cheatSheetContainer}>
-            <Text style={styles.cheatSheetTitle}>🎨 Hex Color Cheat Sheet</Text>
+          <View style={[styles.cheatSheetContainer, { backgroundColor: theme.colors.surface }]}>
+            <Text style={[styles.cheatSheetTitle, { color: theme.colors.text }]}>🎨 Hex Color Cheat Sheet</Text>
             
             <ScrollView style={styles.cheatSheetScroll} showsVerticalScrollIndicator={false}>
               <View style={styles.colorSection}>
@@ -659,6 +725,86 @@ export default function ShopScreen({ visible, onClose, player, onPlayerUpdated, 
 }
 
 const styles = StyleSheet.create({
+      compactGrid: {
+        paddingHorizontal: 8,
+        paddingTop: 6,
+        paddingBottom: 12,
+      },
+      compactGridRow: {
+        justifyContent: 'space-between',
+        marginBottom: 8,
+      },
+      horizontalGrid: {
+        paddingHorizontal: 8,
+        paddingVertical: 6,
+      },
+      horizontalScroll: {
+        marginBottom: 12,
+      },
+    headerBubbleRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 18,
+      marginTop: 40,
+      marginBottom: 18,
+    },
+    headerTitleBubble: {
+      minWidth: 120,
+      alignItems: 'center',
+      justifyContent: 'center',
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.12,
+      shadowRadius: 8,
+      elevation: 6,
+    },
+    coinsBubble: {
+      minWidth: 90,
+      alignItems: 'center',
+      justifyContent: 'center',
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.12,
+      shadowRadius: 8,
+      elevation: 6,
+    },
+    closeBubble: {
+      marginLeft: 10,
+      marginRight: 0,
+      alignSelf: 'center',
+    },
+    tabBubbleRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 16,
+      marginBottom: 10,
+    },
+    tabButtonBubble: {
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    tabBubble: {
+      minWidth: 120,
+      alignItems: 'center',
+      justifyContent: 'center',
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.10,
+      shadowRadius: 6,
+      elevation: 4,
+    },
+    activeTabBubble: {
+      minWidth: 120,
+      alignItems: 'center',
+      justifyContent: 'center',
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.18,
+      shadowRadius: 12,
+      elevation: 8,
+    },
   container: {
     flex: 1,  },
   safeArea: {
@@ -686,14 +832,13 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 20,
     fontWeight: 'bold',
-    color: 'white',  },
+  },
   coinsContainer: {
     backgroundColor: 'rgba(255, 255, 255, 0.2)',
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 15,  },
   coinsText: {
-    color: 'white',
     fontSize: 14,
     fontWeight: 'bold',  },
   tabContainer: {
@@ -704,24 +849,25 @@ const styles = StyleSheet.create({
   tabButton: {
     flex: 1,
     paddingVertical: 15,
-    alignItems: 'center', color: 'black',  },
+    alignItems: 'center',  },
   activeTabButton: {
     backgroundColor: 'rgba(0, 0, 0, 0.2)',  },
   tabText: {
     fontSize: 16,
     fontWeight: '600',
-    color: 'rgba(255, 255, 255, 0.7)',  },
+  },
   activeTabText: {
-    color: 'black',  },
+    fontWeight: 'bold',
+  },
   tabContent: {
     flex: 1,
     padding: 20,  },
   sectionHeader: {
-    marginBottom: 15, color: 'black',  },
+    marginBottom: 15,  },
   sectionTitle: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: 'white',  },
+  },
   backgroundGrid: {
     paddingBottom: 20,  },
   row: {
@@ -818,13 +964,11 @@ const styles = StyleSheet.create({
   cardTitle: {
     fontSize: 20,
     fontWeight: 'bold',
-    color: '#333',
     textAlign: 'center',
     marginBottom: 10,
   },
   cardSubtitle: {
     fontSize: 14,
-    color: '#666',
     textAlign: 'center',
     marginBottom: 20,  },
   colorPreview: {
@@ -895,9 +1039,10 @@ const styles = StyleSheet.create({
     color: '#999',  },
   hint: {
     fontSize: 12,
-    color: '#666',
     textAlign: 'center',
-    fontStyle: 'italic',  },
+    fontStyle: 'italic',
+    opacity: 0.7,
+  },
   completedChallenge: {
     alignItems: 'center',
     paddingVertical: 20,
@@ -910,16 +1055,16 @@ const styles = StyleSheet.create({
   },
   completedSubtext: {
     fontSize: 14,
-    color: '#666',
     marginBottom: 10,
+    opacity: 0.7,
   },
   nextChallengeText: {
     fontSize: 12,
-    color: '#999',
-    fontStyle: 'italic',  },
+    fontStyle: 'italic',
+    opacity: 0.6,
+  },
   noChallengeText: {
     fontSize: 14,
-    color: '#666',
     textAlign: 'center',
     fontStyle: 'italic',  },
   previewOverlay: {
@@ -945,7 +1090,6 @@ const styles = StyleSheet.create({
   previewName: {
     fontSize: 20,
     fontWeight: 'bold',
-    color: '#333',
     marginBottom: 10,
   },
   previewRarity: {
@@ -962,7 +1106,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: 'bold',  },
   cheatSheetContainer: {
-    backgroundColor: 'white',
     borderRadius: 20,
     padding: 20,
     margin: 20,
@@ -970,7 +1113,6 @@ const styles = StyleSheet.create({
   cheatSheetTitle: {
     fontSize: 20,
     fontWeight: 'bold',
-    color: '#333',
     textAlign: 'center',
     marginBottom: 20,  },
   cheatSheetScroll: {
@@ -1015,6 +1157,63 @@ const styles = StyleSheet.create({
     color: 'white',
     fontSize: 16,
     fontWeight: 'bold',  },
+  leaderboardSection: {
+    marginTop: 30,
+    paddingTop: 20,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(255, 255, 255, 0.1)',
+  },
+  leaderboardTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    textAlign: 'center',
+    marginBottom: 5,
+  },
+  leaderboardSubtitle: {
+    fontSize: 14,
+    textAlign: 'center',
+    marginBottom: 15,
+  },
+  leaderboardScroll: {
+    maxHeight: 300,
+  },
+  leaderboardItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 12,
+    borderRadius: 12,
+    marginBottom: 8,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.1)',
+  },
+  leaderboardRank: {
+    width: 40,
+    height: 40,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  leaderboardRankText: {
+    fontSize: 24,
+  },
+  leaderboardInfo: {
+    flex: 1,
+    marginLeft: 12,
+  },
+  leaderboardPlayerName: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    marginBottom: 2,
+  },
+  leaderboardGuess: {
+    fontSize: 13,
+  },
+  leaderboardColorSwatch: {
+    width: 40,
+    height: 40,
+    borderRadius: 8,
+    borderWidth: 2,
+    borderColor: 'rgba(255, 255, 255, 0.3)',
+  },
   categorySection: {
     marginBottom: 15,  },
   categoryHeader: {
@@ -1052,6 +1251,18 @@ const styles = StyleSheet.create({
   categoryToggle: {
     fontSize: 16,
     color: '#666',
+  },
+  headerTitleCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  coinsIslandCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  tabButtonWrapper: {
+    flex: 1,
+    marginHorizontal: 5,
     fontWeight: 'bold',  },
   categoryContent: {
     marginLeft: 10,  },

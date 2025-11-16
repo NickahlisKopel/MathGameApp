@@ -1,5 +1,6 @@
 import React from 'react';
 import { TouchableOpacity, Text, StyleSheet, ViewStyle, TextStyle } from 'react-native';
+import { useTheme } from '../contexts/ThemeContext';
 
 interface IslandButtonProps {
   onPress: () => void;
@@ -22,6 +23,7 @@ export const IslandButton: React.FC<IslandButtonProps> = ({
   style,
   testID,
 }) => {
+  const { theme } = useTheme();
   const sizeStyles = {
     small: { width: 44, height: 44, borderRadius: 22 },
     medium: { width: 56, height: 56, borderRadius: 28 },
@@ -40,6 +42,12 @@ export const IslandButton: React.FC<IslandButtonProps> = ({
     large: 28,
   };
 
+  const iconColor = (() => {
+    if (variant === 'secondary' || variant === 'danger') return '#ffffff';
+    // primary has light background; prefer dark icon for contrast
+    return '#000000';
+  })();
+
   return (
     <TouchableOpacity
       onPress={onPress}
@@ -52,7 +60,7 @@ export const IslandButton: React.FC<IslandButtonProps> = ({
       activeOpacity={0.8}
       testID={testID}
     >
-      <Text style={[styles.iconText, { fontSize: iconSize[size] }]}>{icon}</Text>
+      <Text style={[styles.iconText, { fontSize: iconSize[size], color: iconColor }]}>{icon}</Text>
     </TouchableOpacity>
   );
 };

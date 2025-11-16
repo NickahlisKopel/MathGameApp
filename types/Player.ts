@@ -51,6 +51,7 @@ export interface FriendRequest {
   toUserId: string;
   timestamp: Date;
   status: 'pending' | 'accepted' | 'rejected';
+  correlationId?: string; // Optional client-generated id for tracing
 }
 
 export interface PlayerSettings {

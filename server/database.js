@@ -19,6 +19,8 @@ class DatabaseService {
         this.inMemoryStorage = {
           players: new Map(),
           friendRequests: new Map(),
+          dailyChallengeSubmissions: new Map(), // key: date, value: array of submissions
+          dailyHexCodes: new Map(), // key: date, value: hex code for that day
         };
         return true;
       }
@@ -42,6 +44,9 @@ class DatabaseService {
       // Create indexes for better performance
       await this.db.collection('players').createIndex({ id: 1 }, { unique: true });
       await this.db.collection('players').createIndex({ username: 1 });
+      await this.db.collection('dailyChallengeSubmissions').createIndex({ date: 1, playerId: 1 }, { unique: true });
+      await this.db.collection('dailyChallengeSubmissions').createIndex({ date: 1, isCorrect: 1 });
+      await this.db.collection('dailyHexCodes').createIndex({ date: 1 }, { unique: true });
       console.log('[Database] Indexes created');
       
       return true;
@@ -122,25 +127,101 @@ class DatabaseService {
     return player?.friendRequests || [];
   }
 
-  async addFriendRequest(fromPlayerId, toPlayerId, fromUsername) {
+  async addFriendRequest(fromPlayerId, toPlayerId, fromUsername, trace) {
+    console.log(`[Database] Adding friend request: ${fromPlayerId} → ${toPlayerId} trace=${trace}`);
+    
     const toPlayer = await this.getPlayer(toPlayerId);
-    if (!toPlayer) return false;
+    if (!toPlayer) {
+      console.log(`[Database] Target player not found: ${toPlayerId}`);
+      return { success: false, error: 'Player not found. Make sure they have opened the app at least once.', reason: 'player_not_found', trace };
+    }
 
     if (!toPlayer.friendRequests) toPlayer.friendRequests = [];
+
+    // Purge stale pending requests (configurable expiry)
+    const expiryHours = parseInt(process.env.FRIEND_REQUEST_EXPIRY_HOURS || '72', 10); // default 72h
+    const expiryMs = expiryHours * 60 * 60 * 1000;
+    const now = Date.now();
+    const beforeCount = toPlayer.friendRequests.length;
+    toPlayer.friendRequests = toPlayer.friendRequests.filter(req => {
+      if (req.status !== 'pending') return true; // keep non-pending (though we usually remove after accept/reject)
+      const age = now - new Date(req.timestamp).getTime();
+      if (age > expiryMs) {
+        console.log(`[Database] Purging stale request ${req.id} age=${Math.round(age/1000)}s trace=${trace}`);
+        return false; // drop stale
+      }
+      return true;
+    });
+    const purgedCount = beforeCount - toPlayer.friendRequests.length;
     if (!toPlayer.friends) toPlayer.friends = [];
 
     // Check if already friends
     if (toPlayer.friends.includes(fromPlayerId)) {
-      return false;
+      console.log(`[Database] Players are already friends`);
+      return { success: false, error: 'You are already friends with this player', reason: 'already_friends', trace };
     }
 
-    // Check if request already exists
-    const existingRequest = toPlayer.friendRequests.find(
+    // Check if request already exists (from you to them) AFTER purging
+    let existingRequest = toPlayer.friendRequests.find(
       req => req.fromUserId === fromPlayerId && req.status === 'pending'
     );
 
+    let replaced = false;
     if (existingRequest) {
-      return false;
+      // If existing pending request is older than half expiry, allow replacement
+      const existingAge = now - new Date(existingRequest.timestamp).getTime();
+      if (existingAge > (expiryMs / 2)) {
+        console.log(`[Database] Replacing aging pending request ${existingRequest.id} age=${Math.round(existingAge/1000)}s trace=${trace}`);
+        // Remove old request
+        toPlayer.friendRequests = toPlayer.friendRequests.filter(r => r.id !== existingRequest.id);
+        existingRequest = null; // proceed to create new
+        replaced = true;
+      } else {
+        console.log(`[Database] Friend request already pending (fresh) trace=${trace}`);
+        return { success: false, error: 'You already have a pending friend request to this player', reason: 'pending_fresh', trace };
+      }
+    }
+
+    // Check if they already sent you a request
+    const fromPlayer = await this.getPlayer(fromPlayerId);
+    if (fromPlayer && fromPlayer.friendRequests) {
+      // Purge stale on sender side too
+      fromPlayer.friendRequests = fromPlayer.friendRequests.filter(req => {
+        if (req.status !== 'pending') return true;
+        const age = now - new Date(req.timestamp).getTime();
+        if (age > expiryMs) {
+          console.log(`[Database] Purging stale sender request ${req.id} age=${Math.round(age/1000)}s trace=${trace}`);
+          return false;
+        }
+        return true;
+      });
+      const reverseRequest = fromPlayer.friendRequests.find(
+        req => req.fromUserId === toPlayerId && req.status === 'pending'
+      );
+      if (reverseRequest) {
+        const reverseAge = now - new Date(reverseRequest.timestamp).getTime();
+        if (reverseAge > (expiryMs / 2)) {
+          // Auto-accept stale reverse request creating friendship instead of blocking new request
+          console.log(`[Database] Auto-accepting stale reverse request ${reverseRequest.id} trace=${trace}`);
+          // Accept logic similar to acceptFriendRequest
+          if (!toPlayer.friends) toPlayer.friends = [];
+          if (!toPlayer.friends.includes(reverseRequest.fromUserId)) {
+            toPlayer.friends.push(reverseRequest.fromUserId);
+          }
+          // Remove from sender list and add mutual
+          fromPlayer.friendRequests = fromPlayer.friendRequests.filter(r => r.id !== reverseRequest.id);
+          if (!fromPlayer.friends) fromPlayer.friends = [];
+          if (!fromPlayer.friends.includes(toPlayer.id)) {
+            fromPlayer.friends.push(toPlayer.id);
+          }
+          await this.savePlayer(toPlayer);
+          await this.savePlayer(fromPlayer);
+          return { success: true, autoAccepted: true, trace, reason: 'reverse_auto_accepted' };
+        } else {
+          console.log(`[Database] Reverse request exists (fresh) - blocking new send trace=${trace}`);
+          return { success: false, error: 'This player already sent you a friend request! Check your Requests tab.', reason: 'reverse_pending', trace };
+        }
+      }
     }
 
     // Add friend request
@@ -151,12 +232,14 @@ class DatabaseService {
       toUserId: toPlayerId,
       timestamp: new Date(),
       status: 'pending',
+      correlationId: trace,
     };
 
     toPlayer.friendRequests.push(request);
     await this.savePlayer(toPlayer);
 
-    return true;
+    console.log(`[Database] Friend request added successfully purged=${purgedCount} replaced=${replaced ? 1 : 0}`);
+    return { success: true, request, purged: purgedCount, replaced, trace, reason: replaced ? 'pending_replaced' : 'created' };
   }
 
   async acceptFriendRequest(playerId, requestId) {
@@ -218,6 +301,42 @@ class DatabaseService {
     return true;
   }
 
+  async checkFriendshipStatus(playerId1, playerId2) {
+    console.log(`[Database] Checking friendship status between ${playerId1} and ${playerId2}`);
+    
+    const player1 = await this.getPlayer(playerId1);
+    const player2 = await this.getPlayer(playerId2);
+
+    if (!player1) {
+      console.log(`[Database] Player 1 (${playerId1}) not found`);
+      return { exists: false, error: 'Player 1 not found' };
+    }
+    if (!player2) {
+      console.log(`[Database] Player 2 (${playerId2}) not found`);
+      return { exists: false, error: 'Player 2 not found' };
+    }
+
+    const areFriends = player1.friends?.includes(playerId2) && player2.friends?.includes(playerId1);
+    const pendingRequest1to2 = player2.friendRequests?.find(
+      req => req.fromUserId === playerId1 && req.status === 'pending'
+    );
+    const pendingRequest2to1 = player1.friendRequests?.find(
+      req => req.fromUserId === playerId2 && req.status === 'pending'
+    );
+
+    const status = {
+      exists: true,
+      areFriends,
+      pendingRequest1to2: !!pendingRequest1to2,
+      pendingRequest2to1: !!pendingRequest2to1,
+      player1Username: player1.username,
+      player2Username: player2.username,
+    };
+
+    console.log(`[Database] Friendship status:`, status);
+    return status;
+  }
+
   async removeFriend(playerId, friendId) {
     const player = await this.getPlayer(playerId);
     if (!player || !player.friends) return false;
@@ -240,6 +359,184 @@ class DatabaseService {
     }
 
     return true;
+  }
+
+  async resetDatabase() {
+    try {
+      if (this.inMemoryStorage) {
+        // Clear in-memory storage
+        this.inMemoryStorage.players.clear();
+        this.inMemoryStorage.friendRequests.clear();
+        this.inMemoryStorage.dailyChallengeSubmissions.clear();
+        this.inMemoryStorage.dailyHexCodes.clear();
+        console.log('[Database] In-memory storage cleared');
+        return { success: true, message: 'In-memory storage cleared' };
+      }
+
+      if (this.db) {
+        // Clear all collections
+        const playersResult = await this.db.collection('players').deleteMany({});
+        const requestsResult = await this.db.collection('friendRequests').deleteMany({});
+        const submissionsResult = await this.db.collection('dailyChallengeSubmissions').deleteMany({});
+        const hexCodesResult = await this.db.collection('dailyHexCodes').deleteMany({});
+        
+        console.log('[Database] Database reset complete');
+        console.log(`[Database] - Deleted ${playersResult.deletedCount} players`);
+        console.log(`[Database] - Deleted ${requestsResult.deletedCount} friend requests`);
+        console.log(`[Database] - Deleted ${submissionsResult.deletedCount} daily challenge submissions`);
+        console.log(`[Database] - Deleted ${hexCodesResult.deletedCount} daily hex codes`);
+        
+        return {
+          success: true,
+          message: 'Database reset successfully',
+          deleted: {
+            players: playersResult.deletedCount,
+            friendRequests: requestsResult.deletedCount,
+            dailyChallengeSubmissions: submissionsResult.deletedCount,
+            dailyHexCodes: hexCodesResult.deletedCount,
+          }
+        };
+      }
+
+      return { success: false, message: 'Database not initialized' };
+    } catch (error) {
+      console.error('[Database] Error resetting database:', error);
+      return { success: false, message: error.message };
+    }
+  }
+
+  // Daily Challenge Methods
+  async getDailyHexCode(date) {
+    try {
+      if (this.inMemoryStorage) {
+        return this.inMemoryStorage.dailyHexCodes.get(date) || null;
+      }
+
+      const result = await this.db.collection('dailyHexCodes').findOne({ date });
+      return result ? result.hexCode : null;
+    } catch (error) {
+      console.error('[Database] Error getting daily hex code:', error);
+      return null;
+    }
+  }
+
+  async setDailyHexCode(date, hexCode) {
+    try {
+      if (this.inMemoryStorage) {
+        this.inMemoryStorage.dailyHexCodes.set(date, hexCode);
+        return true;
+      }
+
+      await this.db.collection('dailyHexCodes').updateOne(
+        { date },
+        { $set: { date, hexCode, createdAt: new Date() } },
+        { upsert: true }
+      );
+      return true;
+    } catch (error) {
+      console.error('[Database] Error setting daily hex code:', error);
+      return false;
+    }
+  }
+
+  async submitDailyChallenge(submission) {
+    try {
+      const { playerId, playerName, date, hexCode, guess, isCorrect } = submission;
+      
+      if (this.inMemoryStorage) {
+        const dateSubmissions = this.inMemoryStorage.dailyChallengeSubmissions.get(date) || [];
+        
+        // Check if player already submitted today
+        const existingIndex = dateSubmissions.findIndex(s => s.playerId === playerId);
+        if (existingIndex !== -1) {
+          return { success: false, message: 'Already submitted today' };
+        }
+        
+        const newSubmission = {
+          playerId,
+          playerName,
+          date,
+          hexCode,
+          guess,
+          isCorrect,
+          submittedAt: new Date(),
+        };
+        
+        dateSubmissions.push(newSubmission);
+        this.inMemoryStorage.dailyChallengeSubmissions.set(date, dateSubmissions);
+        
+        return { success: true, submission: newSubmission };
+      }
+
+      // Check if player already submitted today
+      const existing = await this.db.collection('dailyChallengeSubmissions').findOne({
+        date,
+        playerId,
+      });
+
+      if (existing) {
+        return { success: false, message: 'Already submitted today' };
+      }
+
+      const newSubmission = {
+        playerId,
+        playerName,
+        date,
+        hexCode,
+        guess,
+        isCorrect,
+        submittedAt: new Date(),
+      };
+
+      await this.db.collection('dailyChallengeSubmissions').insertOne(newSubmission);
+      return { success: true, submission: newSubmission };
+    } catch (error) {
+      console.error('[Database] Error submitting daily challenge:', error);
+      return { success: false, message: error.message };
+    }
+  }
+
+  async getDailyChallengeSubmissions(date) {
+    try {
+      if (this.inMemoryStorage) {
+        const submissions = this.inMemoryStorage.dailyChallengeSubmissions.get(date) || [];
+        // Sort by correct first, then by submission time
+        return submissions.sort((a, b) => {
+          if (a.isCorrect && !b.isCorrect) return -1;
+          if (!a.isCorrect && b.isCorrect) return 1;
+          return new Date(a.submittedAt) - new Date(b.submittedAt);
+        });
+      }
+
+      const submissions = await this.db.collection('dailyChallengeSubmissions')
+        .find({ date })
+        .sort({ isCorrect: -1, submittedAt: 1 })
+        .toArray();
+      
+      return submissions;
+    } catch (error) {
+      console.error('[Database] Error getting daily challenge submissions:', error);
+      return [];
+    }
+  }
+
+  async getPlayerDailyChallengeSubmission(date, playerId) {
+    try {
+      if (this.inMemoryStorage) {
+        const submissions = this.inMemoryStorage.dailyChallengeSubmissions.get(date) || [];
+        return submissions.find(s => s.playerId === playerId) || null;
+      }
+
+      const submission = await this.db.collection('dailyChallengeSubmissions').findOne({
+        date,
+        playerId,
+      });
+      
+      return submission;
+    } catch (error) {
+      console.error('[Database] Error getting player daily challenge submission:', error);
+      return null;
+    }
   }
 
   async close() {

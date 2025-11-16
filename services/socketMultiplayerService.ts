@@ -1,5 +1,6 @@
 import io, { Socket } from 'socket.io-client';
 import { AuthUser } from './AuthService';
+import { getServerUrl } from '../config/ServerConfig';
 
 interface PlayerData {
   id: string;
@@ -72,11 +73,12 @@ export class SocketMultiplayerService {
   onAvailableFriendsUpdate?: (data: { friends: Array<{ id: string; name: string; difficulty: string }> }) => void;
   onFriendStartedLooking?: (data: { friend: { id: string; name: string; difficulty: string } }) => void;
   onFriendStoppedLooking?: (data: { friendId: string }) => void;
+  onFriendRequestReceived?: (data: { request: { id: string; fromUserId: string; fromUsername: string; toUserId: string; timestamp: string } }) => void;
 
   /**
    * Connect to Socket.IO server
    */
-  async connect(serverUrl: string, user: AuthUser, playerId?: string): Promise<boolean> {
+  async connect(serverUrl: string = getServerUrl(), user: AuthUser, playerId?: string): Promise<boolean> {
     try {
       if (user.isOffline) {
         console.error('Cannot connect in offline mode');
@@ -235,6 +237,11 @@ export class SocketMultiplayerService {
     this.socket.on('friend-stopped-looking', (data) => {
       console.log('[Socket.IO] Friend stopped looking:', data);
       this.onFriendStoppedLooking?.(data);
+    });
+
+    this.socket.on('friend-request-received', (data) => {
+      console.log('[Socket.IO] Friend request received (realtime):', data);
+      this.onFriendRequestReceived?.(data);
     });
   }
 

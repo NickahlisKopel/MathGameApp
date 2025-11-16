@@ -485,6 +485,47 @@ class AuthService {
   }
 
   /**
+   * Permanently delete the currently signed-in account and clear session
+   * - For 'email' accounts: removes the email entry from local accounts storage
+   * - For 'offline' accounts: clears the generated guest id
+   * - For other providers: clears local session only (no remote provider integration here)
+   */
+  async deleteCurrentAccount(): Promise<void> {
+    if (!this.currentUser) {
+      throw new Error('No user is signed in');
+    }
+
+    const user = this.currentUser;
+
+    try {
+      if (user.provider === 'email' && user.email) {
+        const EMAIL_ACCOUNTS_KEY = '@email_accounts';
+        const accountsData = await AsyncStorage.getItem(EMAIL_ACCOUNTS_KEY);
+        if (accountsData) {
+          const accounts = JSON.parse(accountsData);
+          const emailKey = user.email.toLowerCase();
+          if (accounts[emailKey]) {
+            delete accounts[emailKey];
+            await AsyncStorage.setItem(EMAIL_ACCOUNTS_KEY, JSON.stringify(accounts));
+          }
+        }
+      }
+
+      if (user.provider === 'offline') {
+        const GUEST_ID_KEY = '@guest_id';
+        await AsyncStorage.removeItem(GUEST_ID_KEY);
+      }
+
+      // Clear current session
+      this.currentUser = null;
+      await AsyncStorage.removeItem(AUTH_STORAGE_KEY);
+    } catch (error) {
+      console.error('[Auth] Failed to delete account:', error);
+      throw new Error('Failed to delete account');
+    }
+  }
+
+  /**
    * Clear all email accounts (for testing/reset purposes)
    */
   async clearAllEmailAccounts(): Promise<void> {

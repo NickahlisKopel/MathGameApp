@@ -15,6 +15,10 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { PlayerProfile, FriendRequest } from '../types/Player';
 import { ServerFriendsService } from '../services/ServerFriendsService';
 import { useBackground } from '../hooks/useBackground';
+import { useTheme } from '../contexts/ThemeContext';
+import { IslandButton } from './IslandButton';
+import { IslandCard } from './IslandCard';
+import { IslandMenu } from './IslandMenu';
 
 interface FriendsScreenProps {
   playerProfile: PlayerProfile;
@@ -34,6 +38,7 @@ const FriendsScreen: React.FC<FriendsScreenProps> = ({
   onChallengeFriend,
 }) => {
   const { backgroundColors: hookColors, backgroundType: hookType } = useBackground();
+  const { theme } = useTheme();
   
   // Use prop colors if provided, otherwise use hook
   const backgroundColors = propBackgroundColors && propBackgroundColors.length >= 2 
@@ -42,9 +47,11 @@ const FriendsScreen: React.FC<FriendsScreenProps> = ({
   const backgroundType = propBackgroundType || hookType;
   const [selectedTab, setSelectedTab] = useState<'friends' | 'requests'>('friends');
   const [friendIds, setFriendIds] = useState<string[]>([]);
-  const [friendsData, setFriendsData] = useState<{ id: string; username: string }[]>([]);
+  const [friendsData, setFriendsData] = useState<{ id: string; username: string; avatar?: string }[]>([]);
   const [friendRequests, setFriendRequests] = useState<FriendRequest[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
+  const [searchSuggestions, setSearchSuggestions] = useState<{ id: string; username: string }[]>([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [showChallengeModal, setShowChallengeModal] = useState(false);
   const [selectedFriend, setSelectedFriend] = useState<{ id: string; name: string } | null>(null);
@@ -79,6 +86,15 @@ const FriendsScreen: React.FC<FriendsScreenProps> = ({
       socketMultiplayerService.onFriendStoppedLooking = (data: { friendId: string }) => {
         console.log('[FriendsScreen] Friend stopped looking:', data.friendId);
         setAvailableFriends(prev => prev.filter(f => f.id !== data.friendId));
+      };
+
+      // Realtime friend request notification
+      socketMultiplayerService.onFriendRequestReceived = async (data: { request: { id: string; fromUserId: string; fromUsername: string } }) => {
+        console.log('[FriendsScreen] Realtime friend request received:', data.request);
+        Alert.alert('New Friend Request', `${data.request.fromUsername} sent you a friend request!`);
+        // Reload friend requests
+        const requests = await ServerFriendsService.getFriendRequests();
+        setFriendRequests(requests);
       };
     } catch (error) {
       console.error('[FriendsScreen] Error setting up listeners:', error);
@@ -154,14 +170,15 @@ const FriendsScreen: React.FC<FriendsScreenProps> = ({
       setFriendIds(friends);
       
       console.log('[FriendsScreen] Fetching usernames for', friends.length, 'friends');
-      // Fetch usernames for each friend
+      // Fetch usernames and avatars for each friend
       const friendsWithNames = await Promise.all(
         friends.map(async (friendId) => {
           const friendData = await ServerFriendsService.getPlayerFromServer(friendId);
-          console.log('[FriendsScreen] Friend data:', friendId, friendData?.username);
+          console.log('[FriendsScreen] Friend data:', friendId, friendData?.username, friendData?.customization?.avatar);
           return {
             id: friendId,
             username: friendData?.username || friendId,
+            avatar: friendData?.customization?.avatar,
           };
         })
       );
@@ -183,6 +200,75 @@ const FriendsScreen: React.FC<FriendsScreenProps> = ({
     setRefreshing(false);
   };
 
+  const handleSearchChange = async (text: string) => {
+    setSearchQuery(text);
+    
+    if (text.trim().length >= 2) {
+      // Search for users as they type
+      try {
+        const results = await ServerFriendsService.searchPlayers(text.trim());
+        setSearchSuggestions(results);
+        setShowSuggestions(results.length > 0);
+      } catch (error) {
+        console.error('[FriendsScreen] Error searching:', error);
+        setSearchSuggestions([]);
+        setShowSuggestions(false);
+      }
+    } else {
+      setSearchSuggestions([]);
+      setShowSuggestions(false);
+    }
+  };
+
+  const selectSuggestion = (suggestion: { id: string; username: string }) => {
+    setSearchQuery(suggestion.username);
+    setShowSuggestions(false);
+    // Automatically try to add the friend
+    handleAddFriendById(suggestion.id, suggestion.username);
+  };
+
+  const handleAddFriendById = async (friendId: string, username: string) => {
+    const result = await ServerFriendsService.addFriend(friendId);
+    if (result.success) {
+      let message: string;
+      switch (result.reason) {
+        case 'created':
+          message = `Friend request sent to ${username}!`;
+          break;
+        case 'pending_replaced':
+          message = `Old pending request replaced. New request sent to ${username}.`;
+          break;
+        case 'reverse_auto_accepted':
+          message = `Their old request was auto-accepted. You are now friends with ${username}!`;
+          break;
+        default:
+          message = `Friend request processed (${result.reason || 'success'}).`;
+      }
+      Alert.alert('Success', message);
+      setSearchQuery('');
+      setSearchSuggestions([]);
+      await loadFriends();
+    } else {
+      let errorMessage = result.error || 'Could not send friend request.';
+      switch (result.reason) {
+        case 'already_friends':
+          errorMessage = 'You are already friends with this player.'; break;
+        case 'pending_fresh':
+          errorMessage = 'You already have a pending request. Wait for a response.'; break;
+        case 'reverse_pending':
+          errorMessage = 'They already sent you a request. Check Requests tab.'; break;
+        case 'rate_limited':
+          errorMessage = 'Too many attempts. Please wait before trying again.'; break;
+        case 'self_request':
+          errorMessage = 'You cannot send a friend request to yourself.'; break;
+        case 'player_not_found':
+          errorMessage = 'Player not found. Have they opened the app yet?'; break;
+      }
+      console.error('[FriendsScreen] Add friend failed:', errorMessage, 'reason=', result.reason);
+      Alert.alert('Error', errorMessage);
+    }
+  };
+
   const handleAddFriend = async () => {
     if (!searchQuery.trim()) {
       Alert.alert('Error', 'Please enter a username or friend ID');
@@ -190,6 +276,7 @@ const FriendsScreen: React.FC<FriendsScreenProps> = ({
     }
 
     const query = searchQuery.trim();
+    setShowSuggestions(false);
     
     // Check if trying to add self
     if (query === playerProfile.id || query === playerProfile.username) {
@@ -208,28 +295,32 @@ const FriendsScreen: React.FC<FriendsScreenProps> = ({
     // If multiple results, show list to choose from
     if (searchResults.length > 1) {
       const friendId = searchResults[0].id; // For now, use first result
-      const success = await ServerFriendsService.addFriend(friendId);
+      const result = await ServerFriendsService.addFriend(friendId);
       
-      if (success) {
+      if (result.success) {
         Alert.alert('Success', `Friend request sent to ${searchResults[0].username}!`);
         setSearchQuery('');
         await loadFriends();
       } else {
-        Alert.alert('Error', 'Could not send friend request. You may already be friends or have a pending request.');
+        const errorMessage = result.error || 'Could not send friend request. You may already be friends or have a pending request.';
+        console.error('[FriendsScreen] Add friend failed:', errorMessage);
+        Alert.alert('Error', errorMessage);
       }
       return;
     }
     
     // Single result - send friend request
     const friendId = searchResults[0].id;
-    const success = await ServerFriendsService.addFriend(friendId);
+    const result = await ServerFriendsService.addFriend(friendId);
     
-    if (success) {
+    if (result.success) {
       Alert.alert('Success', `Friend request sent to ${searchResults[0].username}!`);
       setSearchQuery('');
       await loadFriends();
     } else {
-      Alert.alert('Error', 'Could not send friend request. You may already be friends or have a pending request.');
+      const errorMessage = result.error || 'Could not send friend request. You may already be friends or have a pending request.';
+      console.error('[FriendsScreen] Add friend failed:', errorMessage);
+      Alert.alert('Error', errorMessage);
     }
   };
 
@@ -300,7 +391,8 @@ const FriendsScreen: React.FC<FriendsScreenProps> = ({
   };
 
   const handleChallengeFriend = (friendId: string) => {
-    setSelectedFriend({ id: friendId, name: friendId });
+    const friend = friendsData.find(f => f.id === friendId);
+    setSelectedFriend({ id: friendId, name: friend?.username || friendId });
     setShowChallengeModal(true);
   };
 
@@ -318,6 +410,8 @@ const FriendsScreen: React.FC<FriendsScreenProps> = ({
       refreshControl={
         <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />
       }
+      onScroll={() => setShowSuggestions(false)}
+      scrollEventThrottle={400}
     >
       {friendsData.length === 0 ? (
         <View style={styles.emptyState}>
@@ -331,18 +425,26 @@ const FriendsScreen: React.FC<FriendsScreenProps> = ({
         friendsData.map((friend) => {
           const isOnline = onlineFriends.includes(friend.id);
           return (
-            <View key={friend.id} style={styles.friendCard}>
-              <View style={styles.friendInfo}>
-                <View style={styles.friendIconContainer}>
-                  <Text style={styles.friendIcon}>👤</Text>
-                  {isOnline && <View style={styles.onlineDot} />}
-                </View>
-                <View style={styles.friendDetails}>
-                  <Text style={styles.friendName}>{friend.username}</Text>
-                  <Text style={styles.friendStatus}>{isOnline ? '🟢 Online' : 'Offline'}</Text>
+            <IslandCard key={friend.id} variant="elevated" padding={0} style={styles.friendCard}>
+              <View style={styles.friendCardInner}>
+                <View style={styles.friendInfo}>
+                  <View style={styles.friendIconContainer}>
+                    <Text style={styles.friendIcon}>{(friend.avatar && friend.avatar !== 'default') ? friend.avatar : '👤'}</Text>
+                    {isOnline && <View style={styles.onlineDot} />}
+                  </View>
+                  <View style={styles.friendDetails}>
+                    <Text 
+                      style={[styles.friendName, { color: theme.colors.text }]} 
+                      numberOfLines={1} 
+                      ellipsizeMode="tail"
+                    >
+                      {friend.username}
+                    </Text>
+                    <Text style={[styles.friendStatus, { color: theme.colors.textSecondary }]}>{isOnline ? '🟢 Online' : 'Offline'}</Text>
+                  </View>
                 </View>
               </View>
-              <View style={styles.friendActions}>
+              <View style={styles.friendActionsRow}>
                 <TouchableOpacity
                   style={styles.challengeButton}
                   onPress={() => handleChallengeFriend(friend.id)}
@@ -356,7 +458,7 @@ const FriendsScreen: React.FC<FriendsScreenProps> = ({
                   <Text style={styles.removeButtonText}>Remove</Text>
                 </TouchableOpacity>
               </View>
-            </View>
+            </IslandCard>
           );
         })
       )}
@@ -369,6 +471,8 @@ const FriendsScreen: React.FC<FriendsScreenProps> = ({
       refreshControl={
         <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />
       }
+      onScroll={() => setShowSuggestions(false)}
+      scrollEventThrottle={400}
     >
       {friendRequests.length === 0 ? (
         <View style={styles.emptyState}>
@@ -377,7 +481,7 @@ const FriendsScreen: React.FC<FriendsScreenProps> = ({
         </View>
       ) : (
         friendRequests.map((request) => (
-          <View key={request.id} style={styles.requestCard}>
+          <IslandCard key={request.id} variant="elevated" padding={15} style={styles.requestCard}>
             <View style={styles.friendInfo}>
               <Text style={styles.friendIcon}>👤</Text>
               <View style={styles.friendDetails}>
@@ -401,7 +505,7 @@ const FriendsScreen: React.FC<FriendsScreenProps> = ({
                 <Text style={styles.rejectButtonText}>✗</Text>
               </TouchableOpacity>
             </View>
-          </View>
+          </IslandCard>
         ))
       )}
     </ScrollView>
@@ -411,52 +515,108 @@ const FriendsScreen: React.FC<FriendsScreenProps> = ({
     <Modal visible={true} animationType="slide" presentationStyle="fullScreen">
       <LinearGradient colors={backgroundColors as [string, string, ...string[]]} style={styles.container}>
         <SafeAreaView style={styles.container} edges={['left', 'right']}>
-          {/* Header */}
+          {/* Header - Island Style */}
           <View style={styles.header}>
-            <TouchableOpacity style={styles.backButton} onPress={onBack}>
-              <Text style={styles.backButtonText}>← Back</Text>
-            </TouchableOpacity>
-            <Text style={styles.headerTitle}>Friends</Text>
+            <IslandButton
+              icon="←"
+              size="small"
+              variant="secondary"
+              onPress={onBack}
+            />
+            <IslandCard variant="elevated" padding={12} style={styles.headerTitleCard}>
+              <Text style={styles.headerTitle}>👥 Friends</Text>
+            </IslandCard>
             <View style={styles.headerRight} />
           </View>
 
-          {/* Add Friend Section */}
-          <View style={styles.addFriendSection}>
-          <TextInput
-            style={styles.searchInput}
-            placeholder="Search by username"
-            placeholderTextColor="#999"
-            value={searchQuery}
-            onChangeText={setSearchQuery}
-            autoCapitalize="none"
-          />
-          <TouchableOpacity style={styles.addButton} onPress={handleAddFriend}>
-            <Text style={styles.addButtonText}>Add</Text>
-          </TouchableOpacity>
-        </View>
+          {/* Add Friend Section - Island Style */}
+          <View style={styles.searchContainer}>
+            <IslandCard variant="elevated" style={styles.addFriendSection}>
+              <TextInput
+                style={styles.searchInput}
+                placeholder="Search by username"
+                placeholderTextColor="#999"
+                value={searchQuery}
+                onChangeText={handleSearchChange}
+                autoCapitalize="none"
+                onFocus={() => {
+                  if (searchSuggestions.length > 0) {
+                    setShowSuggestions(true);
+                  }
+                }}
+              />
+              <TouchableOpacity style={styles.addButton} onPress={handleAddFriend}>
+                <Text style={styles.addButtonText}>➕ Add</Text>
+              </TouchableOpacity>
+            </IslandCard>
+            
+            {/* Autocomplete Suggestions */}
+            {showSuggestions && searchSuggestions.length > 0 && (
+              <IslandCard variant="elevated" style={styles.suggestionsCard}>
+                <ScrollView style={styles.suggestionsList} keyboardShouldPersistTaps="handled">
+                  {searchSuggestions.slice(0, 5).map((suggestion) => (
+                    <TouchableOpacity
+                      key={suggestion.id}
+                      style={styles.suggestionItem}
+                      onPress={() => selectSuggestion(suggestion)}
+                    >
+                      <Text style={styles.suggestionIcon}>👤</Text>
+                      <View style={styles.suggestionTextContainer}>
+                        <Text style={[styles.suggestionUsername, { color: theme.colors.text }]}>
+                          {suggestion.username}
+                        </Text>
+                        <Text style={[styles.suggestionId, { color: theme.colors.textSecondary }]}>
+                          {suggestion.id}
+                        </Text>
+                      </View>
+                      <Text style={styles.suggestionArrow}>→</Text>
+                    </TouchableOpacity>
+                  ))}
+                </ScrollView>
+              </IslandCard>
+            )}
+          </View>
 
-        {/* Tabs */}
+        {/* Tabs - Island Style */}
         <View style={styles.tabs}>
           <TouchableOpacity
-            style={[styles.tab, selectedTab === 'friends' && styles.activeTab]}
-            onPress={() => setSelectedTab('friends')}
+            style={styles.tabWrapper}
+            onPress={() => {
+              setSelectedTab('friends');
+              setShowSuggestions(false);
+            }}
+            activeOpacity={0.8}
           >
-            <Text style={[styles.tabText, selectedTab === 'friends' && styles.activeTabText]}>
-              Friends ({friendIds.length})
-            </Text>
+            <IslandCard
+              variant={selectedTab === 'friends' ? "elevated" : "subtle"}
+              padding={12}
+            >
+              <Text style={selectedTab === 'friends' ? styles.activeTabText : styles.tabText}>
+                Friends ({friendIds.length})
+              </Text>
+            </IslandCard>
           </TouchableOpacity>
           <TouchableOpacity
-            style={[styles.tab, selectedTab === 'requests' && styles.activeTab]}
-            onPress={() => setSelectedTab('requests')}
+            style={styles.tabWrapper}
+            onPress={() => {
+              setSelectedTab('requests');
+              setShowSuggestions(false);
+            }}
+            activeOpacity={0.8}
           >
-            <Text style={[styles.tabText, selectedTab === 'requests' && styles.activeTabText]}>
-              Requests ({friendRequests.length})
-            </Text>
+            <IslandCard
+              variant={selectedTab === 'requests' ? "elevated" : "subtle"}
+              padding={12}
+            >
+              <Text style={selectedTab === 'requests' ? styles.activeTabText : styles.tabText}>
+                Requests ({friendRequests.length})
+              </Text>
+            </IslandCard>
           </TouchableOpacity>
         </View>
 
-        {/* Looking for Game Section */}
-        {selectedTab === 'friends' && (
+        {/* Looking for Game Section - Temporarily Disabled */}
+        {false && selectedTab === 'friends' && (
           <View style={styles.lookingSection}>
             {!isLookingForGame ? (
               <>
@@ -529,12 +689,12 @@ const FriendsScreen: React.FC<FriendsScreenProps> = ({
         {/* Content */}
         {selectedTab === 'friends' ? renderFriendsList() : renderRequestsList()}
 
-        {/* My Info */}
-        <View style={styles.myIdSection}>
+        {/* My Info - Island Style */}
+        <IslandCard variant="floating" style={styles.myIdSection}>
           <Text style={styles.myIdLabel}>Your Username:</Text>
           <Text style={styles.myIdText}>{playerProfile.username}</Text>
           <Text style={styles.myIdSubtext}>Friends can search for you by username!</Text>
-        </View>
+        </IslandCard>
       </SafeAreaView>
     </LinearGradient>
 
@@ -622,12 +782,12 @@ const styles = StyleSheet.create({
   },
   searchInput: {
     flex: 1,
-    backgroundColor: 'rgba(255,255,255,0.9)',
+    backgroundColor: 'rgba(0, 0, 0, 0.9)',
     borderRadius: 10,
     paddingHorizontal: 15,
     paddingVertical: 12,
     fontSize: 14,
-    color: '#333',
+    color: '#ffffffff',
   },
   addButton: {
     backgroundColor: '#4CAF50',
@@ -688,13 +848,12 @@ const styles = StyleSheet.create({
     color: 'rgba(255,255,255,0.7)',
   },
   friendCard: {
-    backgroundColor: 'rgba(255,255,255,0.15)',
-    borderRadius: 12,
-    padding: 15,
     marginBottom: 10,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+    overflow: 'hidden',
+  },
+  friendCardInner: {
+    padding: 15,
+    paddingBottom: 0,
   },
   requestCard: {
     backgroundColor: 'rgba(255,255,255,0.15)',
@@ -708,7 +867,7 @@ const styles = StyleSheet.create({
   friendInfo: {
     flexDirection: 'row',
     alignItems: 'center',
-    flex: 1,
+    marginBottom: 12,
   },
   friendIconContainer: {
     position: 'relative',
@@ -730,13 +889,12 @@ const styles = StyleSheet.create({
   },
   friendDetails: {
     flex: 1,
-    marginRight: 10,
     justifyContent: 'center',
+    minWidth: 0,
   },
   friendName: {
     fontSize: 16,
     fontWeight: 'bold',
-    color: '#fff',
     marginBottom: 2,
     flexWrap: 'wrap',
     includeFontPadding: false,
@@ -744,19 +902,28 @@ const styles = StyleSheet.create({
   },
   friendStatus: {
     fontSize: 12,
-    color: 'rgba(255,255,255,0.7)',
   },
   friendActions: {
     flexDirection: 'row',
+    gap: 6,
+    flexShrink: 0,
+  },
+  friendActionsRow: {
+    flexDirection: 'row',
     gap: 8,
+    paddingHorizontal: 15,
+    paddingBottom: 15,
+    justifyContent: 'space-around',
   },
   challengeButton: {
+    flex: 1,
     backgroundColor: 'rgba(255, 152, 0, 0.3)',
-    paddingHorizontal: 12,
+    paddingHorizontal: 10,
     paddingVertical: 8,
     borderRadius: 8,
     borderWidth: 1,
     borderColor: '#FF9800',
+    alignItems: 'center',
   },
   challengeButtonText: {
     color: '#fff',
@@ -764,12 +931,14 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   removeButton: {
+    flex: 1,
     backgroundColor: 'rgba(244, 67, 54, 0.3)',
-    paddingHorizontal: 12,
+    paddingHorizontal: 10,
     paddingVertical: 8,
     borderRadius: 8,
     borderWidth: 1,
     borderColor: '#f44336',
+    alignItems: 'center',
   },
   removeButtonText: {
     color: '#fff',
@@ -845,7 +1014,7 @@ const styles = StyleSheet.create({
     padding: 20,
   },
   challengeModalContent: {
-    backgroundColor: '#fff',
+    backgroundColor: '#000000ff',
     borderRadius: 20,
     padding: 25,
     width: '90%',
@@ -854,13 +1023,13 @@ const styles = StyleSheet.create({
   challengeModalTitle: {
     fontSize: 22,
     fontWeight: 'bold',
-    color: '#333',
+    color: '#ffffffff',
     marginBottom: 8,
     textAlign: 'center',
   },
   challengeModalSubtitle: {
     fontSize: 16,
-    color: '#666',
+    color: '#ffffffff',
     marginBottom: 20,
     textAlign: 'center',
   },
@@ -899,7 +1068,7 @@ const styles = StyleSheet.create({
   cancelButtonText: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#666',
+    color: '#000000ff',
   },
 
   lookingSection: {
@@ -992,6 +1161,55 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     borderWidth: 2,
     borderColor: '#4CAF50',
+  },
+  headerTitleCard: {
+    flex: 1,
+    marginHorizontal: 10,
+  },
+  tabWrapper: {
+    flex: 1,
+    marginHorizontal: 2,
+  },
+  searchContainer: {
+    position: 'relative',
+    zIndex: 1000,
+  },
+  suggestionsCard: {
+    position: 'absolute',
+    top: 70,
+    left: 15,
+    right: 15,
+    maxHeight: 250,
+    zIndex: 1001,
+  },
+  suggestionsList: {
+    maxHeight: 250,
+  },
+  suggestionItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(255,255,255,0.1)',
+  },
+  suggestionIcon: {
+    fontSize: 24,
+    marginRight: 12,
+  },
+  suggestionTextContainer: {
+    flex: 1,
+  },
+  suggestionUsername: {
+    fontSize: 16,
+    fontWeight: '600',
+    marginBottom: 2,
+  },
+  suggestionId: {
+    fontSize: 12,
+  },
+  suggestionArrow: {
+    fontSize: 18,
+    color: '#999',
   },
 });
 

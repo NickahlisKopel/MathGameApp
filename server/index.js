@@ -2,6 +2,9 @@ const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
 const database = require('./database');
+const logger = require('./logger');
+// Track friend request attempts for simple rate limiting (in-memory)
+const friendRequestAttempts = new Map(); // key: from->to, value: timestamps array
 
 const app = express();
 const server = http.createServer(app);
@@ -20,6 +23,45 @@ app.get('/', (req, res) => {
 
 app.get('/health', (req, res) => {
   res.json({ status: 'healthy' });
+});
+
+// Database reset endpoint (DANGEROUS - use with caution)
+app.post('/api/admin/reset-database', async (req, res) => {
+  try {
+    const { confirmationKey } = req.body;
+    
+    // Require a confirmation key to prevent accidental resets
+    if (confirmationKey !== 'RESET_ALL_DATA_CONFIRM') {
+      return res.status(403).json({ 
+        error: 'Invalid confirmation key',
+        message: 'Include confirmationKey: "RESET_ALL_DATA_CONFIRM" in request body'
+      });
+    }
+    
+    console.log('[API] ⚠️ DATABASE RESET REQUESTED ⚠️');
+    const result = await database.resetDatabase();
+    
+    if (result.success) {
+      console.log('[API] ✅ Database reset completed successfully');
+      res.json({
+        success: true,
+        message: result.message,
+        deleted: result.deleted,
+        timestamp: new Date().toISOString()
+      });
+    } else {
+      res.status(500).json({
+        error: 'Reset failed',
+        message: result.message
+      });
+    }
+  } catch (error) {
+    console.error('[API] Error resetting database:', error);
+    res.status(500).json({ 
+      error: 'Failed to reset database',
+      message: error.message 
+    });
+  }
 });
 
 const io = new Server(server, {
@@ -654,21 +696,82 @@ app.get('/api/players/search', async (req, res) => {
 // Send friend request
 app.post('/api/friends/request', async (req, res) => {
   try {
-    const { fromPlayerId, toPlayerId, fromUsername } = req.body;
+    const { fromPlayerId, toPlayerId, fromUsername, correlationId } = req.body;
+    const trace = correlationId || `srv_${Date.now()}_${Math.random().toString(36).slice(2,8)}`;
+    logger.info('friend_request_received', { trace, fromPlayerId, toPlayerId, fromUsername });
     
-    console.log(`[API] Friend request: ${fromUsername} (${fromPlayerId}) → player ${toPlayerId}`);
-    const success = await database.addFriendRequest(fromPlayerId, toPlayerId, fromUsername);
-    
-    if (!success) {
-      console.log(`[API] Friend request failed (already friends or pending request)`);
-      return res.status(400).json({ error: 'Cannot send friend request' });
+    // Validate request
+    if (!fromPlayerId || !toPlayerId || !fromUsername) {
+      logger.warn('friend_request_invalid', { trace, reason: 'missing_fields' });
+      return res.status(400).json({ error: 'Missing required fields', trace });
     }
     
-    console.log(`[API] Friend request sent successfully`);
-    res.json({ success: true });
+    if (fromPlayerId === toPlayerId) {
+      logger.warn('friend_request_invalid', { trace, reason: 'self_request' });
+      return res.status(400).json({ error: 'Cannot send friend request to yourself', trace, reason: 'self_request' });
+    }
+
+    // Rate limiting per sender->recipient
+    const windowMin = parseInt(process.env.FRIEND_REQUEST_RATE_WINDOW_MIN || '30', 10); // 30 minutes default
+    const maxAttempts = parseInt(process.env.FRIEND_REQUEST_RATE_MAX || '5', 10); // 5 attempts default
+    const windowMs = windowMin * 60 * 1000;
+    const rateKey = `${fromPlayerId}->${toPlayerId}`;
+    const nowTs = Date.now();
+    const attempts = friendRequestAttempts.get(rateKey) || [];
+    const recent = attempts.filter(ts => nowTs - ts <= windowMs);
+    recent.push(nowTs);
+    friendRequestAttempts.set(rateKey, recent);
+    if (recent.length > maxAttempts) {
+      logger.warn('friend_request_rate_limited', { trace, fromPlayerId, toPlayerId, attempts: recent.length });
+      return res.status(429).json({ error: `Too many attempts. Try again later.`, trace, reason: 'rate_limited' });
+    }
+    
+    const result = await database.addFriendRequest(fromPlayerId, toPlayerId, fromUsername, trace);
+    
+    if (result.success && result.autoAccepted) {
+      logger.info('friend_request_auto_accepted', { trace, fromPlayerId, toPlayerId });
+      return res.json({ success: true, autoAccepted: true, trace, reason: result.reason });
+    }
+    if (result.success) {
+      logger.info('friend_request_saved', { trace, requestId: result.request.id, purged: result.purged, replaced: result.replaced });
+      const recipientOnline = onlineUsers.get(toPlayerId);
+      if (recipientOnline) {
+        logger.info('friend_request_emit', { trace, toPlayerId });
+        io.to(recipientOnline.socketId).emit('friend-request-received', { request: result.request });
+      }
+      return res.json({ success: true, request: result.request, trace, purged: result.purged, replaced: result.replaced, reason: result.reason });
+    } else {
+      logger.warn('friend_request_failed', { trace, error: result.error });
+      return res.status(400).json({ error: result.error || 'Cannot send friend request', trace, reason: result.reason });
+    }
   } catch (error) {
-    console.error('[API] Error sending friend request:', error);
+    logger.error('friend_request_exception', { error: error.message, stack: error.stack });
     res.status(500).json({ error: 'Failed to send friend request' });
+  }
+});
+
+// Admin purge stale requests
+app.post('/api/admin/friends/purge-stale', async (req, res) => {
+  try {
+    const { confirmationKey, playerId } = req.body;
+    if (confirmationKey !== 'RESET_ALL_DATA_CONFIRM') {
+      return res.status(403).json({ error: 'Invalid confirmation key' });
+    }
+    if (playerId) {
+      const result = await database.purgeStaleFriendRequests(playerId);
+      return res.json({ success: true, playerId, purged: result.purged });
+    }
+    // All players (in-memory only)
+    const results = [];
+    if (database.inMemoryStorage) {
+      for (const [id] of database.inMemoryStorage.players) {
+        results.push(await database.purgeStaleFriendRequests(id));
+      }
+    }
+    res.json({ success: true, results });
+  } catch (e) {
+    logger.error('purge_stale_exception', { error: e.message });
+    res.status(500).json({ error: 'Failed to purge stale requests' });
   }
 });
 
@@ -720,6 +823,18 @@ app.post('/api/friends/reject', async (req, res) => {
   }
 });
 
+// Check friendship status (debug endpoint)
+app.get('/api/friends/status/:playerId1/:playerId2', async (req, res) => {
+  try {
+    const { playerId1, playerId2 } = req.params;
+    const status = await database.checkFriendshipStatus(playerId1, playerId2);
+    res.json(status);
+  } catch (error) {
+    console.error('[API] Error checking friendship status:', error);
+    res.status(500).json({ error: 'Failed to check friendship status' });
+  }
+});
+
 // Remove friend
 app.post('/api/friends/remove', async (req, res) => {
   try {
@@ -735,6 +850,129 @@ app.post('/api/friends/remove', async (req, res) => {
   } catch (error) {
     console.error('[API] Error removing friend:', error);
     res.status(500).json({ error: 'Failed to remove friend' });
+  }
+});
+
+// Daily Challenge Endpoints
+
+// Helper function to generate daily hex code
+function generateDailyHexCode(date) {
+  // Generate deterministic random hex based on date
+  const dateNum = parseInt(date.replace(/-/g, ''));
+  const colors = [
+    '#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#FECA57',
+    '#FF9FF3', '#54A0FF', '#5F27CD', '#00D2D3', '#FF9F43',
+    '#10AC84', '#EE5A24', '#0984E3', '#6C5CE7', '#A29BFE',
+    '#FD79A8', '#E84393', '#00B894', '#00CEC9', '#FFB8B8',
+  ];
+  
+  // Use date as seed for deterministic selection
+  const colorIndex = dateNum % colors.length;
+  return colors[colorIndex];
+}
+
+// Get daily challenge (hex code and leaderboard)
+app.get('/api/daily-challenge/:date', async (req, res) => {
+  try {
+    const { date } = req.params;
+    const { playerId } = req.query;
+    
+    // Get or generate daily hex code
+    let hexCode = await database.getDailyHexCode(date);
+    if (!hexCode) {
+      hexCode = generateDailyHexCode(date);
+      await database.setDailyHexCode(date, hexCode);
+    }
+    
+    // Get submissions (leaderboard)
+    const submissions = await database.getDailyChallengeSubmissions(date);
+    
+    // Get player's submission if they have one
+    let playerSubmission = null;
+    if (playerId) {
+      playerSubmission = await database.getPlayerDailyChallengeSubmission(date, playerId);
+    }
+    
+    res.json({
+      date,
+      hexCode,
+      submissions: submissions.map(s => ({
+        playerId: s.playerId,
+        playerName: s.playerName,
+        guess: s.guess,
+        isCorrect: s.isCorrect,
+        submittedAt: s.submittedAt,
+      })),
+      playerSubmission: playerSubmission ? {
+        guess: playerSubmission.guess,
+        isCorrect: playerSubmission.isCorrect,
+        submittedAt: playerSubmission.submittedAt,
+      } : null,
+    });
+  } catch (error) {
+    console.error('[API] Error getting daily challenge:', error);
+    res.status(500).json({ error: 'Failed to get daily challenge' });
+  }
+});
+
+// Submit daily challenge guess
+app.post('/api/daily-challenge/submit', async (req, res) => {
+  try {
+    const { playerId, playerName, date, guess } = req.body;
+    
+    if (!playerId || !playerName || !date || !guess) {
+      return res.status(400).json({ error: 'Missing required fields' });
+    }
+    
+    // Validate hex code format
+    const hexPattern = /^#?[0-9A-Fa-f]{6}$/;
+    if (!hexPattern.test(guess)) {
+      return res.status(400).json({ error: 'Invalid hex code format' });
+    }
+    
+    // Get the daily hex code
+    let hexCode = await database.getDailyHexCode(date);
+    if (!hexCode) {
+      hexCode = generateDailyHexCode(date);
+      await database.setDailyHexCode(date, hexCode);
+    }
+    
+    // Normalize hex codes for comparison
+    const normalizeHex = (hex) => hex.replace('#', '').toLowerCase();
+    const isCorrect = normalizeHex(guess) === normalizeHex(hexCode);
+    
+    // Submit to database
+    const result = await database.submitDailyChallenge({
+      playerId,
+      playerName,
+      date,
+      hexCode,
+      guess: guess.toUpperCase().startsWith('#') ? guess.toUpperCase() : `#${guess.toUpperCase()}`,
+      isCorrect,
+    });
+    
+    if (!result.success) {
+      return res.status(400).json({ error: result.message });
+    }
+    
+    // Get updated submissions
+    const submissions = await database.getDailyChallengeSubmissions(date);
+    
+    res.json({
+      success: true,
+      isCorrect,
+      hexCode,
+      submissions: submissions.map(s => ({
+        playerId: s.playerId,
+        playerName: s.playerName,
+        guess: s.guess,
+        isCorrect: s.isCorrect,
+        submittedAt: s.submittedAt,
+      })),
+    });
+  } catch (error) {
+    console.error('[API] Error submitting daily challenge:', error);
+    res.status(500).json({ error: 'Failed to submit daily challenge' });
   }
 });
 

@@ -48,6 +48,7 @@ import AuthenticationScreen from './components/AuthenticationScreen';
 import { IslandButton } from './components/IslandButton';
 import { IslandCard } from './components/IslandCard';
 import { IslandMenu } from './components/IslandMenu';
+import { MainMenuIslands } from './components/MainMenuIslands';
 
 // Types
 interface Equation {
@@ -134,6 +135,8 @@ function AppContent() {
   const [timeLeft, setTimeLeft] = useState(gameTime);
   const [equationCount, setEquationCount] = useState(0);
   const [difficulty, setDifficulty] = useState<'easy' | 'medium' | 'hard'>('easy');
+  // Online PvP difficulty selection modal
+  const [showOnlineDifficultySelect, setShowOnlineDifficultySelect] = useState(false);
   const [gameMode, setGameMode] = useState<'classic' | 'times_tables' | 'multiplayer'>('classic');
   const [fadeAnim] = useState(new Animated.Value(1));
   const [showNotepad, setShowNotepad] = useState(false);
@@ -145,6 +148,14 @@ function AppContent() {
   const [timesTablesProgress, setTimesTablesProgress] = useState<{[key: number]: number}>({});
   const [spaceCorrectFeedback, setSpaceCorrectFeedback] = useState(false);
   const [spaceIncorrectFeedback, setSpaceIncorrectFeedback] = useState(false);
+  
+  // Loading progress tracking
+
+  
+  // Loading progress tracking
+  const [loadingProgress, setLoadingProgress] = useState(0);
+  const [loadingMessage, setLoadingMessage] = useState('Initializing...');
+  const [loadingUsername, setLoadingUsername] = useState<string | null>(null);
   
   // Text feedback states
   const [showTextFeedback, setShowTextFeedback] = useState(false);
@@ -163,41 +174,84 @@ function AppContent() {
   // New unified auth initialization (supports offline guest mode)
   useEffect(() => {
     (async () => {
-      const restored = await authService.initialize();
-      setAuthenticatedUser(restored);
-      setAuthInitialized(true);
-      if (!restored) {
-        setShowAuthScreen(true);
-      } else {
-        // Ensure player profile exists linked to auth user displayName
-        let profile = await PlayerStorageService.loadPlayerProfile();
-        if (!profile) {
-          const displayName = restored.displayName || 'Player';
-          profile = await PlayerStorageService.createNewPlayer(displayName, undefined);
-        }
-        // Initialize friends system if not already initialized
-        await FriendsService.initializeFriends(profile.id);
+      try {
+        setLoadingProgress(10);
+        setLoadingMessage('Authenticating...');
         
-        // Sync player to server for cross-device friends
-        try {
-          const { ServerFriendsService } = await import('./services/ServerFriendsService');
-          // First sync local data to server
-          await ServerFriendsService.syncPlayer();
-          
-          // Then pull latest friends data from server
-          const serverPlayer = await ServerFriendsService.getPlayerFromServer(profile.id);
-          if (serverPlayer && serverPlayer.friends) {
-            profile.friends = serverPlayer.friends;
-            profile.friendRequests = serverPlayer.friendRequests || [];
-            await PlayerStorageService.savePlayerProfile(profile);
+        const restored = await authService.initialize();
+        setAuthenticatedUser(restored);
+        setAuthInitialized(true);
+        setLoadingProgress(25);
+        
+        if (!restored) {
+          setLoadingProgress(100);
+          setShowAuthScreen(true);
+        } else {
+          setLoadingMessage('Loading profile...');
+          // Ensure player profile exists linked to auth user displayName
+          let profile = await PlayerStorageService.loadPlayerProfile();
+          if (!profile) {
+            const displayName = restored.displayName || 'Player';
+            profile = await PlayerStorageService.createNewPlayer(displayName, undefined);
           }
-        } catch (error) {
-          console.log('Could not sync to server:', error);
+          
+          setLoadingUsername(profile.username);
+          setLoadingProgress(40);
+          setLoadingMessage(`Welcome back, ${profile.username}!`);
+
+          // Sync player to server early to ensure friend requests can target this ID
+          try {
+            const { ServerFriendsService } = await import('./services/ServerFriendsService');
+            await ServerFriendsService.syncPlayer();
+            console.log('[App] Player synced to server on startup');
+          } catch (e) {
+            console.error('[App] Failed to sync player on startup:', e);
+          }
+          
+          // Initialize friends system if not already initialized
+          await FriendsService.initializeFriends(profile.id);
+          setLoadingProgress(60);
+          
+          // Sync player to server for cross-device friends
+          try {
+            setLoadingMessage('Connecting to server...');
+            const { ServerFriendsService } = await import('./services/ServerFriendsService');
+            setLoadingProgress(70);
+            
+            // First sync local data to server
+            setLoadingMessage('Syncing your data...');
+            await ServerFriendsService.syncPlayer();
+            setLoadingProgress(85);
+            
+            // Then pull latest friends data from server
+            setLoadingMessage('Updating friends list...');
+            const serverPlayer = await ServerFriendsService.getPlayerFromServer(profile.id);
+            if (serverPlayer && serverPlayer.friends) {
+              profile.friends = serverPlayer.friends;
+              profile.friendRequests = serverPlayer.friendRequests || [];
+              await PlayerStorageService.savePlayerProfile(profile);
+            }
+            setLoadingProgress(95);
+          } catch (error) {
+            console.log('Could not sync to server:', error);
+            setLoadingMessage('Server offline, continuing...');
+            setLoadingProgress(90);
+            // Wait a moment so user can see the message
+            await new Promise(resolve => setTimeout(resolve, 800));
+          }
+          
+          setLoadingMessage('Ready!');
+          setLoadingProgress(100);
+          setPlayerProfile(profile);
+          
+          // Small delay to show completion
+          await new Promise(resolve => setTimeout(resolve, 300));
+          setGameState('setup');
         }
-        
-        setPlayerProfile(profile);
-        // Set to setup screen after profile is loaded
-        setGameState('setup');
+      } catch (error) {
+        console.error('Initialization error:', error);
+        setLoadingMessage('Error loading - tap to continue');
+        setLoadingProgress(0);
       }
     })();
   }, []);
@@ -769,310 +823,87 @@ function AppContent() {
   const renderSetup = () => (
     <BackgroundWrapper colors={backgroundColors} type={backgroundType} animationType={animationType} style={styles.container}>
       <SafeAreaView style={styles.safeAreaContainer} edges={['top', 'left', 'right']}>
-        <ScrollView 
-          contentContainerStyle={styles.setupContainer}
-          showsVerticalScrollIndicator={false}
-          bounces={false}
-        >
-          {/* Header Section */}
-          <View style={styles.headerSection}>
-            <Text style={[styles.title, { color: getContrastColor(backgroundType, theme) }]}>Math Game</Text>
-            <Text style={[styles.subtitle, { color: getContrastColor(backgroundType, theme) }]}>Challenge Your Mind</Text>
-          </View>
+        <View style={styles.setupContainerClean}>
+          {/* Header Section - now only logo shown in MainMenuIslands */}
+          <View style={[styles.headerSection, { marginTop: -40 }]} />
 
-          {/* Player Profile Card - Island Style */}
-          {playerProfile && (
-            <TouchableOpacity 
-              onPress={() => {
-                setProfileInitialTab('overview');
-                setShowProfile(true);
-              }}
-              activeOpacity={0.9}
-            >
-              <IslandCard variant="elevated" style={styles.profileCardIsland}>
-                <View style={styles.profileCardContent}>
-                  <View style={styles.profileAvatar}>
-                    <Text style={styles.profileAvatarText}>👤</Text>
-                  </View>
-                  <View style={styles.profileInfo}>
-                    <Text style={[styles.profileName, { color: '#333' }]}>{playerProfile.username}</Text>
-                    <Text style={[styles.profileStats, { color: '#666' }]}>
-                      Level {getCurrentLevel(playerProfile.experience)} • {playerProfile.coins} 🪙 • {playerProfile.currentStreak || 0}🔥
-                    </Text>
-                    <Text style={[styles.profileSubtext, { color: '#999' }]}>
-                      {playerProfile.gamesPlayed} games • {Math.round((playerProfile.totalCorrectAnswers / Math.max(playerProfile.totalQuestions, 1)) * 100)}% accuracy
-                    </Text>
-                  </View>
-                  <View style={styles.profileArrow}>
-                    <Text style={styles.profileArrowText}>▶</Text>
-                  </View>
-                </View>
-              </IslandCard>
-            </TouchableOpacity>
-          )}
-
-          {/* Quick Actions - Island Navigation Menu */}
-          <IslandMenu
-            variant="floating"
-            style={styles.quickActionsIsland}
-            items={[
-              {
-                id: 'shop',
-                icon: '🛍️',
-                label: 'Shop',
-                onPress: () => setShowShop(true),
-              },
-              {
-                id: 'settings',
-                icon: '⚙️',
-                label: 'Settings',
-                onPress: () => {
-                  setProfileInitialTab('settings');
-                  setShowProfile(true);
-                },
-              },
-              {
-                id: 'friends',
-                icon: '👥',
-                label: 'Friends',
-                onPress: () => setShowFriends(true),
-              },
-            ]}
+          {/* Main Menu - Island Image Buttons with Scaffold Play Menu */}
+          <MainMenuIslands
+            onClassicMode={() => {
+              setGameMode('classic');
+              startGame();
+            }}
+            onTimesTableMode={() => {
+              setGameMode('times_tables');
+              startGame();
+            }}
+            onLocalPvPMode={() => {
+              setGameMode('multiplayer');
+              setGameState('local-1v1');
+            }}
+            onOnlinePvPMode={() => {
+              // Show difficulty selection instead of auto-easy
+              setGameMode('multiplayer');
+              setShowOnlineDifficultySelect(true);
+            }}
+            onShop={() => setShowShop(true)}
+            onFriends={() => setShowFriends(true)}
+            onProfile={() => {
+              setProfileInitialTab('overview');
+              setShowProfile(true);
+            }}
+            onSettings={() => {
+              setProfileInitialTab('settings');
+              setShowProfile(true);
+            }}
           />
-
-          {/* Game Modes Section */}
-          <View style={styles.gameModesSection}>
-            <Text style={[styles.sectionTitle, { color: getContrastColor(backgroundType, theme) }]}>🎮 Game Modes</Text>
-            
-            {/* Game Mode Selection - Island Style */}
-            <View style={styles.gameModeSelection}>
+        </View>
+        {showOnlineDifficultySelect && (
+          <View style={styles.difficultyModalOverlay}>
+            <View style={styles.difficultyModalContainer}>
+              <Text style={styles.difficultyModalTitle}>Select Difficulty</Text>
+              <Text style={styles.difficultyModalSubtitle}>Choose your challenge for Online PvP</Text>
+              <View style={styles.difficultyOptionsRow}>
+                <TouchableOpacity
+                  style={[styles.difficultyOptionButton, styles.difficultyEasy]}
+                  onPress={() => {
+                    setDifficulty('easy');
+                    setShowOnlineDifficultySelect(false);
+                    setGameState('online-pvp');
+                  }}
+                >
+                  <Text style={styles.difficultyOptionText}>Easy</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.difficultyOptionButton, styles.difficultyMedium]}
+                  onPress={() => {
+                    setDifficulty('medium');
+                    setShowOnlineDifficultySelect(false);
+                    setGameState('online-pvp');
+                  }}
+                >
+                  <Text style={styles.difficultyOptionText}>Medium</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.difficultyOptionButton, styles.difficultyHard]}
+                  onPress={() => {
+                    setDifficulty('hard');
+                    setShowOnlineDifficultySelect(false);
+                    setGameState('online-pvp');
+                  }}
+                >
+                  <Text style={styles.difficultyOptionText}>Hard</Text>
+                </TouchableOpacity>
+              </View>
               <TouchableOpacity
-                style={[
-                  styles.modeButtonIsland,
-                  gameMode === 'classic' && styles.selectedModeButtonIsland,
-                ]}
-                onPress={() => setGameMode('classic')}
+                style={styles.difficultyCancelButton}
+                onPress={() => setShowOnlineDifficultySelect(false)}
               >
-                <Text style={styles.modeIcon}>⚡</Text>
-                <Text style={[styles.modeTitleIsland, gameMode === 'classic' && styles.selectedModeTitleIsland]} numberOfLines={1}>Classic</Text>
-                <Text style={[styles.modeDescriptionIsland, gameMode === 'classic' && styles.selectedModeDescriptionIsland]} numberOfLines={1}>
-                  Mixed arithmetic
-                </Text>
-              </TouchableOpacity>
-              
-              <TouchableOpacity
-                style={[
-                  styles.modeButtonIsland,
-                  gameMode === 'times_tables' && styles.selectedModeButtonIsland,
-                ]}
-                onPress={() => setGameMode('times_tables')}
-              >
-                <Text style={styles.modeIcon}>🔢</Text>
-                <Text style={[styles.modeTitleIsland, gameMode === 'times_tables' && styles.selectedModeTitleIsland]} numberOfLines={1}>Times Tables</Text>
-                <Text style={[styles.modeDescriptionIsland, gameMode === 'times_tables' && styles.selectedModeDescriptionIsland]} numberOfLines={1}>
-                  1×1 to 15×15
-                </Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={[
-                  styles.modeButtonIsland,
-                  gameMode === 'multiplayer' && styles.selectedModeButtonIsland,
-                ]}
-                onPress={() => setGameMode('multiplayer')}
-              >
-                <Text style={styles.modeIcon}>👥</Text>
-                <Text style={[styles.modeTitleIsland, gameMode === 'multiplayer' && styles.selectedModeTitleIsland]} numberOfLines={1}>Multiplayer</Text>
-                <Text style={[styles.modeDescriptionIsland, gameMode === 'multiplayer' && styles.selectedModeDescriptionIsland]} numberOfLines={1}>
-                  Battle vs AI
-                </Text>
+                <Text style={styles.difficultyCancelText}>Cancel</Text>
               </TouchableOpacity>
             </View>
-            
-            {/* Classic Mode Card */}
-            {gameMode === 'classic' && (
-            <IslandCard variant="elevated" style={styles.gameModeCardIsland}>
-              <View style={styles.gameModeHeader}>
-                <Text style={styles.gameModeIcon}>⚡</Text>
-                <View style={styles.gameModeInfo}>
-                  <Text style={[styles.gameModeTitle, { color: '#333' }]}>Classic Mode</Text>
-                  <Text style={[styles.gameModeDescription, { color: '#666' }]}>
-                    Fast-paced arithmetic challenges
-                  </Text>
-                </View>
-              </View>
-              
-              <View style={styles.difficultySection}>
-                <Text style={[styles.difficultyLabel, { color: '#333' }]}>Difficulty:</Text>
-                <View style={styles.difficultyButtons}>
-                  {(['easy', 'medium', 'hard'] as const).map((level) => (
-                    <TouchableOpacity
-                      key={level}
-                      style={[
-                        styles.difficultyChipIsland,
-                        difficulty === level && styles.selectedDifficultyChipIsland,
-                      ]}
-                      onPress={() => setDifficulty(level)}
-                    >
-                      <Text style={[
-                        styles.difficultyChipText,
-                        { color: '#666' },
-                        difficulty === level && styles.selectedDifficultyChipText
-                      ]}>
-                        {level.charAt(0).toUpperCase() + level.slice(1)}
-                      </Text>
-                    </TouchableOpacity>
-                  ))}
-                </View>
-              </View>
-              
-              <TouchableOpacity style={styles.playButtonIsland} onPress={startGame}>
-                <Text style={styles.playButtonText}>🎯 Play Now</Text>
-              </TouchableOpacity>
-            </IslandCard>
-            )}
-            
-            {/* Times Tables Mode Card */}
-            {gameMode === 'times_tables' && (
-            <IslandCard variant="elevated" style={styles.gameModeCardIsland}>
-              <View style={styles.gameModeHeader}>
-                <Text style={styles.gameModeIcon}>🔢</Text>
-                <View style={styles.gameModeInfo}>
-                  <Text style={[styles.gameModeTitle, { color: '#333' }]}>Times Tables Mode</Text>
-                  <Text style={[styles.gameModeDescription, { color: '#666' }]}>
-                    Master multiplication from 1×1 to 15×15
-                  </Text>
-                </View>
-              </View>
-              
-              <View style={styles.timesTableInfo}>
-                <Text style={[styles.timesTableDescription, { color: '#333' }]}>
-                  • Complete each times table from 1 to 15{'\n'}
-                  • Get checkpoints for each completed table{'\n'}
-                  • Progress is automatically saved{'\n'}
-                  • Perfect for learning and practice{'\n'}
-                  • No time pressure - focus on accuracy
-                </Text>
-              </View>
-              
-              <TouchableOpacity style={styles.playButtonIsland} onPress={startGame}>
-                <Text style={styles.playButtonText}>🔢 Start Times Tables</Text>
-              </TouchableOpacity>
-            </IslandCard>
-            )}
-
-            {/* Multiplayer Mode Card */}
-            {gameMode === 'multiplayer' && (
-            <IslandCard variant="elevated" style={styles.gameModeCardIsland}>
-              <View style={styles.gameModeHeader}>
-                <Text style={styles.gameModeIcon}>👥</Text>
-                <View style={styles.gameModeInfo}>
-                  <Text style={[styles.gameModeTitle, { color: '#333' }]}>Multiplayer Modes</Text>
-                  <Text style={[styles.gameModeDescription, { color: '#666' }]}>
-                    Choose your battle style
-                  </Text>
-                </View>
-              </View>
-              
-              <View style={styles.difficultySection}>
-                <Text style={[styles.difficultyLabel, { color: '#333' }]}>Difficulty:</Text>
-                <View style={styles.difficultyButtons}>
-                  {(['easy', 'medium', 'hard'] as const).map((level) => (
-                    <TouchableOpacity
-                      key={level}
-                      style={[
-                        styles.difficultyChipIsland,
-                        difficulty === level && styles.selectedDifficultyChipIsland,
-                      ]}
-                      onPress={() => setDifficulty(level)}
-                    >
-                      <Text style={[
-                        styles.difficultyChipText,
-                        { color: '#666' },
-                        difficulty === level && styles.selectedDifficultyChipText
-                      ]}>
-                        {level.charAt(0).toUpperCase() + level.slice(1)}
-                      </Text>
-                    </TouchableOpacity>
-                  ))}
-                </View>
-              </View>
-
-              {/* Bot Battle Mode */}
-              <TouchableOpacity 
-                style={[styles.multiplayerModeButtonIsland, { backgroundColor: '#4CAF50', marginBottom: 12 }]} 
-                onPress={() => setGameState('bot-battle')}
-              >
-                <View style={styles.multiplayerModeContent}>
-                  <Text style={styles.multiplayerModeIcon}>🤖</Text>
-                  <View style={styles.multiplayerModeInfo}>
-                    <Text style={styles.multiplayerModeTitle}>Bot Battle</Text>
-                    <Text style={styles.multiplayerModeDesc}>Compete against AI • Race to highest score</Text>
-                  </View>
-                </View>
-              </TouchableOpacity>
-
-              {/* Local 1v1 Mode */}
-              <TouchableOpacity 
-                style={[styles.multiplayerModeButtonIsland, { backgroundColor: '#FF9800', marginBottom: 12 }]} 
-                onPress={() => setGameState('local-1v1')}
-              >
-                <View style={styles.multiplayerModeContent}>
-                  <Text style={styles.multiplayerModeIcon}>🎮</Text>
-                  <View style={styles.multiplayerModeInfo}>
-                    <Text style={styles.multiplayerModeTitle}>Local 1v1</Text>  
-                    <Text style={styles.multiplayerModeDesc}>Take turns on same device • Best of 10 questions</Text>
-                  </View>
-                </View>
-              </TouchableOpacity>
-
-              {/* Online PvP Mode - Only for authenticated users */}
-              {authenticatedUser && !authenticatedUser.isOffline ? (
-                <TouchableOpacity 
-                  style={[styles.multiplayerModeButtonIsland, { backgroundColor: '#2196F3' }]} 
-                  onPress={() => setGameState('online-pvp')}
-                >
-                  <View style={styles.multiplayerModeContent}>
-                    <Text style={styles.multiplayerModeIcon}>🌐</Text>
-                    <View style={styles.multiplayerModeInfo}>
-                      <Text style={styles.multiplayerModeTitle}>Online PvP</Text>  
-                      <Text style={styles.multiplayerModeDesc}>Real-time matchmaking • Play against players worldwide</Text>
-                    </View>
-                  </View>
-                </TouchableOpacity>
-              ) : (
-                <View 
-                  style={[styles.multiplayerModeButtonIsland, { backgroundColor: '#666666', opacity: 0.6 }]}
-                >
-                  <View style={styles.multiplayerModeContent}>
-                    <Text style={styles.multiplayerModeIcon}>🔒</Text>
-                    <View style={styles.multiplayerModeInfo}>
-                      <Text style={styles.multiplayerModeTitle}>Online PvP (Sign in required)</Text>  
-                      <Text style={styles.multiplayerModeDesc}>Sign in to play online • Available with any auth method</Text>
-                    </View>
-                  </View>
-                </View>
-              )}
-            </IslandCard>
-            )}
-
-            {/* Coming Soon Modes */}
-            <IslandCard variant="subtle" style={styles.comingSoonCardIsland}>
-              <View style={styles.comingSoonHeader}>
-                <Text style={styles.comingSoonIcon}>🔒</Text>
-                <View style={styles.comingSoonInfo}>
-                  <Text style={[styles.comingSoonTitle, { color: '#666' }]}>More Modes Coming Soon!</Text>
-                  <Text style={[styles.comingSoonDescription, { color: '#999' }]}>
-                    • Daily Challenges{'\n'}
-                    • Endless Mode{'\n'}
-                    • Custom Challenges{'\n'}
-                    • Tournaments
-                  </Text>
-                </View>
-              </View>
-            </IslandCard>
           </View>
-        </ScrollView>
+        )}
       </SafeAreaView>
     </BackgroundWrapper>
   );
@@ -1400,9 +1231,75 @@ function AppContent() {
       {gameState === 'loading' && (
         <BackgroundWrapper colors={backgroundColors} type={backgroundType} animationType={animationType} style={styles.container}>
           <SafeAreaView style={styles.safeAreaContainer} edges={['top', 'left', 'right']}>
-            <View style={styles.loadingContainer}>
-              <Text style={[styles.loadingText, { color: getContrastColor(backgroundType, theme) }]}>Loading...</Text>
-            </View>
+            <TouchableWithoutFeedback onPress={() => {
+              if (loadingProgress === 0) {
+                // Error state - allow user to skip
+                setGameState('setup');
+              }
+            }}>
+              <View style={styles.loadingContainer}>
+                <IslandCard variant="elevated" padding={30} style={styles.loadingCard}>
+                  {/* App Title */}
+                  <Text style={[styles.loadingTitle, { color: theme.colors.text }]}>🎮 Math Game</Text>
+                  
+                  {/* User Info */}
+                  {loadingUsername && (
+                    <View style={styles.loadingUserInfo}>
+                      <Text style={[styles.loadingUsername, { color: theme.colors.primary }]}>
+                        {loadingUsername}
+                      </Text>
+                    </View>
+                  )}
+                  
+                  {/* Progress Bar */}
+                  <View style={styles.progressBarContainer}>
+                    <View style={styles.progressBarBackground}>
+                      <Animated.View 
+                        style={[
+                          styles.progressBarFill,
+                          { 
+                            width: `${loadingProgress}%`,
+                            backgroundColor: theme.colors.primary,
+                          }
+                        ]} 
+                      />
+                    </View>
+                    <Text style={[styles.progressText, { color: theme.colors.textSecondary }]}>
+                      {loadingProgress}%
+                    </Text>
+                  </View>
+                  
+                  {/* Loading Message */}
+                  <Text style={[styles.loadingMessage, { color: theme.colors.text }]}>
+                    {loadingMessage}
+                  </Text>
+                  
+                  {/* Spinner or indicator */}
+                  {loadingProgress > 0 && loadingProgress < 100 && (
+                    <Text style={styles.loadingSpinner}>⏳</Text>
+                  )}
+                  
+                  {loadingProgress === 100 && (
+                    <Text style={styles.loadingSpinner}>✅</Text>
+                  )}
+                  
+                  {/* Tip Text */}
+                  {loadingProgress > 20 && loadingProgress < 100 && (
+                    <Text style={[styles.loadingTip, { color: theme.colors.textSecondary }]}>
+                      {loadingProgress < 70 
+                        ? '💡 Tip: Practice daily to improve your skills!'
+                        : '🚀 Server may take 60s to wake up from sleep...'}
+                    </Text>
+                  )}
+                  
+                  {loadingProgress === 0 && (
+                    <Text style={[styles.loadingErrorHint, { color: theme.colors.textSecondary }]}>
+                      Tap anywhere to continue
+                    </Text>
+                  )}
+                </IslandCard>
+              </View>
+            </TouchableWithoutFeedback>
           </SafeAreaView>
         </BackgroundWrapper>
       )}
@@ -1689,6 +1586,13 @@ const styles = StyleSheet.create({
     padding: 20,
     paddingTop: 20,
   },
+  setupContainerClean: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 30,
+    paddingVertical: 60,
+  },
   title: {
     fontSize: 36,
     fontWeight: 'bold',
@@ -1737,6 +1641,75 @@ const styles = StyleSheet.create({
   },
   selectedDifficultyText: {
     color: '#667eea',
+  },
+  // Online PvP difficulty selection modal styles
+  difficultyModalOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 24,
+  },
+  difficultyModalContainer: {
+    width: '90%',
+    maxWidth: 400,
+    backgroundColor: 'white',
+    borderRadius: 20,
+    padding: 24,
+    shadowColor: '#000',
+    shadowOpacity: 0.25,
+    shadowRadius: 10,
+    elevation: 8,
+  },
+  difficultyModalTitle: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    textAlign: 'center',
+    marginBottom: 8,
+    color: '#333',
+  },
+  difficultyModalSubtitle: {
+    fontSize: 14,
+    textAlign: 'center',
+    marginBottom: 20,
+    color: '#555',
+  },
+  difficultyOptionsRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 20,
+  },
+  difficultyOptionButton: {
+    flex: 1,
+    marginHorizontal: 6,
+    paddingVertical: 18,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  difficultyEasy: { backgroundColor: '#4CAF50' },
+  difficultyMedium: { backgroundColor: '#FFC107' },
+  difficultyHard: { backgroundColor: '#F44336' },
+  difficultyOptionText: {
+    color: 'white',
+    fontSize: 16,
+    fontWeight: '700',
+  },
+  difficultyCancelButton: {
+    marginTop: 4,
+    paddingVertical: 12,
+    borderRadius: 12,
+    backgroundColor: '#ddd',
+    alignItems: 'center',
+  },
+  difficultyCancelText: {
+    color: '#333',
+    fontSize: 14,
+    fontWeight: '600',
   },
   startButton: {
     backgroundColor: '#ff6b6b',
@@ -2077,7 +2050,70 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    paddingTop: 40,
+    padding: 20,
+  },
+  loadingCard: {
+    width: '100%',
+    maxWidth: 400,
+    alignItems: 'center',
+  },
+  loadingTitle: {
+    fontSize: 32,
+    fontWeight: 'bold',
+    marginBottom: 20,
+    textAlign: 'center',
+  },
+  loadingUserInfo: {
+    marginBottom: 25,
+    alignItems: 'center',
+  },
+  loadingUsername: {
+    fontSize: 20,
+    fontWeight: '600',
+  },
+  progressBarContainer: {
+    width: '100%',
+    marginBottom: 20,
+  },
+  progressBarBackground: {
+    width: '100%',
+    height: 12,
+    backgroundColor: 'rgba(0,0,0,0.2)',
+    borderRadius: 6,
+    overflow: 'hidden',
+    marginBottom: 8,
+  },
+  progressBarFill: {
+    height: '100%',
+    borderRadius: 6,
+  },
+  progressText: {
+    fontSize: 14,
+    textAlign: 'center',
+    fontWeight: '600',
+  },
+  loadingMessage: {
+    fontSize: 16,
+    textAlign: 'center',
+    marginBottom: 15,
+    minHeight: 24,
+  },
+  loadingSpinner: {
+    fontSize: 32,
+    marginVertical: 10,
+  },
+  loadingTip: {
+    fontSize: 13,
+    textAlign: 'center',
+    fontStyle: 'italic',
+    marginTop: 20,
+    paddingHorizontal: 10,
+  },
+  loadingErrorHint: {
+    fontSize: 12,
+    textAlign: 'center',
+    marginTop: 15,
+    fontStyle: 'italic',
   },
   loadingText: {
     fontSize: 24,

@@ -1,7 +1,8 @@
 import { PlayerProfile, FriendRequest } from '../types/Player';
 import { PlayerStorageService } from './PlayerStorageService';
+import { getServerUrl } from '../config/ServerConfig';
 
-const SERVER_URL = 'https://mathgameapp.onrender.com';
+const SERVER_URL = getServerUrl();
 
 export class ServerFriendsService {
   /**
@@ -35,18 +36,20 @@ export class ServerFriendsService {
   /**
    * Send friend request
    */
-  static async addFriend(friendId: string): Promise<boolean> {
+  static async addFriend(friendId: string): Promise<{ success: boolean; error?: string; trace?: string; reason?: string; replaced?: boolean }> {
     try {
       const player = await PlayerStorageService.loadPlayerProfile();
       if (!player) {
         console.log('[ServerFriends] No player profile loaded');
-        return false;
+        return { success: false, error: 'No player profile found' };
       }
 
       // Sync current player first
       await this.syncPlayer();
 
-      console.log(`[ServerFriends] Sending friend request from ${player.username} to ${friendId}`);
+      console.log(`[ServerFriends] Sending friend request from ${player.username} (${player.id}) to ${friendId}`);
+      const correlationId = `cli_${Date.now()}_${Math.random().toString(36).slice(2,8)}`;
+      console.log('[ServerFriends] Sending friend request with correlationId:', correlationId);
       const response = await fetch(`${SERVER_URL}/api/friends/request`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -54,15 +57,29 @@ export class ServerFriendsService {
           fromPlayerId: player.id,
           toPlayerId: friendId,
           fromUsername: player.username,
+          correlationId,
         }),
       });
 
       const data = await response.json();
       console.log('[ServerFriends] Friend request response:', data);
-      return data.success || false;
+      
+      if (response.ok && data.success) {
+        const trace = data.trace || correlationId;
+        if (data.autoAccepted) {
+          console.log('[ServerFriends] Auto-accepted stale reverse request trace=', trace);
+          return { success: true, trace, reason: data.reason };
+        }
+        console.log('[ServerFriends] Friend request succeeded trace=', trace, 'purged=', data.purged, 'replaced=', data.replaced, 'reason=', data.reason);
+        return { success: true, trace, reason: data.reason, replaced: data.replaced };
+      } else {
+        const errorMsg = data.error || data.message || 'Unknown error';
+        console.error('[ServerFriends] Friend request failed:', errorMsg, 'reason=', data.reason);
+        return { success: false, error: errorMsg, trace: data.trace || correlationId, reason: data.reason };
+      }
     } catch (error) {
       console.error('[ServerFriends] Error adding friend:', error);
-      return false;
+      return { success: false, error: error instanceof Error ? error.message : 'Network error' };
     }
   }
 

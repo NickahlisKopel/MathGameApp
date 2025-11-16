@@ -38,6 +38,17 @@ export interface DailyChallenge {
   backgroundName: string;
   isCompleted: boolean;
   completedAt?: Date;
+  userGuess?: string; // User's submitted hex code
+}
+
+export interface DailyChallengeSubmission {
+  playerId: string;
+  playerName: string;
+  date: string; // YYYY-MM-DD format
+  hexCode: string;
+  guess: string;
+  isCorrect: boolean;
+  submittedAt: Date;
 }
 
 export interface ShopData {

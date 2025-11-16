@@ -1,5 +1,6 @@
 import React from 'react';
 import { View, TouchableOpacity, Text, StyleSheet, Animated } from 'react-native';
+import { useTheme } from '../contexts/ThemeContext';
 
 interface IslandMenuItem {
   id: string;
@@ -23,6 +24,7 @@ export const IslandMenu: React.FC<IslandMenuProps> = ({
   variant = 'bottom',
   style,
 }) => {
+  const { theme } = useTheme();
   const positionStyles = {
     bottom: {
       position: 'absolute' as const,
@@ -43,7 +45,7 @@ export const IslandMenu: React.FC<IslandMenuProps> = ({
 
   return (
     <View style={[styles.menuContainer, positionStyles[variant], style]}>
-      <View style={styles.menuBar}>
+      <View style={[styles.menuBar, { backgroundColor: theme.colors.card }]}>
         {items.map((item, index) => (
           <TouchableOpacity
             key={item.id}
@@ -55,8 +57,8 @@ export const IslandMenu: React.FC<IslandMenuProps> = ({
             ]}
             activeOpacity={0.7}
           >
-            <Text style={styles.menuIcon}>{item.icon}</Text>
-            <Text style={styles.menuLabel}>{item.label}</Text>
+            <Text style={[styles.menuIcon, { color: theme.colors.text }]}>{item.icon}</Text>
+            <Text style={[styles.menuLabel, { color: theme.colors.text }]}>{item.label}</Text>
           </TouchableOpacity>
         ))}
       </View>
@@ -99,7 +101,6 @@ const styles = StyleSheet.create({
   menuLabel: {
     fontSize: 11,
     fontWeight: '600',
-    color: '#333',
     textAlign: 'center',
   },
 });

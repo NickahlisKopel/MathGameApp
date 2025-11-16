@@ -4,11 +4,11 @@
     "slug": "MathGameApp",
     "version": "1.8.1",
     "orientation": "portrait",
-    "icon": "./assets/VsMathLogo.png",
+    "icon": "./assets/MathGameAppLogoRedesign.png",
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
     "splash": {
-      "image": "./assets/VsMathLogo.png",
+      "image": "./assets/MathGameAppLogoRedesign.png",
       "resizeMode": "contain",
       "backgroundColor": "#ffffff"
     },
@@ -21,7 +21,7 @@
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./assets/VsMathLogo.png",
+        "foregroundImage": "./assets/MathGameAppLogoRedesign.png",
         "backgroundColor": "#ffffff"
       },
       "edgeToEdgeEnabled": true,
@@ -29,7 +29,7 @@
       "package": "com.nickkopel.MathGameApp"
     },
     "web": {
-      "favicon": "./assets/VsMathLogo.png"
+      "favicon": "./assets/MathGameAppLogoRedesign.png"
     },
     "plugins": [
       "expo-dev-client"
@@ -37,7 +37,8 @@
     "extra": {
       "eas": {
         "projectId": "9f0c084e-8d4f-4f06-8320-ad7270aa2e93"
-      }
+      },
+      "SERVER_URL": "https://mathgameapp.onrender.com"
     }
   }
 }
