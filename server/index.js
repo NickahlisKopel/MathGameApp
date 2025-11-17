@@ -22,12 +22,18 @@ app.get('/', (req, res) => {
   res.json({ 
     status: 'ok', 
     message: 'Math Game Multiplayer Server', 
-    timestamp: new Date().toISOString() 
+    timestamp: new Date().toISOString(),
+    version: '1.2.0',
+    features: ['email-verification', 'password-reset'],
   });
 });
 
 app.get('/health', (req, res) => {
-  res.json({ status: 'healthy' });
+  res.json({ 
+    status: 'healthy',
+    emailConfigured: emailService.isConfigured(),
+    version: '1.2.0',
+  });
 });
 
 // Database reset endpoint (DANGEROUS - use with caution)
