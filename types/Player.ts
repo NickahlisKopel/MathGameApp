@@ -4,6 +4,7 @@ export interface PlayerProfile {
   lastStreakDate?: string; // YYYY-MM-DD of last streak increment
   id: string;
   username: string; // Display name from Firebase Auth or custom
+  email?: string; // Email address (for social sign-in accounts)
   createdAt: Date;
   lastActive: Date;
   

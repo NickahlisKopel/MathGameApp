@@ -220,7 +220,7 @@ function AppContent() {
               // Priority 3: Create new profile for this auth user
               console.log('[App] Creating new profile for auth user:', restored.id);
               const displayName = restored.displayName || 'Player';
-              profile = await PlayerStorageService.createNewPlayer(displayName, undefined);
+              profile = await PlayerStorageService.createNewPlayer(displayName, undefined, restored.email);
               
               // Link this profile to the auth user ID
               await AsyncStorage.setItem(authUserIdKey, JSON.stringify(profile));
@@ -1334,7 +1334,7 @@ function AppContent() {
             // Create or load player profile linked to auth user
             let profile = await PlayerStorageService.loadPlayerProfile();
             if (!profile && user) {
-              profile = await PlayerStorageService.createNewPlayer(user.displayName, undefined);
+              profile = await PlayerStorageService.createNewPlayer(user.displayName, undefined, user.email);
             }
             
             // Ensure stored level matches calculated level

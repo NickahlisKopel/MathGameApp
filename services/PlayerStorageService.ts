@@ -66,13 +66,14 @@ export class PlayerStorageService {
     return { checkedInToday };
   }
   // Create new player profile
-  static async createNewPlayer(username: string, avatarUrl?: string): Promise<PlayerProfile> {
+  static async createNewPlayer(username: string, avatarUrl?: string, email?: string): Promise<PlayerProfile> {
     const playerId = `player_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
     const now = new Date();
     
     const newPlayer: PlayerProfile = {
       id: playerId,
       username: username.trim(),
+      email: email,
       createdAt: now,
       lastActive: now,
 
