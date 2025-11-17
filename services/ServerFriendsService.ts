@@ -171,8 +171,18 @@ export class ServerFriendsService {
    */
   static async getPlayerFromServer(playerId: string): Promise<PlayerProfile | null> {
     try {
+      if (!playerId || playerId.trim() === '') {
+        console.log('[ServerFriends] No valid playerId provided');
+        return null;
+      }
       const SERVER_URL = await getServerUrl();
       const response = await fetch(`${SERVER_URL}/api/player/${playerId}`);
+      
+      if (!response.ok) {
+        console.error('[ServerFriends] Failed to get player, status:', response.status);
+        return null;
+      }
+      
       const data = await response.json();
       return data.player || null;
     } catch (error) {
@@ -202,12 +212,23 @@ export class ServerFriendsService {
   static async getFriends(): Promise<string[]> {
     try {
       const localPlayer = await PlayerStorageService.loadPlayerProfile();
-      console.log('[ServerFriends] Getting friends for player:', localPlayer?.id, localPlayer?.username);
-      const player = await this.getPlayerFromServer(localPlayer?.id || '');
-      console.log('[ServerFriends] Player from server:', player?.id, 'Friends array:', player?.friends);
-      console.log('[ServerFriends] Friends array type:', typeof player?.friends, 'isArray:', Array.isArray(player?.friends));
-      console.log('[ServerFriends] Friends count:', player?.friends?.length || 0);
-      const friendsList = player?.friends || [];
+      
+      if (!localPlayer || !localPlayer.id) {
+        console.log('[ServerFriends] No player profile loaded yet');
+        return [];
+      }
+      
+      console.log('[ServerFriends] Getting friends for player:', localPlayer.id, localPlayer.username);
+      const player = await this.getPlayerFromServer(localPlayer.id);
+      
+      if (!player) {
+        console.log('[ServerFriends] Could not fetch player from server');
+        return [];
+      }
+      
+      console.log('[ServerFriends] Player from server:', player.id, 'Friends array:', player.friends);
+      console.log('[ServerFriends] Friends count:', player.friends?.length || 0);
+      const friendsList = player.friends || [];
       console.log('[ServerFriends] Returning friends list:', friendsList);
       return friendsList;
     } catch (error) {
