@@ -13,6 +13,10 @@ const server = http.createServer(app);
 // Add JSON body parser
 app.use(express.json());
 
+// Serve static files from public directory
+const path = require('path');
+app.use(express.static(path.join(__dirname, 'public')));
+
 // Health check endpoint
 app.get('/', (req, res) => {
   res.json({ 

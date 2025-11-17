@@ -130,7 +130,7 @@ If you didn't create an account with Math Game App, you can safely ignore this e
       return { success: false, message: 'Email service not configured' };
     }
 
-    const resetLink = `${baseUrl}/api/email/reset-password?token=${token}`;
+    const resetLink = `${baseUrl}/reset-password.html?token=${token}`;
     
     try {
       const { data, error } = await this.resend.emails.send({
