@@ -285,6 +285,15 @@ app.post('/api/email/request-reset', async (req, res) => {
     const baseUrl = process.env.BASE_URL || 'http://localhost:3000';
     const result = await emailService.sendPasswordResetEmail(email, token, baseUrl);
     
+    // Log the result for debugging
+    console.log('[API] Password reset email result:', result);
+    
+    // Always return success message for security (don't reveal if email exists)
+    // But log actual errors on server side
+    if (!result.success) {
+      console.error('[API] Failed to send password reset email:', result.message);
+    }
+    
     res.json({ 
       success: true, 
       message: 'If an account with that email exists, a password reset link has been sent.' 

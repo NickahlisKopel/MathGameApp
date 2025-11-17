@@ -12,6 +12,7 @@ class EmailService {
     // Check if Resend API key is available
     const apiKey = process.env.RESEND_API_KEY;
     const fromEmail = process.env.RESEND_FROM_EMAIL || 'onboarding@resend.dev';
+    const baseUrl = process.env.BASE_URL || 'http://localhost:3000';
 
     if (!apiKey) {
       console.log('[EmailService] ⚠️  Resend API key not configured');
@@ -24,9 +25,12 @@ class EmailService {
     try {
       this.resend = new Resend(apiKey);
       this.fromEmail = fromEmail;
+      this.baseUrl = baseUrl;
       this.initialized = true;
       console.log('[EmailService] ✅ Resend email service initialized');
       console.log(`[EmailService] Sending from: ${fromEmail}`);
+      console.log(`[EmailService] Base URL: ${baseUrl}`);
+      console.log(`[EmailService] API Key: ${apiKey.substring(0, 8)}...`);
       return true;
     } catch (error) {
       console.error('[EmailService] Failed to initialize Resend:', error.message);
