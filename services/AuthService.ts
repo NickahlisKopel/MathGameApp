@@ -729,7 +729,7 @@ class AuthService {
   async checkEmailVerified(email: string): Promise<boolean> {
     try {
       const { getServerUrl } = await import('../config/ServerConfig');
-      const serverUrl = getServerUrl();
+      const serverUrl = await getServerUrl();
       
       const response = await fetch(`${serverUrl}/api/email/status/${encodeURIComponent(email)}`);
       const data = await response.json();
@@ -746,7 +746,7 @@ class AuthService {
   async resendVerificationEmail(email: string): Promise<{ success: boolean; message: string }> {
     try {
       const { getServerUrl } = await import('../config/ServerConfig');
-      const serverUrl = getServerUrl();
+      const serverUrl = await getServerUrl();
       
       const response = await fetch(`${serverUrl}/api/email/resend-verification`, {
         method: 'POST',

@@ -734,35 +734,47 @@ class DatabaseService {
 
   async getUserByEmail(email) {
     const normalizedEmail = email.toLowerCase();
+    console.log('[Database] getUserByEmail called with:', normalizedEmail);
+    console.log('[Database] Using MongoDB:', !!this.db, 'Using in-memory:', !!this.inMemoryStorage);
     
     if (this.inMemoryStorage) {
       // Check email accounts collection first
       const account = this.inMemoryStorage.emailAccounts.get(normalizedEmail);
       if (account) {
+        console.log('[Database] Found in emailAccounts (in-memory)');
         return this.getPlayer(account.userId);
       }
       
       // Also check players collection for social sign-in accounts with email
       for (const [playerId, player] of this.inMemoryStorage.players.entries()) {
         if (player.email && player.email.toLowerCase() === normalizedEmail) {
+          console.log('[Database] Found in players (in-memory):', player.id);
           return player;
         }
       }
+      console.log('[Database] Not found in in-memory storage');
       return null;
     }
 
-    if (!this.db) return null;
+    if (!this.db) {
+      console.log('[Database] No database connection!');
+      return null;
+    }
     
     // Check email accounts collection first
+    console.log('[Database] Checking emailAccounts collection...');
     const emailAccounts = this.db.collection('emailAccounts');
     const account = await emailAccounts.findOne({ email: normalizedEmail });
     if (account) {
+      console.log('[Database] Found in emailAccounts collection');
       return this.getPlayer(account.userId);
     }
     
     // Also check players collection for social sign-in accounts with email
+    console.log('[Database] Checking players collection...');
     const players = this.db.collection('players');
     const player = await players.findOne({ email: normalizedEmail });
+    console.log('[Database] Player search result:', player ? `Found: ${player.id}` : 'Not found');
     return player;
   }
 
