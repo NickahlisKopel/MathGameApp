@@ -534,12 +534,15 @@ const styles = StyleSheet.create({
     padding: 5,
   },
   forgotPasswordButton: {
-    marginTop: 10,
+    marginTop: 15,
+    marginBottom: 10,
     alignItems: 'center',
+    paddingVertical: 8,
   },
   forgotPasswordText: {
     color: '#4CAF50',
-    fontSize: 14,
+    fontSize: 15,
+    fontWeight: '600',
   },
   switchModeButton: {
     marginTop: 20,
