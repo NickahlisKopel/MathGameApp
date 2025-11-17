@@ -733,17 +733,37 @@ class DatabaseService {
   }
 
   async getUserByEmail(email) {
+    const normalizedEmail = email.toLowerCase();
+    
     if (this.inMemoryStorage) {
-      const account = this.inMemoryStorage.emailAccounts.get(email.toLowerCase());
-      if (!account) return null;
-      return this.getPlayer(account.userId);
+      // Check email accounts collection first
+      const account = this.inMemoryStorage.emailAccounts.get(normalizedEmail);
+      if (account) {
+        return this.getPlayer(account.userId);
+      }
+      
+      // Also check players collection for social sign-in accounts with email
+      for (const [playerId, player] of this.inMemoryStorage.players.entries()) {
+        if (player.email && player.email.toLowerCase() === normalizedEmail) {
+          return player;
+        }
+      }
+      return null;
     }
 
     if (!this.db) return null;
+    
+    // Check email accounts collection first
     const emailAccounts = this.db.collection('emailAccounts');
-    const account = await emailAccounts.findOne({ email: email.toLowerCase() });
-    if (!account) return null;
-    return this.getPlayer(account.userId);
+    const account = await emailAccounts.findOne({ email: normalizedEmail });
+    if (account) {
+      return this.getPlayer(account.userId);
+    }
+    
+    // Also check players collection for social sign-in accounts with email
+    const players = this.db.collection('players');
+    const player = await players.findOne({ email: normalizedEmail });
+    return player;
   }
 
   async close() {
