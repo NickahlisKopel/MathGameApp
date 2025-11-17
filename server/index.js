@@ -434,6 +434,54 @@ app.post('/api/email/reset-password', async (req, res) => {
   }
 });
 
+// Email sign-in validation endpoint
+app.post('/api/email/sign-in', async (req, res) => {
+  try {
+    const { email, passwordHash } = req.body;
+    
+    console.log('[API] Sign-in attempt for:', email);
+    
+    if (!email || !passwordHash) {
+      return res.status(400).json({ 
+        error: 'Email and password hash are required' 
+      });
+    }
+
+    // Get user by email
+    const user = await database.getUserByEmail(email);
+    console.log('[API] User lookup result:', user ? 'Found' : 'Not found');
+    
+    if (!user) {
+      return res.status(401).json({ 
+        error: 'No account found with this email' 
+      });
+    }
+
+    // Verify password hash
+    if (user.passwordHash !== passwordHash) {
+      console.log('[API] Password hash mismatch');
+      return res.status(401).json({ 
+        error: 'Incorrect password' 
+      });
+    }
+
+    console.log('[API] Sign-in successful for:', email);
+    
+    // Return user data (excluding password hash)
+    const { passwordHash: _, ...userData } = user;
+    res.json({ 
+      success: true,
+      user: userData
+    });
+  } catch (error) {
+    console.error('[API] Error during sign-in:', error);
+    res.status(500).json({ 
+      error: 'Sign-in failed',
+      message: error.message 
+    });
+  }
+});
+
 const io = new Server(server, {
   cors: {
     origin: '*', // Allow all origins for development

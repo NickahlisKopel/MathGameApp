@@ -352,6 +352,8 @@ class AuthService {
    */
   async signInWithEmail(email: string, password: string): Promise<AuthUser> {
     try {
+      console.log('[AuthService] Starting email sign-in for:', email);
+      
       // Trim inputs
       email = email.trim();
       password = password.trim();
@@ -373,36 +375,55 @@ class AuthService {
         throw new Error('Password is too long');
       }
 
-      // Load stored accounts
-      const EMAIL_ACCOUNTS_KEY = '@email_accounts';
-      const accountsData = await AsyncStorage.getItem(EMAIL_ACCOUNTS_KEY);
-      
-      if (!accountsData) {
-        throw new Error('No account found with this email. Please sign up first.');
-      }
-
-      const accounts = JSON.parse(accountsData);
-      const emailKey = email.toLowerCase();
-      const storedAccount = accounts[emailKey];
-
-      if (!storedAccount) {
-        throw new Error('No account found with this email. Please sign up first.');
-      }
-
-      // Hash the provided password and compare
+      // Hash the password
       const passwordHash = await Crypto.digestStringAsync(
         Crypto.CryptoDigestAlgorithm.SHA256,
         password
       );
+      console.log('[AuthService] Password hashed');
 
-      if (passwordHash !== storedAccount.passwordHash) {
-        throw new Error('Incorrect password');
+      // Validate with server (authoritative source)
+      const serverUrl = await getServerUrl();
+      console.log('[AuthService] Validating with server:', serverUrl);
+      
+      const response = await fetch(`${serverUrl}/api/email/sign-in`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email: email.toLowerCase(), passwordHash }),
+      });
+
+      console.log('[AuthService] Server response status:', response.status);
+      const data = await response.json();
+
+      if (!response.ok) {
+        console.log('[AuthService] Sign-in failed:', data.error);
+        throw new Error(data.error || 'Sign-in failed');
       }
 
-      // Create user object from stored account
+      console.log('[AuthService] Server validation successful');
+
+      // Update local storage with server data
+      const EMAIL_ACCOUNTS_KEY = '@email_accounts';
+      const accountsData = await AsyncStorage.getItem(EMAIL_ACCOUNTS_KEY);
+      const accounts = accountsData ? JSON.parse(accountsData) : {};
+      const emailKey = email.toLowerCase();
+      
+      accounts[emailKey] = {
+        email: emailKey,
+        passwordHash,
+        userId: data.user.id,
+        createdAt: data.user.createdAt || new Date().toISOString(),
+      };
+      
+      await AsyncStorage.setItem(EMAIL_ACCOUNTS_KEY, JSON.stringify(accounts));
+      console.log('[AuthService] Local storage updated');
+
+      // Create user object from server data
       const user: AuthUser = {
-        id: storedAccount.userId,
-        displayName: storedAccount.displayName,
+        id: data.user.id,
+        displayName: data.user.username || email.split('@')[0],
         email: email,
         provider: 'email',
         isOffline: false,
