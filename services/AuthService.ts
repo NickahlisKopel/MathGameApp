@@ -383,6 +383,7 @@ class AuthService {
       console.log('[AuthService] Password hashed');
 
       // Validate with server (authoritative source)
+      const { getServerUrl } = await import('../config/ServerConfig');
       const serverUrl = await getServerUrl();
       console.log('[AuthService] Validating with server:', serverUrl);
       
