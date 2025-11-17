@@ -275,7 +275,21 @@ app.post('/api/email/request-reset', async (req, res) => {
     // Get user by email
     console.log('[API] Looking up user by email:', email);
     const user = await database.getUserByEmail(email);
-    console.log('[API] User found:', user ? `Yes (id: ${user.id})` : 'No');
+    console.log('[API] User found:', user ? `Yes (id: ${user.id}, username: ${user.username}, email: ${user.email})` : 'No');
+    
+    if (!user) {
+      console.log('[API] Searching all players to debug...');
+      // Debug: Let's see what's in the database
+      const allPlayers = await database.db?.collection('players').find({}).limit(10).toArray();
+      if (allPlayers) {
+        console.log('[API] Sample players in database:', allPlayers.map(p => ({
+          id: p.id,
+          username: p.username,
+          email: p.email || 'NO EMAIL',
+          hasEmail: !!p.email
+        })));
+      }
+    }
     
     if (!user) {
       // Don't reveal if email exists or not for security
