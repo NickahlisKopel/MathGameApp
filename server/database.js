@@ -732,6 +732,36 @@ class DatabaseService {
     return true;
   }
 
+  async updateEmailAccountPassword(email, passwordHash) {
+    const normalizedEmail = email.toLowerCase();
+    console.log('[Database] Updating password for email:', normalizedEmail);
+    
+    if (this.inMemoryStorage) {
+      const account = this.inMemoryStorage.emailAccounts.get(normalizedEmail);
+      if (account) {
+        account.passwordHash = passwordHash;
+        console.log('[Database] Password updated in in-memory emailAccounts');
+        return true;
+      }
+      console.log('[Database] Email account not found in in-memory storage');
+      return false;
+    }
+
+    if (!this.db) {
+      console.log('[Database] No database connection');
+      return false;
+    }
+    
+    const emailAccounts = this.db.collection('emailAccounts');
+    const result = await emailAccounts.updateOne(
+      { email: normalizedEmail },
+      { $set: { passwordHash } }
+    );
+    
+    console.log('[Database] MongoDB update result:', result.matchedCount, 'matched,', result.modifiedCount, 'modified');
+    return result.matchedCount > 0;
+  }
+
   async getUserByEmail(email) {
     const normalizedEmail = email.toLowerCase();
     console.log('[Database] getUserByEmail called with:', normalizedEmail);

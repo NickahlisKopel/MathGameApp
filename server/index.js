@@ -403,13 +403,20 @@ app.post('/api/email/reset-password', async (req, res) => {
       return res.status(404).json({ error: 'User not found' });
     }
 
-    // Update password (user object should have passwordHash field)
+    // Update password (hash it first)
     const crypto = require('crypto');
     const passwordHash = crypto.createHash('sha256').update(newPassword).digest('hex');
     
-    // Update user with new password
+    console.log('[API] Updating password for user:', resetToken.email);
+    
+    // Update password in emailAccounts collection (where sign-in checks)
+    await database.updateEmailAccountPassword(resetToken.email, passwordHash);
+    console.log('[API] Password updated in emailAccounts collection');
+    
+    // Also update player object if it has passwordHash field (for consistency)
     const updatedUser = { ...user, passwordHash };
     await database.savePlayer(updatedUser);
+    console.log('[API] Password updated in player document');
     
     // Delete the reset token
     await database.deletePasswordResetToken(token);
