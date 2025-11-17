@@ -148,9 +148,8 @@ function AppContent() {
   const [timesTablesProgress, setTimesTablesProgress] = useState<{[key: number]: number}>({});
   const [spaceCorrectFeedback, setSpaceCorrectFeedback] = useState(false);
   const [spaceIncorrectFeedback, setSpaceIncorrectFeedback] = useState(false);
-  
-  // Loading progress tracking
-
+  const [emailVerified, setEmailVerified] = useState(true); // Default to true to avoid showing banner unnecessarily
+  const [showVerificationBanner, setShowVerificationBanner] = useState(false);
   
   // Loading progress tracking
   const [loadingProgress, setLoadingProgress] = useState(0);
@@ -198,18 +197,19 @@ function AppContent() {
             if (existingProfileData) {
               // Restore existing profile for this auth user
               console.log('[App] Restoring existing profile for auth user:', restored.id);
-              profile = JSON.parse(existingProfileData);
+              const restoredProfile = JSON.parse(existingProfileData);
               // Convert date strings back to Date objects
-              profile.createdAt = new Date(profile.createdAt);
-              profile.lastActive = new Date(profile.lastActive);
-              if (profile.achievements) {
-                profile.achievements = profile.achievements.map(a => ({
+              restoredProfile.createdAt = new Date(restoredProfile.createdAt);
+              restoredProfile.lastActive = new Date(restoredProfile.lastActive);
+              if (restoredProfile.achievements) {
+                restoredProfile.achievements = restoredProfile.achievements.map((a: any) => ({
                   ...a,
                   unlockedAt: a.unlockedAt ? new Date(a.unlockedAt) : undefined,
                 }));
               }
               // Save as current profile
-              await PlayerStorageService.savePlayerProfile(profile);
+              await PlayerStorageService.savePlayerProfile(restoredProfile);
+              profile = restoredProfile;
             } else {
               // Create new profile for this auth user
               console.log('[App] Creating new profile for auth user:', restored.id);
@@ -223,6 +223,10 @@ function AppContent() {
             // Profile exists as current, ensure it's linked to auth user
             const authUserIdKey = `@player_profile_${restored.id}`;
             await AsyncStorage.setItem(authUserIdKey, JSON.stringify(profile));
+          }
+          
+          if (!profile) {
+            throw new Error('Failed to load or create player profile');
           }
           
           setLoadingUsername(profile.username);
@@ -297,6 +301,26 @@ function AppContent() {
       refreshPlayerProfile();
     }
   }, [gameState]);
+
+  // Check email verification status
+  useEffect(() => {
+    if (authenticatedUser && authenticatedUser.provider === 'email' && authenticatedUser.email) {
+      (async () => {
+        try {
+          const status = await authService.getCurrentUserEmailStatus();
+          setEmailVerified(status.verified);
+          setShowVerificationBanner(!status.verified && gameState === 'setup');
+        } catch (error) {
+          console.log('[App] Could not check email verification:', error);
+          setEmailVerified(true); // Assume verified on error
+          setShowVerificationBanner(false);
+        }
+      })();
+    } else {
+      setEmailVerified(true);
+      setShowVerificationBanner(false);
+    }
+  }, [authenticatedUser, gameState]);
 
   // Update streak when player profile is loaded
   useEffect(() => {
@@ -853,6 +877,36 @@ function AppContent() {
   const renderSetup = () => (
     <BackgroundWrapper colors={backgroundColors} type={backgroundType} animationType={animationType} style={styles.container}>
       <SafeAreaView style={styles.safeAreaContainer} edges={['top', 'left', 'right']}>
+        {/* Email Verification Banner */}
+        {showVerificationBanner && authenticatedUser?.email && (
+          <View style={[styles.verificationBanner, { backgroundColor: isDarkMode ? 'rgba(255, 152, 0, 0.2)' : 'rgba(255, 152, 0, 0.15)' }]}>
+            <View style={styles.verificationBannerContent}>
+              <Text style={[styles.verificationBannerIcon, { color: isDarkMode ? '#FFB74D' : '#F57C00' }]}>📧</Text>
+              <View style={styles.verificationBannerTextContainer}>
+                <Text style={[styles.verificationBannerTitle, { color: isDarkMode ? '#FFB74D' : '#F57C00' }]}>
+                  Verify Your Email
+                </Text>
+                <Text style={[styles.verificationBannerText, { color: isDarkMode ? '#FFE082' : '#FB8C00' }]}>
+                  Check your inbox for the verification link
+                </Text>
+              </View>
+              <TouchableOpacity
+                style={[styles.verificationBannerButton, { backgroundColor: isDarkMode ? '#FFB74D' : '#F57C00' }]}
+                onPress={async () => {
+                  const result = await authService.resendVerificationEmail(authenticatedUser.email!);
+                  if (result.success) {
+                    Alert.alert('✅ Email Sent!', 'Please check your inbox for the verification link.');
+                  } else {
+                    Alert.alert('Error', result.message || 'Failed to send email');
+                  }
+                }}
+              >
+                <Text style={styles.verificationBannerButtonText}>Resend</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        )}
+
         <View style={styles.setupContainerClean}>
           {/* Header Section - now only logo shown in MainMenuIslands */}
           <View style={[styles.headerSection, { marginTop: -40 }]} />
@@ -871,12 +925,106 @@ function AppContent() {
               setGameMode('multiplayer');
               setGameState('local-1v1');
             }}
-            onOnlinePvPMode={() => {
-              // Show difficulty selection instead of auto-easy
+            onOnlinePvPMode={async () => {
+              // Check if user is authenticated
+              if (!authenticatedUser || authenticatedUser.isOffline) {
+                Alert.alert(
+                  'Sign In Required',
+                  'You need to sign in to play online multiplayer.',
+                  [
+                    { text: 'Cancel', style: 'cancel' },
+                    { 
+                      text: 'Sign In', 
+                      onPress: () => setShowAuthScreen(true)
+                    }
+                  ]
+                );
+                return;
+              }
+
+              // Check if email is verified (for email users)
+              if (authenticatedUser.provider === 'email' && authenticatedUser.email) {
+                try {
+                  const status = await authService.getCurrentUserEmailStatus();
+                  if (!status.verified) {
+                    Alert.alert(
+                      'Email Verification Required',
+                      'Please verify your email address to play online multiplayer.\n\nCheck your inbox for the verification link, or we can resend it.',
+                      [
+                        { text: 'Later', style: 'cancel' },
+                        {
+                          text: 'Resend Email',
+                          onPress: async () => {
+                            const result = await authService.resendVerificationEmail(authenticatedUser.email!);
+                            if (result.success) {
+                              Alert.alert('✅ Email Sent', 'Please check your inbox for the verification link.');
+                            } else {
+                              Alert.alert('Error', result.message || 'Failed to send email');
+                            }
+                          }
+                        }
+                      ]
+                    );
+                    return;
+                  }
+                } catch (error) {
+                  console.log('[App] Could not check email verification, allowing access');
+                  // Allow access if verification check fails
+                }
+              }
+
+              // Show difficulty selection
               setGameMode('multiplayer');
               setShowOnlineDifficultySelect(true);
             }}
-            onShop={() => setShowShop(true)}
+            onShop={async () => {
+              // Check if user is authenticated for daily challenge
+              if (!authenticatedUser || authenticatedUser.isOffline) {
+                Alert.alert(
+                  'Sign In to Access Shop',
+                  'Create an account to participate in the Daily Hex Challenge and shop for backgrounds!',
+                  [
+                    { text: 'Cancel', style: 'cancel' },
+                    { 
+                      text: 'Sign In', 
+                      onPress: () => setShowAuthScreen(true)
+                    }
+                  ]
+                );
+                return;
+              }
+
+              // Check email verification for daily challenge
+              if (authenticatedUser.provider === 'email' && authenticatedUser.email) {
+                try {
+                  const status = await authService.getCurrentUserEmailStatus();
+                  if (!status.verified) {
+                    Alert.alert(
+                      'Email Verification Required',
+                      'Please verify your email to participate in the Daily Hex Challenge.\n\nYou can still browse the shop!',
+                      [
+                        { text: 'Browse Shop', onPress: () => setShowShop(true) },
+                        {
+                          text: 'Resend Email',
+                          onPress: async () => {
+                            const result = await authService.resendVerificationEmail(authenticatedUser.email!);
+                            if (result.success) {
+                              Alert.alert('✅ Email Sent', 'Check your inbox for the verification link.');
+                            }
+                            setShowShop(true);
+                          }
+                        }
+                      ]
+                    );
+                    return;
+                  }
+                } catch (error) {
+                  console.log('[App] Could not check email verification, allowing access');
+                }
+              }
+
+              setShowShop(true);
+            }}
             onFriends={() => setShowFriends(true)}
             onProfile={() => {
               setProfileInitialTab('overview');
@@ -2793,5 +2941,48 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 8,
+  },
+  verificationBanner: {
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(255, 152, 0, 0.3)',
+  },
+  verificationBannerContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  verificationBannerIcon: {
+    fontSize: 20,
+    marginRight: 10,
+  },
+  verificationBannerTextContainer: {
+    flex: 1,
+    marginRight: 10,
+  },
+  verificationBannerTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+    marginBottom: 2,
+  },
+  verificationBannerText: {
+    fontSize: 12,
+    fontWeight: '500',
+  },
+  verificationBannerButton: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 12,
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.2,
+    shadowRadius: 2,
+  },
+  verificationBannerButtonText: {
+    color: '#fff',
+    fontSize: 12,
+    fontWeight: '700',
   },
 });
