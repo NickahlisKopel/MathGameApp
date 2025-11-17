@@ -766,8 +766,14 @@ class DatabaseService {
     const emailAccounts = this.db.collection('emailAccounts');
     const account = await emailAccounts.findOne({ email: normalizedEmail });
     if (account) {
-      console.log('[Database] Found in emailAccounts collection');
-      return this.getPlayer(account.userId);
+      console.log('[Database] Found in emailAccounts collection, userId:', account.userId);
+      const player = await this.getPlayer(account.userId);
+      console.log('[Database] getPlayer returned:', player ? `Found: ${player.id}` : 'null');
+      if (player) {
+        return player;
+      }
+      // If emailAccount exists but player doesn't, continue to check players collection
+      console.log('[Database] Player not found for emailAccount, checking players collection...');
     }
     
     // Also check players collection for social sign-in accounts with email
