@@ -23,56 +23,27 @@ npm install
 
 ### 2. Configure Email Provider
 
-#### Option A: Gmail (Easiest for Development)
+**📧 We recommend using Resend - see [RESEND_SETUP.md](./RESEND_SETUP.md) for complete setup guide!**
 
-1. **Enable 2-Factor Authentication** on your Gmail account
-2. **Generate an App Password**:
-   - Go to https://myaccount.google.com/apppasswords
-   - Select "Mail" and your device
-   - Copy the generated 16-character password
+#### Option A: Resend (Recommended - Easiest Setup)
 
+1. **Create account** at https://resend.com/signup
+2. **Generate API key** at https://resend.com/api-keys
 3. **Set Environment Variables**:
 
-Create or update `server/.env`:
-
 ```env
-# Email Configuration
-EMAIL_USER=your-email@gmail.com
-EMAIL_PASSWORD=your-16-char-app-password
-EMAIL_HOST=smtp.gmail.com
-EMAIL_PORT=587
-
-# Base URL for verification links
-BASE_URL=https://your-server-domain.com
-# For local development:
-# BASE_URL=http://localhost:3000
-```
-
-#### Option B: SendGrid (Recommended for Production)
-
-1. Sign up at https://sendgrid.com
-2. Create an API key
-3. Set environment variables:
-
-```env
-EMAIL_USER=apikey
-EMAIL_PASSWORD=your-sendgrid-api-key
-EMAIL_HOST=smtp.sendgrid.net
-EMAIL_PORT=587
+RESEND_API_KEY=re_your_api_key_here
+RESEND_FROM_EMAIL=onboarding@resend.dev
 BASE_URL=https://your-server-domain.com
 ```
 
-#### Option C: Other SMTP Providers
+**For testing:** Use `onboarding@resend.dev` (no domain setup needed!)
 
-Any SMTP provider works (Mailgun, AWS SES, etc.):
+**For production:** See [RESEND_SETUP.md](./RESEND_SETUP.md) for custom domain setup.
 
-```env
-EMAIL_USER=your-smtp-username
-EMAIL_PASSWORD=your-smtp-password
-EMAIL_HOST=smtp.your-provider.com
-EMAIL_PORT=587  # or 465 for SSL
-BASE_URL=https://your-server-domain.com
-```
+#### Option B: Gmail (Alternative)
+
+**Note:** Gmail requires App Password setup and has stricter limits. Resend is recommended instead.
 
 ### 3. Update Render Environment Variables
 
@@ -82,13 +53,13 @@ If deploying on Render:
 2. Select your service
 3. Go to **Environment** tab
 4. Add the environment variables:
-   - `EMAIL_USER`
-   - `EMAIL_PASSWORD`
-   - `EMAIL_HOST`
-   - `EMAIL_PORT`
+   - `RESEND_API_KEY` (your Resend API key)
+   - `RESEND_FROM_EMAIL` (use `onboarding@resend.dev` for testing)
    - `BASE_URL` (your Render service URL)
 
 5. Save changes (service will auto-redeploy)
+
+**See [RESEND_SETUP.md](./RESEND_SETUP.md) for detailed instructions and custom domain setup!**
 
 ## Client Integration
 

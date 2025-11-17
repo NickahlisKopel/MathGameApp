@@ -1,42 +1,35 @@
-const nodemailer = require('nodemailer');
+const { Resend } = require('resend');
 const crypto = require('crypto');
 
 class EmailService {
   constructor() {
-    this.transporter = null;
+    this.resend = null;
+    this.fromEmail = null;
     this.initialized = false;
   }
 
   initialize() {
-    // Check if email configuration is available
-    const emailUser = process.env.EMAIL_USER;
-    const emailPassword = process.env.EMAIL_PASSWORD;
-    const emailHost = process.env.EMAIL_HOST || 'smtp.gmail.com';
-    const emailPort = process.env.EMAIL_PORT || 587;
+    // Check if Resend API key is available
+    const apiKey = process.env.RESEND_API_KEY;
+    const fromEmail = process.env.RESEND_FROM_EMAIL || 'onboarding@resend.dev';
 
-    if (!emailUser || !emailPassword) {
-      console.log('[EmailService] ⚠️  Email credentials not configured');
-      console.log('[EmailService] Set EMAIL_USER and EMAIL_PASSWORD environment variables');
+    if (!apiKey) {
+      console.log('[EmailService] ⚠️  Resend API key not configured');
+      console.log('[EmailService] Set RESEND_API_KEY environment variable');
+      console.log('[EmailService] Get your API key from: https://resend.com/api-keys');
       console.log('[EmailService] Email verification will be disabled');
       return false;
     }
 
     try {
-      this.transporter = nodemailer.createTransport({
-        host: emailHost,
-        port: emailPort,
-        secure: emailPort === 465, // true for 465, false for other ports
-        auth: {
-          user: emailUser,
-          pass: emailPassword,
-        },
-      });
-
+      this.resend = new Resend(apiKey);
+      this.fromEmail = fromEmail;
       this.initialized = true;
-      console.log('[EmailService] ✅ Email service initialized');
+      console.log('[EmailService] ✅ Resend email service initialized');
+      console.log(`[EmailService] Sending from: ${fromEmail}`);
       return true;
     } catch (error) {
-      console.error('[EmailService] Failed to initialize:', error.message);
+      console.error('[EmailService] Failed to initialize Resend:', error.message);
       return false;
     }
   }
@@ -51,13 +44,14 @@ class EmailService {
       return { success: false, message: 'Email service not configured' };
     }
 
-    const verificationLink = `${baseUrl}/verify-email?token=${token}`;
+    const verificationLink = `${baseUrl}/api/email/verify?token=${token}`;
     
-    const mailOptions = {
-      from: `"Math Game App" <${process.env.EMAIL_USER}>`,
-      to: email,
-      subject: 'Verify Your Email - Math Game App',
-      html: `
+    try {
+      const { data, error } = await this.resend.emails.send({
+        from: `Math Game App <${this.fromEmail}>`,
+        to: [email],
+        subject: 'Verify Your Email - Math Game App',
+        html: `
         <!DOCTYPE html>
         <html>
         <head>
@@ -101,7 +95,7 @@ class EmailService {
         </body>
         </html>
       `,
-      text: `
+        text: `
 Welcome to Math Game App!
 
 Please verify your email address by clicking the link below:
@@ -115,12 +109,15 @@ If you didn't create an account with Math Game App, you can safely ignore this e
 
 © ${new Date().getFullYear()} Math Game App
       `,
-    };
+      });
 
-    try {
-      await this.transporter.sendMail(mailOptions);
-      console.log(`[EmailService] Verification email sent to ${email}`);
-      return { success: true, message: 'Verification email sent' };
+      if (error) {
+        console.error('[EmailService] Resend API error:', error);
+        return { success: false, message: 'Failed to send verification email', error: error.message };
+      }
+
+      console.log(`[EmailService] Verification email sent to ${email} (ID: ${data?.id})`);
+      return { success: true, message: 'Verification email sent', emailId: data?.id };
     } catch (error) {
       console.error('[EmailService] Failed to send email:', error.message);
       return { success: false, message: 'Failed to send verification email', error: error.message };
@@ -133,13 +130,14 @@ If you didn't create an account with Math Game App, you can safely ignore this e
       return { success: false, message: 'Email service not configured' };
     }
 
-    const resetLink = `${baseUrl}/reset-password?token=${token}`;
+    const resetLink = `${baseUrl}/api/email/reset-password?token=${token}`;
     
-    const mailOptions = {
-      from: `"Math Game App" <${process.env.EMAIL_USER}>`,
-      to: email,
-      subject: 'Reset Your Password - Math Game App',
-      html: `
+    try {
+      const { data, error } = await this.resend.emails.send({
+        from: `Math Game App <${this.fromEmail}>`,
+        to: [email],
+        subject: 'Reset Your Password - Math Game App',
+        html: `
         <!DOCTYPE html>
         <html>
         <head>
@@ -183,7 +181,7 @@ If you didn't create an account with Math Game App, you can safely ignore this e
         </body>
         </html>
       `,
-      text: `
+        text: `
 Math Game App - Password Reset Request
 
 We received a request to reset your password. Click the link below to create a new password:
@@ -195,12 +193,15 @@ If you didn't request a password reset, you can safely ignore this email.
 
 © ${new Date().getFullYear()} Math Game App
       `,
-    };
+      });
 
-    try {
-      await this.transporter.sendMail(mailOptions);
-      console.log(`[EmailService] Password reset email sent to ${email}`);
-      return { success: true, message: 'Password reset email sent' };
+      if (error) {
+        console.error('[EmailService] Resend API error:', error);
+        return { success: false, message: 'Failed to send password reset email', error: error.message };
+      }
+
+      console.log(`[EmailService] Password reset email sent to ${email} (ID: ${data?.id})`);
+      return { success: true, message: 'Password reset email sent', emailId: data?.id };
     } catch (error) {
       console.error('[EmailService] Failed to send email:', error.message);
       return { success: false, message: 'Failed to send password reset email', error: error.message };
