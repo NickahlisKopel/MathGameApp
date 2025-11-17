@@ -250,14 +250,22 @@ app.post('/api/email/resend-verification', async (req, res) => {
 // Request password reset
 app.post('/api/email/request-reset', async (req, res) => {
   try {
+    console.log('[API] ===== PASSWORD RESET REQUEST STARTED =====');
     const { email } = req.body;
+    console.log('[API] Email from request:', email);
 
     if (!email) {
+      console.log('[API] No email provided');
       return res.status(400).json({ error: 'Email is required' });
     }
 
     // Check if email service is configured
-    if (!emailService.isConfigured()) {
+    console.log('[API] Checking if email service is configured...');
+    const isConfigured = emailService.isConfigured();
+    console.log('[API] Email service configured:', isConfigured);
+    
+    if (!isConfigured) {
+      console.log('[API] Email service NOT configured, returning error');
       return res.json({ 
         success: false, 
         message: 'Password reset not available - email service not configured' 
@@ -265,7 +273,9 @@ app.post('/api/email/request-reset', async (req, res) => {
     }
 
     // Get user by email
+    console.log('[API] Looking up user by email:', email);
     const user = await database.getUserByEmail(email);
+    console.log('[API] User found:', user ? `Yes (id: ${user.id})` : 'No');
     
     if (!user) {
       // Don't reveal if email exists or not for security
@@ -276,30 +286,41 @@ app.post('/api/email/request-reset', async (req, res) => {
     }
 
     // Generate reset token
+    console.log('[API] Generating reset token...');
     const token = emailService.generateVerificationToken();
+    console.log('[API] Token generated (first 8 chars):', token.substring(0, 8));
     
     // Save reset token
+    console.log('[API] Saving reset token to database...');
     await database.createPasswordResetToken(token, email, user.id);
+    console.log('[API] Token saved successfully');
     
     // Send reset email
     const baseUrl = process.env.BASE_URL || 'http://localhost:3000';
+    console.log('[API] Sending password reset email to:', email);
+    console.log('[API] Using base URL:', baseUrl);
     const result = await emailService.sendPasswordResetEmail(email, token, baseUrl);
     
     // Log the result for debugging
-    console.log('[API] Password reset email result:', result);
+    console.log('[API] Password reset email result:', JSON.stringify(result, null, 2));
     
     // Always return success message for security (don't reveal if email exists)
     // But log actual errors on server side
     if (!result.success) {
-      console.error('[API] Failed to send password reset email:', result.message);
+      console.error('[API] ❌ Failed to send password reset email:', result.message);
+      console.error('[API] Full error details:', result);
+    } else {
+      console.log('[API] ✅ Password reset email sent successfully');
     }
     
+    console.log('[API] ===== PASSWORD RESET REQUEST COMPLETED =====');
     res.json({ 
       success: true, 
       message: 'If an account with that email exists, a password reset link has been sent.' 
     });
   } catch (error) {
-    console.error('[API] Error requesting password reset:', error);
+    console.error('[API] ❌ ERROR requesting password reset:', error);
+    console.error('[API] Error stack:', error.stack);
     res.status(500).json({ 
       error: 'Failed to request password reset',
       message: error.message 

@@ -781,8 +781,12 @@ class AuthService {
    */
   async requestPasswordReset(email: string): Promise<{ success: boolean; message?: string }> {
     try {
+      console.log('[AuthService] Starting password reset request for:', email);
       const { getServerUrl } = await import('../config/ServerConfig');
       const serverUrl = await getServerUrl();
+      console.log('[AuthService] Using server URL:', serverUrl);
+      
+      console.log('[AuthService] Sending request to:', `${serverUrl}/api/email/request-reset`);
       const response = await fetch(`${serverUrl}/api/email/request-reset`, {
         method: 'POST',
         headers: {
@@ -790,10 +794,14 @@ class AuthService {
         },
         body: JSON.stringify({ email: email.trim().toLowerCase() }),
       });
+      
+      console.log('[AuthService] Response status:', response.status);
 
       if (!response.ok) {
+        console.log('[AuthService] Request failed with status:', response.status);
         // Handle 503 (server waking up from sleep)
         if (response.status === 503) {
+          console.log('[AuthService] Server is waking up (503)');
           return { 
             success: false, 
             message: 'Server is waking up. Please try again in a few seconds.' 
@@ -801,17 +809,26 @@ class AuthService {
         }
         
         const contentType = response.headers.get('content-type');
+        console.log('[AuthService] Content-Type:', contentType);
         if (contentType && contentType.includes('application/json')) {
           const data = await response.json();
+          console.log('[AuthService] Error response data:', data);
           return { success: false, message: data.error || 'Server error' };
         }
+        console.log('[AuthService] Non-JSON error response');
         return { success: false, message: `Server error: ${response.status}` };
       }
 
       const data = await response.json();
+      console.log('[AuthService] Success response data:', data);
       return data;
     } catch (error) {
       console.error('[AuthService] Request password reset error:', error);
+      console.error('[AuthService] Error details:', {
+        name: error instanceof Error ? error.name : 'Unknown',
+        message: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined
+      });
       return { 
         success: false, 
         message: 'Could not connect to server. Please check your internet connection.' 

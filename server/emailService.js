@@ -129,12 +129,21 @@ If you didn't create an account with Math Game App, you can safely ignore this e
   }
 
   async sendPasswordResetEmail(email, token, baseUrl) {
+    console.log('[EmailService] ===== SEND PASSWORD RESET EMAIL =====');
+    console.log('[EmailService] To:', email);
+    console.log('[EmailService] Token (first 8):', token.substring(0, 8));
+    console.log('[EmailService] Base URL:', baseUrl);
+    console.log('[EmailService] Initialized:', this.initialized);
+    
     if (!this.initialized) {
-      console.log('[EmailService] Skipping password reset email - service not configured');
+      console.log('[EmailService] ❌ Service not initialized - cannot send email');
       return { success: false, message: 'Email service not configured' };
     }
 
     const resetLink = `${baseUrl}/reset-password.html?token=${token}`;
+    console.log('[EmailService] Reset link:', resetLink);
+    console.log('[EmailService] From email:', this.fromEmail);
+    console.log('[EmailService] Calling Resend API...');
     
     try {
       const { data, error } = await this.resend.emails.send({
@@ -200,14 +209,19 @@ If you didn't request a password reset, you can safely ignore this email.
       });
 
       if (error) {
-        console.error('[EmailService] Resend API error:', error);
+        console.error('[EmailService] ❌ Resend API error:', error);
+        console.error('[EmailService] Error details:', JSON.stringify(error, null, 2));
         return { success: false, message: 'Failed to send password reset email', error: error.message };
       }
 
-      console.log(`[EmailService] Password reset email sent to ${email} (ID: ${data?.id})`);
+      console.log(`[EmailService] ✅ Password reset email sent successfully!`);
+      console.log(`[EmailService] To: ${email}`);
+      console.log(`[EmailService] Email ID: ${data?.id}`);
+      console.log('[EmailService] ===== EMAIL SEND COMPLETED =====');
       return { success: true, message: 'Password reset email sent', emailId: data?.id };
     } catch (error) {
-      console.error('[EmailService] Failed to send email:', error.message);
+      console.error('[EmailService] ❌ Exception sending email:', error.message);
+      console.error('[EmailService] Stack trace:', error.stack);
       return { success: false, message: 'Failed to send password reset email', error: error.message };
     }
   }
