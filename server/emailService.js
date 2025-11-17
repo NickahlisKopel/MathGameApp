@@ -52,8 +52,8 @@ class EmailService {
     
     try {
       const { data, error } = await this.resend.emails.send({
-        from: `Math Game App <${this.fromEmail}>`,
-        to: [email],
+        from: this.fromEmail,
+        to: email,
         subject: 'Verify Your Email - Math Game App',
         html: `
         <!DOCTYPE html>
@@ -138,8 +138,8 @@ If you didn't create an account with Math Game App, you can safely ignore this e
     
     try {
       const { data, error } = await this.resend.emails.send({
-        from: `Math Game App <${this.fromEmail}>`,
-        to: [email],
+        from: this.fromEmail,
+        to: email,
         subject: 'Reset Your Password - Math Game App',
         html: `
         <!DOCTYPE html>
