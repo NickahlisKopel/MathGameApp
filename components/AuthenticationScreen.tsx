@@ -78,7 +78,30 @@ export default function AuthenticationScreen({
       Alert.alert('Error', 'Please fill in all fields');
       return;
     }
-    await handleAuth('email', () => authService.createAccountWithEmail(email, password, displayName));
+    
+    try {
+      setLoading(true);
+      const user = await authService.createAccountWithEmail(email, password, displayName);
+      
+      // Show verification message
+      Alert.alert(
+        '✅ Account Created!',
+        `Welcome ${displayName}!\n\nWe've sent a verification email to ${email}. Please check your inbox and verify your email address.`,
+        [{ text: 'OK', onPress: onAuthComplete }]
+      );
+    } catch (error: any) {
+      Alert.alert('Sign Up Failed', error.message || 'An error occurred');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleForgotPassword = () => {
+    Alert.alert(
+      'Reset Password',
+      'Password reset feature is coming soon!\n\nFor now, you can:\n• Create a new account\n• Contact support if you need help',
+      [{ text: 'OK' }]
+    );
   };
 
   const renderSelectionScreen = () => (
@@ -231,6 +254,13 @@ export default function AuthenticationScreen({
           ) : (
             <Text style={styles.primaryButtonText}>Sign In</Text>
           )}
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          onPress={handleForgotPassword}
+          style={styles.forgotPasswordButton}
+        >
+          <Text style={styles.forgotPasswordText}>Forgot Password?</Text>
         </TouchableOpacity>
 
         <TouchableOpacity
@@ -466,6 +496,14 @@ const styles = StyleSheet.create({
     right: 15,
     top: 16,
     padding: 5,
+  },
+  forgotPasswordButton: {
+    marginTop: 10,
+    alignItems: 'center',
+  },
+  forgotPasswordText: {
+    color: '#4CAF50',
+    fontSize: 14,
   },
   switchModeButton: {
     marginTop: 20,

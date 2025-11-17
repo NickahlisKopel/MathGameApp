@@ -492,6 +492,16 @@ class AuthService {
       };
 
       await this.saveUser(user);
+      
+      // Send verification email (don't block account creation if it fails)
+      try {
+        await this.sendVerificationEmail(email, userId);
+        console.log('[Auth] Verification email sent to:', email);
+      } catch (error) {
+        console.error('[Auth] Failed to send verification email:', error);
+        // Continue anyway - user can resend later
+      }
+      
       return user;
     } catch (error) {
       console.error('Account creation failed:', error);
@@ -685,6 +695,85 @@ class AuthService {
     }
 
     return true;
+  }
+
+  /**
+   * Send email verification
+   */
+  async sendVerificationEmail(email: string, userId: string): Promise<{ success: boolean; message: string; skipVerification?: boolean }> {
+    try {
+      const { getServerUrl } = await import('../config/ServerConfig');
+      const serverUrl = getServerUrl();
+      
+      const response = await fetch(`${serverUrl}/api/email/send-verification`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, userId }),
+      });
+
+      const result = await response.json();
+      return result;
+    } catch (error) {
+      console.error('[Auth] Failed to send verification email:', error);
+      return { 
+        success: false, 
+        message: 'Failed to send verification email. You can still use the app.',
+        skipVerification: true 
+      };
+    }
+  }
+
+  /**
+   * Check if email is verified
+   */
+  async checkEmailVerified(email: string): Promise<boolean> {
+    try {
+      const { getServerUrl } = await import('../config/ServerConfig');
+      const serverUrl = getServerUrl();
+      
+      const response = await fetch(`${serverUrl}/api/email/status/${encodeURIComponent(email)}`);
+      const data = await response.json();
+      return data.verified || false;
+    } catch (error) {
+      console.error('[Auth] Failed to check email status:', error);
+      return false; // Assume not verified on error
+    }
+  }
+
+  /**
+   * Resend verification email
+   */
+  async resendVerificationEmail(email: string): Promise<{ success: boolean; message: string }> {
+    try {
+      const { getServerUrl } = await import('../config/ServerConfig');
+      const serverUrl = getServerUrl();
+      
+      const response = await fetch(`${serverUrl}/api/email/resend-verification`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email }),
+      });
+
+      const result = await response.json();
+      return result;
+    } catch (error) {
+      console.error('[Auth] Failed to resend verification email:', error);
+      return { success: false, message: 'Failed to resend verification email' };
+    }
+  }
+
+  /**
+   * Get email verification status for current user
+   */
+  async getCurrentUserEmailStatus(): Promise<{ verified: boolean; email?: string }> {
+    const user = await this.getCurrentUser();
+    
+    if (!user || !user.email || user.provider !== 'email') {
+      return { verified: true }; // Non-email users don't need verification
+    }
+
+    const verified = await this.checkEmailVerified(user.email);
+    return { verified, email: user.email };
   }
 }
 
