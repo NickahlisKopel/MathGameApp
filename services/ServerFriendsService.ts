@@ -2,8 +2,6 @@ import { PlayerProfile, FriendRequest } from '../types/Player';
 import { PlayerStorageService } from './PlayerStorageService';
 import { getServerUrl } from '../config/ServerConfig';
 
-const SERVER_URL = getServerUrl();
-
 export class ServerFriendsService {
   /**
    * Sync current player to server
@@ -16,6 +14,7 @@ export class ServerFriendsService {
         return;
       }
 
+      const SERVER_URL = await getServerUrl();
       console.log(`[ServerFriends] Syncing player ${player.username} (${player.id}) to ${SERVER_URL}`);
       const response = await fetch(`${SERVER_URL}/api/player/sync`, {
         method: 'POST',
@@ -50,6 +49,7 @@ export class ServerFriendsService {
       console.log(`[ServerFriends] Sending friend request from ${player.username} (${player.id}) to ${friendId}`);
       const correlationId = `cli_${Date.now()}_${Math.random().toString(36).slice(2,8)}`;
       console.log('[ServerFriends] Sending friend request with correlationId:', correlationId);
+      const SERVER_URL = await getServerUrl();
       const response = await fetch(`${SERVER_URL}/api/friends/request`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -91,6 +91,7 @@ export class ServerFriendsService {
       const player = await PlayerStorageService.loadPlayerProfile();
       if (!player) return [];
 
+      const SERVER_URL = await getServerUrl();
       const response = await fetch(`${SERVER_URL}/api/friends/requests/${player.id}`);
       const data = await response.json();
       
@@ -109,6 +110,7 @@ export class ServerFriendsService {
       const player = await PlayerStorageService.loadPlayerProfile();
       if (!player) return false;
 
+      const SERVER_URL = await getServerUrl();
       const response = await fetch(`${SERVER_URL}/api/friends/accept`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -146,6 +148,7 @@ export class ServerFriendsService {
       const player = await PlayerStorageService.loadPlayerProfile();
       if (!player) return false;
 
+      const SERVER_URL = await getServerUrl();
       const response = await fetch(`${SERVER_URL}/api/friends/reject`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -168,6 +171,7 @@ export class ServerFriendsService {
    */
   static async getPlayerFromServer(playerId: string): Promise<PlayerProfile | null> {
     try {
+      const SERVER_URL = await getServerUrl();
       const response = await fetch(`${SERVER_URL}/api/player/${playerId}`);
       const data = await response.json();
       return data.player || null;
@@ -182,6 +186,7 @@ export class ServerFriendsService {
    */
   static async searchPlayers(query: string): Promise<{ id: string; username: string }[]> {
     try {
+      const SERVER_URL = await getServerUrl();
       const response = await fetch(`${SERVER_URL}/api/players/search?q=${encodeURIComponent(query)}`);
       const data = await response.json();
       return data.players || [];
@@ -219,6 +224,7 @@ export class ServerFriendsService {
       const player = await PlayerStorageService.loadPlayerProfile();
       if (!player) return false;
 
+      const SERVER_URL = await getServerUrl();
       const response = await fetch(`${SERVER_URL}/api/friends/remove`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
