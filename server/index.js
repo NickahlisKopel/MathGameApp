@@ -2,6 +2,7 @@ const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
 const database = require('./database');
+const emailService = require('./emailService');
 const logger = require('./logger');
 // Track friend request attempts for simple rate limiting (in-memory)
 const friendRequestAttempts = new Map(); // key: from->to, value: timestamps array
@@ -59,6 +60,178 @@ app.post('/api/admin/reset-database', async (req, res) => {
     console.error('[API] Error resetting database:', error);
     res.status(500).json({ 
       error: 'Failed to reset database',
+      message: error.message 
+    });
+  }
+});
+
+// Email Verification Endpoints
+app.post('/api/email/send-verification', async (req, res) => {
+  try {
+    const { email, userId } = req.body;
+
+    if (!email || !userId) {
+      return res.status(400).json({ error: 'Email and userId are required' });
+    }
+
+    // Check if email verification is configured
+    if (!emailService.isConfigured()) {
+      return res.json({ 
+        success: false, 
+        message: 'Email verification not configured on server',
+        skipVerification: true 
+      });
+    }
+
+    // Generate verification token
+    const token = emailService.generateVerificationToken();
+    
+    // Save verification token to database
+    await database.createEmailVerification(token, email, userId);
+    
+    // Save email account (unverified)
+    await database.saveEmailAccount(email, userId, false);
+    
+    // Send verification email
+    const baseUrl = process.env.BASE_URL || 'http://localhost:3000';
+    const result = await emailService.sendVerificationEmail(email, token, baseUrl);
+    
+    res.json(result);
+  } catch (error) {
+    console.error('[API] Error sending verification email:', error);
+    res.status(500).json({ 
+      error: 'Failed to send verification email',
+      message: error.message 
+    });
+  }
+});
+
+app.get('/api/email/verify', async (req, res) => {
+  try {
+    const { token } = req.query;
+
+    if (!token) {
+      return res.status(400).send('<h1>Invalid verification link</h1><p>No token provided.</p>');
+    }
+
+    // Get verification record
+    const verification = await database.getEmailVerification(token);
+    
+    if (!verification) {
+      return res.status(400).send('<h1>Invalid or expired link</h1><p>This verification link is invalid or has already been used.</p>');
+    }
+
+    // Check if token is expired (24 hours)
+    const tokenAge = Date.now() - new Date(verification.createdAt).getTime();
+    const maxAge = 24 * 60 * 60 * 1000; // 24 hours
+    
+    if (tokenAge > maxAge) {
+      await database.deleteEmailVerification(token);
+      return res.status(400).send('<h1>Link expired</h1><p>This verification link has expired. Please request a new one.</p>');
+    }
+
+    // Mark email as verified
+    await database.markEmailVerified(verification.email);
+    
+    // Delete the verification token
+    await database.deleteEmailVerification(token);
+    
+    console.log(`[API] Email verified: ${verification.email}`);
+    
+    // Success page
+    res.send(`
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <title>Email Verified - Math Game App</title>
+        <style>
+          body { font-family: Arial, sans-serif; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); margin: 0; padding: 0; display: flex; align-items: center; justify-content: center; min-height: 100vh; }
+          .container { background: white; padding: 40px; border-radius: 10px; max-width: 500px; text-align: center; box-shadow: 0 10px 40px rgba(0,0,0,0.2); }
+          h1 { color: #4CAF50; margin-bottom: 20px; }
+          p { color: #666; line-height: 1.6; }
+          .icon { font-size: 64px; margin-bottom: 20px; }
+          .button { display: inline-block; margin-top: 20px; padding: 12px 30px; background: #4CAF50; color: white; text-decoration: none; border-radius: 5px; font-weight: bold; }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <div class="icon">✅</div>
+          <h1>Email Verified!</h1>
+          <p>Your email address has been successfully verified. You can now return to the Math Game App and enjoy all features.</p>
+          <p style="font-size: 14px; color: #999; margin-top: 30px;">You can safely close this window.</p>
+        </div>
+      </body>
+      </html>
+    `);
+  } catch (error) {
+    console.error('[API] Error verifying email:', error);
+    res.status(500).send('<h1>Error</h1><p>An error occurred while verifying your email. Please try again later.</p>');
+  }
+});
+
+app.get('/api/email/status/:email', async (req, res) => {
+  try {
+    const { email } = req.params;
+    
+    const account = await database.getEmailAccount(email);
+    
+    if (!account) {
+      return res.json({ exists: false, verified: false });
+    }
+    
+    res.json({ 
+      exists: true, 
+      verified: account.verified || false,
+      userId: account.userId 
+    });
+  } catch (error) {
+    console.error('[API] Error checking email status:', error);
+    res.status(500).json({ error: 'Failed to check email status' });
+  }
+});
+
+app.post('/api/email/resend-verification', async (req, res) => {
+  try {
+    const { email } = req.body;
+
+    if (!email) {
+      return res.status(400).json({ error: 'Email is required' });
+    }
+
+    // Check if email verification is configured
+    if (!emailService.isConfigured()) {
+      return res.json({ 
+        success: false, 
+        message: 'Email verification not configured on server' 
+      });
+    }
+
+    // Get email account
+    const account = await database.getEmailAccount(email);
+    
+    if (!account) {
+      return res.status(404).json({ error: 'Email not found' });
+    }
+
+    if (account.verified) {
+      return res.json({ success: false, message: 'Email already verified' });
+    }
+
+    // Generate new verification token
+    const token = emailService.generateVerificationToken();
+    
+    // Save new verification token
+    await database.createEmailVerification(token, email, account.userId);
+    
+    // Send verification email
+    const baseUrl = process.env.BASE_URL || 'http://localhost:3000';
+    const result = await emailService.sendVerificationEmail(email, token, baseUrl);
+    
+    res.json(result);
+  } catch (error) {
+    console.error('[API] Error resending verification email:', error);
+    res.status(500).json({ 
+      error: 'Failed to resend verification email',
       message: error.message 
     });
   }
@@ -1039,6 +1212,9 @@ process.on('SIGTERM', async () => {
 
 // Initialize database and start server
 database.connect().then(() => {
+  // Initialize email service
+  emailService.initialize();
+  
   server.listen(PORT, '0.0.0.0', () => {
     console.log('[Server] Socket.IO server running on port', PORT);
     console.log('[Server] Environment:', process.env.NODE_ENV || 'development');

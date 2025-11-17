@@ -21,6 +21,8 @@ class DatabaseService {
           friendRequests: new Map(),
           dailyChallengeSubmissions: new Map(), // key: date, value: array of submissions
           dailyHexCodes: new Map(), // key: date, value: hex code for that day
+          emailVerifications: new Map(), // key: token, value: {email, userId, createdAt}
+          emailAccounts: new Map(), // key: email, value: {userId, verified, createdAt}
         };
         return true;
       }
@@ -56,6 +58,10 @@ class DatabaseService {
       this.inMemoryStorage = {
         players: new Map(),
         friendRequests: new Map(),
+        dailyChallengeSubmissions: new Map(),
+        dailyHexCodes: new Map(),
+        emailVerifications: new Map(),
+        emailAccounts: new Map(),
       };
       return true; // Return true to allow server to continue
     }
@@ -550,6 +556,107 @@ class DatabaseService {
       console.error('[Database] Error getting player daily challenge submission:', error);
       return null;
     }
+  }
+
+  // Email Verification Methods
+  async createEmailVerification(token, email, userId) {
+    if (this.inMemoryStorage) {
+      this.inMemoryStorage.emailVerifications.set(token, {
+        email,
+        userId,
+        createdAt: new Date(),
+      });
+      return true;
+    }
+
+    if (!this.db) return false;
+    const verifications = this.db.collection('emailVerifications');
+    await verifications.insertOne({
+      token,
+      email,
+      userId,
+      createdAt: new Date(),
+    });
+    return true;
+  }
+
+  async getEmailVerification(token) {
+    if (this.inMemoryStorage) {
+      return this.inMemoryStorage.emailVerifications.get(token) || null;
+    }
+
+    if (!this.db) return null;
+    const verifications = this.db.collection('emailVerifications');
+    return await verifications.findOne({ token });
+  }
+
+  async deleteEmailVerification(token) {
+    if (this.inMemoryStorage) {
+      this.inMemoryStorage.emailVerifications.delete(token);
+      return true;
+    }
+
+    if (!this.db) return false;
+    const verifications = this.db.collection('emailVerifications');
+    await verifications.deleteOne({ token });
+    return true;
+  }
+
+  async saveEmailAccount(email, userId, verified = false) {
+    if (this.inMemoryStorage) {
+      this.inMemoryStorage.emailAccounts.set(email.toLowerCase(), {
+        userId,
+        verified,
+        createdAt: new Date(),
+      });
+      return true;
+    }
+
+    if (!this.db) return false;
+    const emailAccounts = this.db.collection('emailAccounts');
+    await emailAccounts.updateOne(
+      { email: email.toLowerCase() },
+      { 
+        $set: { 
+          userId, 
+          verified, 
+          updatedAt: new Date() 
+        },
+        $setOnInsert: { createdAt: new Date() }
+      },
+      { upsert: true }
+    );
+    return true;
+  }
+
+  async getEmailAccount(email) {
+    if (this.inMemoryStorage) {
+      return this.inMemoryStorage.emailAccounts.get(email.toLowerCase()) || null;
+    }
+
+    if (!this.db) return null;
+    const emailAccounts = this.db.collection('emailAccounts');
+    return await emailAccounts.findOne({ email: email.toLowerCase() });
+  }
+
+  async markEmailVerified(email) {
+    if (this.inMemoryStorage) {
+      const account = this.inMemoryStorage.emailAccounts.get(email.toLowerCase());
+      if (account) {
+        account.verified = true;
+        account.verifiedAt = new Date();
+        this.inMemoryStorage.emailAccounts.set(email.toLowerCase(), account);
+      }
+      return true;
+    }
+
+    if (!this.db) return false;
+    const emailAccounts = this.db.collection('emailAccounts');
+    await emailAccounts.updateOne(
+      { email: email.toLowerCase() },
+      { $set: { verified: true, verifiedAt: new Date() } }
+    );
+    return true;
   }
 
   async close() {
