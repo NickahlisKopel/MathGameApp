@@ -124,7 +124,25 @@ export default function AuthenticationScreen({
                   [{ text: 'OK' }]
                 );
               } else {
-                Alert.alert('Notice', result.message || 'Could not send reset email');
+                // Check if it's a server wake-up issue
+                if (result.message?.includes('waking up')) {
+                  Alert.alert(
+                    'Server Starting',
+                    result.message + '\n\nWould you like to try again?',
+                    [
+                      { text: 'Cancel', style: 'cancel' },
+                      { 
+                        text: 'Try Again', 
+                        onPress: () => {
+                          // Wait 3 seconds then retry
+                          setTimeout(() => handleForgotPassword(), 3000);
+                        }
+                      }
+                    ]
+                  );
+                } else {
+                  Alert.alert('Notice', result.message || 'Could not send reset email');
+                }
               }
             } catch (error: any) {
               Alert.alert('Error', error.message || 'Failed to request password reset');

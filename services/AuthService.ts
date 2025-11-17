@@ -792,6 +792,14 @@ class AuthService {
       });
 
       if (!response.ok) {
+        // Handle 503 (server waking up from sleep)
+        if (response.status === 503) {
+          return { 
+            success: false, 
+            message: 'Server is waking up. Please try again in a few seconds.' 
+          };
+        }
+        
         const contentType = response.headers.get('content-type');
         if (contentType && contentType.includes('application/json')) {
           const data = await response.json();
