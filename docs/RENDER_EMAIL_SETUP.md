@@ -25,8 +25,9 @@ Based on your `.env` file, here are your settings:
 #### Variable 1: RESEND_API_KEY
 ```
 Key: RESEND_API_KEY
-Value: re_bCcEwaqG_5yFknqdpdd9RT4jVcvUxDUYe
+Value: re_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 ```
+**Note**: Use your actual Resend API key from https://resend.com/api-keys
 
 #### Variable 2: RESEND_FROM_EMAIL
 ```

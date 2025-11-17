@@ -187,31 +187,37 @@ function AppContent() {
           setShowAuthScreen(true);
         } else {
           setLoadingMessage('Loading profile...');
-          // Ensure player profile exists linked to auth user
-          let profile = await PlayerStorageService.loadPlayerProfile();
-          if (!profile) {
-            // Check if a profile exists with the auth user ID (for returning users)
-            const authUserIdKey = `@player_profile_${restored.id}`;
-            const existingProfileData = await AsyncStorage.getItem(authUserIdKey);
+          // Check if a profile exists for this auth user ID FIRST
+          const authUserIdKey = `@player_profile_${restored.id}`;
+          let profile: PlayerProfile | null = null;
+          
+          // Priority 1: Check for profile linked to this auth user
+          const existingProfileData = await AsyncStorage.getItem(authUserIdKey);
+          if (existingProfileData) {
+            console.log('[App] Found existing profile for auth user:', restored.id);
+            const restoredProfile = JSON.parse(existingProfileData);
+            // Convert date strings back to Date objects
+            restoredProfile.createdAt = new Date(restoredProfile.createdAt);
+            restoredProfile.lastActive = new Date(restoredProfile.lastActive);
+            if (restoredProfile.achievements) {
+              restoredProfile.achievements = restoredProfile.achievements.map((a: any) => ({
+                ...a,
+                unlockedAt: a.unlockedAt ? new Date(a.unlockedAt) : undefined,
+              }));
+            }
+            // Save as current profile
+            await PlayerStorageService.savePlayerProfile(restoredProfile);
+            profile = restoredProfile;
+          } else {
+            // Priority 2: Check if there's a current profile (from offline play)
+            profile = await PlayerStorageService.loadPlayerProfile();
             
-            if (existingProfileData) {
-              // Restore existing profile for this auth user
-              console.log('[App] Restoring existing profile for auth user:', restored.id);
-              const restoredProfile = JSON.parse(existingProfileData);
-              // Convert date strings back to Date objects
-              restoredProfile.createdAt = new Date(restoredProfile.createdAt);
-              restoredProfile.lastActive = new Date(restoredProfile.lastActive);
-              if (restoredProfile.achievements) {
-                restoredProfile.achievements = restoredProfile.achievements.map((a: any) => ({
-                  ...a,
-                  unlockedAt: a.unlockedAt ? new Date(a.unlockedAt) : undefined,
-                }));
-              }
-              // Save as current profile
-              await PlayerStorageService.savePlayerProfile(restoredProfile);
-              profile = restoredProfile;
+            if (profile) {
+              // Link existing offline profile to this auth user
+              console.log('[App] Linking existing profile to auth user:', restored.id);
+              await AsyncStorage.setItem(authUserIdKey, JSON.stringify(profile));
             } else {
-              // Create new profile for this auth user
+              // Priority 3: Create new profile for this auth user
               console.log('[App] Creating new profile for auth user:', restored.id);
               const displayName = restored.displayName || 'Player';
               profile = await PlayerStorageService.createNewPlayer(displayName, undefined);
@@ -219,10 +225,6 @@ function AppContent() {
               // Link this profile to the auth user ID
               await AsyncStorage.setItem(authUserIdKey, JSON.stringify(profile));
             }
-          } else {
-            // Profile exists as current, ensure it's linked to auth user
-            const authUserIdKey = `@player_profile_${restored.id}`;
-            await AsyncStorage.setItem(authUserIdKey, JSON.stringify(profile));
           }
           
           if (!profile) {
