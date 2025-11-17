@@ -791,6 +791,15 @@ class AuthService {
         body: JSON.stringify({ email: email.trim().toLowerCase() }),
       });
 
+      if (!response.ok) {
+        const contentType = response.headers.get('content-type');
+        if (contentType && contentType.includes('application/json')) {
+          const data = await response.json();
+          return { success: false, message: data.error || 'Server error' };
+        }
+        return { success: false, message: `Server error: ${response.status}` };
+      }
+
       const data = await response.json();
       return data;
     } catch (error) {
@@ -810,12 +819,17 @@ class AuthService {
       const { getServerUrl } = await import('../config/ServerConfig');
       const serverUrl = await getServerUrl();
       const response = await fetch(`${serverUrl}/api/email/verify-reset-token?token=${token}`);
-      const data = await response.json();
       
       if (!response.ok) {
-        return { valid: false, error: data.error };
+        const contentType = response.headers.get('content-type');
+        if (contentType && contentType.includes('application/json')) {
+          const data = await response.json();
+          return { valid: false, error: data.error };
+        }
+        return { valid: false, error: `Server error: ${response.status}` };
       }
       
+      const data = await response.json();
       return { valid: data.valid, email: data.email };
     } catch (error) {
       console.error('[AuthService] Verify reset token error:', error);
@@ -838,12 +852,16 @@ class AuthService {
         body: JSON.stringify({ token, newPassword }),
       });
 
-      const data = await response.json();
-      
       if (!response.ok) {
-        return { success: false, error: data.error };
+        const contentType = response.headers.get('content-type');
+        if (contentType && contentType.includes('application/json')) {
+          const data = await response.json();
+          return { success: false, error: data.error };
+        }
+        return { success: false, error: `Server error: ${response.status}` };
       }
       
+      const data = await response.json();
       return { success: true, message: data.message };
     } catch (error) {
       console.error('[AuthService] Reset password error:', error);
