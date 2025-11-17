@@ -775,6 +775,84 @@ class AuthService {
     const verified = await this.checkEmailVerified(user.email);
     return { verified, email: user.email };
   }
+
+  /**
+   * Request password reset email
+   */
+  async requestPasswordReset(email: string): Promise<{ success: boolean; message?: string }> {
+    try {
+      const { getServerUrl } = await import('../config/ServerConfig');
+      const serverUrl = await getServerUrl();
+      const response = await fetch(`${serverUrl}/api/email/request-reset`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email: email.trim().toLowerCase() }),
+      });
+
+      const data = await response.json();
+      return data;
+    } catch (error) {
+      console.error('[AuthService] Request password reset error:', error);
+      return { 
+        success: false, 
+        message: 'Could not connect to server. Please check your internet connection.' 
+      };
+    }
+  }
+
+  /**
+   * Verify password reset token
+   */
+  async verifyResetToken(token: string): Promise<{ valid: boolean; email?: string; error?: string }> {
+    try {
+      const { getServerUrl } = await import('../config/ServerConfig');
+      const serverUrl = await getServerUrl();
+      const response = await fetch(`${serverUrl}/api/email/verify-reset-token?token=${token}`);
+      const data = await response.json();
+      
+      if (!response.ok) {
+        return { valid: false, error: data.error };
+      }
+      
+      return { valid: data.valid, email: data.email };
+    } catch (error) {
+      console.error('[AuthService] Verify reset token error:', error);
+      return { valid: false, error: 'Could not connect to server' };
+    }
+  }
+
+  /**
+   * Reset password with token
+   */
+  async resetPassword(token: string, newPassword: string): Promise<{ success: boolean; message?: string; error?: string }> {
+    try {
+      const { getServerUrl } = await import('../config/ServerConfig');
+      const serverUrl = await getServerUrl();
+      const response = await fetch(`${serverUrl}/api/email/reset-password`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ token, newPassword }),
+      });
+
+      const data = await response.json();
+      
+      if (!response.ok) {
+        return { success: false, error: data.error };
+      }
+      
+      return { success: true, message: data.message };
+    } catch (error) {
+      console.error('[AuthService] Reset password error:', error);
+      return { 
+        success: false, 
+        error: 'Could not connect to server. Please check your internet connection.' 
+      };
+    }
+  }
 }
 
 // Export singleton instance

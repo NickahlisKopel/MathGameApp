@@ -97,10 +97,46 @@ export default function AuthenticationScreen({
   };
 
   const handleForgotPassword = () => {
-    Alert.alert(
+    Alert.prompt(
       'Reset Password',
-      'Password reset feature is coming soon!\n\nFor now, you can:\n• Create a new account\n• Contact support if you need help',
-      [{ text: 'OK' }]
+      'Enter your email address and we\'ll send you a link to reset your password.',
+      [
+        {
+          text: 'Cancel',
+          style: 'cancel',
+        },
+        {
+          text: 'Send Reset Link',
+          onPress: async (emailInput) => {
+            if (!emailInput || !emailInput.trim()) {
+              Alert.alert('Error', 'Please enter your email address');
+              return;
+            }
+
+            setLoading(true);
+            try {
+              const result = await authService.requestPasswordReset(emailInput.trim());
+              
+              if (result.success) {
+                Alert.alert(
+                  '✅ Email Sent!',
+                  'If an account exists with that email, we\'ve sent password reset instructions. Please check your inbox.',
+                  [{ text: 'OK' }]
+                );
+              } else {
+                Alert.alert('Notice', result.message || 'Could not send reset email');
+              }
+            } catch (error: any) {
+              Alert.alert('Error', error.message || 'Failed to request password reset');
+            } finally {
+              setLoading(false);
+            }
+          },
+        },
+      ],
+      'plain-text',
+      email, // Pre-fill with current email if any
+      'email-address'
     );
   };
 

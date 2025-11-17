@@ -23,6 +23,7 @@ class DatabaseService {
           dailyHexCodes: new Map(), // key: date, value: hex code for that day
           emailVerifications: new Map(), // key: token, value: {email, userId, createdAt}
           emailAccounts: new Map(), // key: email, value: {userId, verified, createdAt}
+          passwordResetTokens: new Map(), // key: token, value: {email, userId, createdAt, expiresAt}
         };
         return true;
       }
@@ -62,6 +63,7 @@ class DatabaseService {
         dailyHexCodes: new Map(),
         emailVerifications: new Map(),
         emailAccounts: new Map(),
+        passwordResetTokens: new Map(),
       };
       return true; // Return true to allow server to continue
     }
@@ -657,6 +659,91 @@ class DatabaseService {
       { $set: { verified: true, verifiedAt: new Date() } }
     );
     return true;
+  }
+
+  // Password Reset Token Methods
+  async createPasswordResetToken(token, email, userId) {
+    if (this.inMemoryStorage) {
+      if (!this.inMemoryStorage.passwordResetTokens) {
+        this.inMemoryStorage.passwordResetTokens = new Map();
+      }
+      this.inMemoryStorage.passwordResetTokens.set(token, {
+        email,
+        userId,
+        createdAt: new Date(),
+        expiresAt: new Date(Date.now() + 60 * 60 * 1000), // 1 hour
+      });
+      return true;
+    }
+
+    if (!this.db) return false;
+    const resetTokens = this.db.collection('passwordResetTokens');
+    await resetTokens.insertOne({
+      token,
+      email,
+      userId,
+      createdAt: new Date(),
+      expiresAt: new Date(Date.now() + 60 * 60 * 1000), // 1 hour
+    });
+    return true;
+  }
+
+  async getPasswordResetToken(token) {
+    if (this.inMemoryStorage) {
+      if (!this.inMemoryStorage.passwordResetTokens) {
+        return null;
+      }
+      const resetToken = this.inMemoryStorage.passwordResetTokens.get(token);
+      if (!resetToken) return null;
+      
+      // Check if expired
+      if (new Date() > resetToken.expiresAt) {
+        this.inMemoryStorage.passwordResetTokens.delete(token);
+        return null;
+      }
+      return resetToken;
+    }
+
+    if (!this.db) return null;
+    const resetTokens = this.db.collection('passwordResetTokens');
+    const resetToken = await resetTokens.findOne({ token });
+    
+    if (!resetToken) return null;
+    
+    // Check if expired
+    if (new Date() > resetToken.expiresAt) {
+      await resetTokens.deleteOne({ token });
+      return null;
+    }
+    return resetToken;
+  }
+
+  async deletePasswordResetToken(token) {
+    if (this.inMemoryStorage) {
+      if (this.inMemoryStorage.passwordResetTokens) {
+        this.inMemoryStorage.passwordResetTokens.delete(token);
+      }
+      return true;
+    }
+
+    if (!this.db) return false;
+    const resetTokens = this.db.collection('passwordResetTokens');
+    await resetTokens.deleteOne({ token });
+    return true;
+  }
+
+  async getUserByEmail(email) {
+    if (this.inMemoryStorage) {
+      const account = this.inMemoryStorage.emailAccounts.get(email.toLowerCase());
+      if (!account) return null;
+      return this.getPlayer(account.userId);
+    }
+
+    if (!this.db) return null;
+    const emailAccounts = this.db.collection('emailAccounts');
+    const account = await emailAccounts.findOne({ email: email.toLowerCase() });
+    if (!account) return null;
+    return this.getPlayer(account.userId);
   }
 
   async close() {

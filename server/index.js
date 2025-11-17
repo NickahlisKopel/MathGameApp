@@ -237,6 +237,142 @@ app.post('/api/email/resend-verification', async (req, res) => {
   }
 });
 
+// Request password reset
+app.post('/api/email/request-reset', async (req, res) => {
+  try {
+    const { email } = req.body;
+
+    if (!email) {
+      return res.status(400).json({ error: 'Email is required' });
+    }
+
+    // Check if email service is configured
+    if (!emailService.isConfigured()) {
+      return res.json({ 
+        success: false, 
+        message: 'Password reset not available - email service not configured' 
+      });
+    }
+
+    // Get user by email
+    const user = await database.getUserByEmail(email);
+    
+    if (!user) {
+      // Don't reveal if email exists or not for security
+      return res.json({ 
+        success: true, 
+        message: 'If an account with that email exists, a password reset link has been sent.' 
+      });
+    }
+
+    // Generate reset token
+    const token = emailService.generateVerificationToken();
+    
+    // Save reset token
+    await database.createPasswordResetToken(token, email, user.id);
+    
+    // Send reset email
+    const baseUrl = process.env.BASE_URL || 'http://localhost:3000';
+    const result = await emailService.sendPasswordResetEmail(email, token, baseUrl);
+    
+    res.json({ 
+      success: true, 
+      message: 'If an account with that email exists, a password reset link has been sent.' 
+    });
+  } catch (error) {
+    console.error('[API] Error requesting password reset:', error);
+    res.status(500).json({ 
+      error: 'Failed to request password reset',
+      message: error.message 
+    });
+  }
+});
+
+// Verify reset token (for displaying reset form)
+app.get('/api/email/verify-reset-token', async (req, res) => {
+  try {
+    const { token } = req.query;
+
+    if (!token) {
+      return res.status(400).json({ error: 'Token is required' });
+    }
+
+    const resetToken = await database.getPasswordResetToken(token);
+    
+    if (!resetToken) {
+      return res.status(400).json({ 
+        error: 'Invalid or expired reset token',
+        expired: true 
+      });
+    }
+
+    res.json({ 
+      valid: true,
+      email: resetToken.email 
+    });
+  } catch (error) {
+    console.error('[API] Error verifying reset token:', error);
+    res.status(500).json({ 
+      error: 'Failed to verify reset token',
+      message: error.message 
+    });
+  }
+});
+
+// Reset password with token
+app.post('/api/email/reset-password', async (req, res) => {
+  try {
+    const { token, newPassword } = req.body;
+
+    if (!token || !newPassword) {
+      return res.status(400).json({ error: 'Token and new password are required' });
+    }
+
+    if (newPassword.length < 8 || newPassword.length > 128) {
+      return res.status(400).json({ error: 'Password must be 8-128 characters' });
+    }
+
+    // Verify token
+    const resetToken = await database.getPasswordResetToken(token);
+    
+    if (!resetToken) {
+      return res.status(400).json({ 
+        error: 'Invalid or expired reset token',
+        expired: true 
+      });
+    }
+
+    // Get user
+    const user = await database.getUserByEmail(resetToken.email);
+    
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    // Update password (user object should have passwordHash field)
+    const crypto = require('crypto');
+    const passwordHash = crypto.createHash('sha256').update(newPassword).digest('hex');
+    
+    // Update user with new password
+    const updatedUser = { ...user, passwordHash };
+    await database.savePlayer(updatedUser);
+    
+    // Delete the reset token
+    await database.deletePasswordResetToken(token);
+    
+    res.json({ 
+      success: true,
+      message: 'Password reset successfully' 
+    });
+  } catch (error) {
+    console.error('[API] Error resetting password:', error);
+    res.status(500).json({ 
+      error: 'Failed to reset password',
+      message: error.message 
+    });
+  }
+});
+
 const io = new Server(server, {
   cors: {
     origin: '*', // Allow all origins for development
