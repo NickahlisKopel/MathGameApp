@@ -595,6 +595,61 @@ export class ShopService {
     }
   }
 
+  // Check and unlock backgrounds based on player requirements
+  static async checkAndUnlockBackgrounds(): Promise<Background[]> {
+    try {
+      const player = await PlayerStorageService.loadPlayerProfile();
+      if (!player) return [];
+
+      const shopData = await this.loadShopData();
+      const newlyUnlocked: Background[] = [];
+
+      for (const bg of shopData.backgrounds) {
+        // Skip already unlocked or backgrounds without requirements
+        if (bg.isUnlocked || !bg.requirement) continue;
+
+        let shouldUnlock = false;
+
+        switch (bg.requirement.type) {
+          case 'streak':
+            shouldUnlock = player.currentStreak >= (bg.requirement.target as number);
+            break;
+          case 'level':
+            shouldUnlock = player.level >= (bg.requirement.target as number);
+            break;
+          case 'games_played':
+            shouldUnlock = player.gamesPlayed >= (bg.requirement.target as number);
+            break;
+          case 'accuracy':
+            const accuracy = player.totalQuestions > 0 
+              ? (player.totalCorrectAnswers / player.totalQuestions) * 100 
+              : 0;
+            shouldUnlock = accuracy >= (bg.requirement.target as number);
+            break;
+          case 'score':
+            shouldUnlock = player.bestScore >= (bg.requirement.target as number);
+            break;
+        }
+
+        if (shouldUnlock) {
+          bg.isUnlocked = true;
+          bg.unlockedAt = new Date();
+          newlyUnlocked.push(bg);
+          console.log(`🎉 Unlocked background: ${bg.name}`);
+        }
+      }
+
+      if (newlyUnlocked.length > 0) {
+        await this.saveShopData(shopData);
+      }
+
+      return newlyUnlocked;
+    } catch (error) {
+      console.error('Error checking background unlocks:', error);
+      return [];
+    }
+  }
+
   // Get colors for active background
   static async getActiveBackgroundColors(): Promise<string[]> {
     try {

@@ -329,13 +329,28 @@ function AppContent() {
     if (playerProfile && authenticatedUser) {
       (async () => {
         const streakResult = await PlayerStorageService.updateDailyStreak();
+        console.log('[App] Daily streak check result:', streakResult);
+        
         if (streakResult && streakResult.checkedInToday) {
           // Reload profile to get the updated streak value
           const updatedProfile = await PlayerStorageService.loadPlayerProfile();
           if (updatedProfile) {
+            console.log('[App] Current streak:', updatedProfile.currentStreak, 'Longest:', updatedProfile.longestStreak);
             setPlayerProfile(updatedProfile);
             setStreakValue(updatedProfile.currentStreak);
             setTimeout(() => setShowStreakModal(true), 500);
+            
+            // Check for newly unlocked backgrounds based on streak
+            const { ShopService } = await import('./services/ShopService');
+            const newlyUnlocked = await ShopService.checkAndUnlockBackgrounds();
+            if (newlyUnlocked.length > 0) {
+              setTimeout(() => {
+                Alert.alert(
+                  '🎉 New Backgrounds Unlocked!',
+                  `You unlocked ${newlyUnlocked.length} new background${newlyUnlocked.length > 1 ? 's' : ''}:\n${newlyUnlocked.map(bg => bg.name).join('\n')}`
+                );
+              }, 1000);
+            }
           }
         }
       })();
@@ -750,6 +765,10 @@ function AppContent() {
       if (updatedProfile) {
         setPlayerProfile(updatedProfile);
         
+        // Check for newly unlocked backgrounds
+        const { ShopService } = await import('./services/ShopService');
+        const newlyUnlocked = await ShopService.checkAndUnlockBackgrounds();
+        
         // Show streak modal if this was their first check-in today
         if (streakResult && streakResult.checkedInToday) {
           // Only show modal if streak actually increased or if it's their first streak
@@ -757,6 +776,16 @@ function AppContent() {
             setStreakValue(updatedProfile.currentStreak);
             setTimeout(() => setShowStreakModal(true), 1500); // Show after results screen
           }
+        }
+        
+        // Show unlock notification if any
+        if (newlyUnlocked.length > 0) {
+          setTimeout(() => {
+            Alert.alert(
+              '🎉 New Backgrounds Unlocked!',
+              `You unlocked ${newlyUnlocked.length} new background${newlyUnlocked.length > 1 ? 's' : ''}:\n${newlyUnlocked.map(bg => bg.name).join('\n')}`
+            );
+          }, 2000);
         }
       }
     } catch (error) {
