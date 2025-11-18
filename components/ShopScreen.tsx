@@ -294,19 +294,19 @@ export default function ShopScreen({ visible, onClose, player, onPlayerUpdated, 
               )}
               
               {background.unlockType === 'achievement' && background.requirement && (
-                <Text style={[styles.requirementText, { fontSize: 9 }]} numberOfLines={2}>
+                <Text style={[styles.requirementText, { fontSize: 9, color: theme.colors.textSecondary }]} numberOfLines={2}>
                   {background.requirement.description}
                 </Text>
               )}
               
               {background.unlockType === 'challenge' && background.requirement && (
-                <Text style={[styles.requirementText, { fontSize: 9 }]} numberOfLines={2}>
+                <Text style={[styles.requirementText, { fontSize: 9, color: theme.colors.textSecondary }]} numberOfLines={2}>
                   {background.requirement.description}
                 </Text>
               )}
               
               {background.unlockType === 'daily' && (
-                <Text style={[styles.requirementText, { fontSize: 9 }]}>
+                <Text style={[styles.requirementText, { fontSize: 9, color: theme.colors.textSecondary }]}>
                   Daily Challenge
                 </Text>
               )}
@@ -648,7 +648,7 @@ export default function ShopScreen({ visible, onClose, player, onPlayerUpdated, 
             
             <ScrollView style={styles.cheatSheetScroll} showsVerticalScrollIndicator={false}>
               <View style={styles.colorSection}>
-                <Text style={styles.cheatSheetSectionTitle}>Basic Colors</Text>
+                <Text style={[styles.cheatSheetSectionTitle, { color: theme.colors.text }]}>Basic Colors</Text>
                 <View style={styles.colorRow}>
                   <TouchableOpacity style={[styles.colorChip, { backgroundColor: '#FF0000' }]} onPress={() => { setHexCodeInput('#FF0000'); setShowHexCheatSheet(false); }}>
                     <Text style={styles.colorCode}>Red{'\n'}#FF0000</Text>
@@ -675,7 +675,7 @@ export default function ShopScreen({ visible, onClose, player, onPlayerUpdated, 
               </View>
 
               <View style={styles.colorSection}>
-                <Text style={styles.cheatSheetSectionTitle}>Popular Colors</Text>
+                <Text style={[styles.cheatSheetSectionTitle, { color: theme.colors.text }]}>Popular Colors</Text>
                 <View style={styles.colorRow}>
                   <TouchableOpacity style={[styles.colorChip, { backgroundColor: '#FF6B6B' }]} onPress={() => { setHexCodeInput('#FF6B6B'); setShowHexCheatSheet(false); }}>
                     <Text style={styles.colorCode}>Coral{'\n'}#FF6B6B</Text>
@@ -702,7 +702,7 @@ export default function ShopScreen({ visible, onClose, player, onPlayerUpdated, 
               </View>
 
               <View style={styles.colorSection}>
-                <Text style={styles.cheatSheetSectionTitle}>Dark Colors</Text>
+                <Text style={[styles.cheatSheetSectionTitle, { color: theme.colors.text }]}>Dark Colors</Text>
                 <View style={styles.colorRow}>
                   <TouchableOpacity style={[styles.colorChip, { backgroundColor: '#2C3E50' }]} onPress={() => { setHexCodeInput('#2C3E50'); setShowHexCheatSheet(false); }}>
                     <Text style={styles.colorCode}>Navy{'\n'}#2C3E50</Text>
@@ -927,11 +927,10 @@ const styles = StyleSheet.create({
   backgroundName: {
     fontSize: 14,
     fontWeight: 'bold',
-    color: '#333',
     textAlign: 'center',
     marginBottom: 5,  },
   lockedText: {
-    color: '#999',  },
+    opacity: 0.6,  },
   backgroundRarity: {
     fontSize: 12,
     fontWeight: '600',
@@ -955,7 +954,6 @@ const styles = StyleSheet.create({
     color: '#999',  },
   requirementText: {
     fontSize: 10,
-    color: '#666',
     textAlign: 'center',
     marginTop: 5,  },
   card: {
@@ -1006,8 +1004,7 @@ const styles = StyleSheet.create({
   },
   inputLabel: {
     fontSize: 16,
-    fontWeight: '600',
-    color: '#333',  },
+    fontWeight: '600',  },
   tipButton: {
     marginLeft: 10,
     backgroundColor: '#4CAF50',
@@ -1128,7 +1125,6 @@ const styles = StyleSheet.create({
   cheatSheetSectionTitle: {
     fontSize: 16,
     fontWeight: 'bold',
-    color: '#333',
     marginBottom: 10,
     textAlign: 'center',  },
   colorRow: {
