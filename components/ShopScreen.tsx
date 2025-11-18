@@ -267,9 +267,11 @@ export default function ShopScreen({ visible, onClose, player, onPlayerUpdated, 
           <Text style={[styles.backgroundName, { color: theme.colors.textSecondary, fontSize: 10 }, !isUnlocked && styles.lockedText]} numberOfLines={1}>
             {background.name}
           </Text>
-          <Text style={[styles.backgroundRarity, { color: getRarityColor(background.rarity), fontSize: 9 }]}>
-            {background.rarity.toUpperCase()}
-          </Text>
+          {background.rarity && (
+            <Text style={[styles.backgroundRarity, { color: getRarityColor(background.rarity), fontSize: 9 }]}>
+              {background.rarity.toUpperCase()}
+            </Text>
+          )}
           
           {!isUnlocked && (
             <View style={styles.unlockInfo}>
