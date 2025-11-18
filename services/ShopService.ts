@@ -81,6 +81,13 @@ export class ShopService {
     DEFAULT_BACKGROUNDS.forEach(defaultBg => {
       if (!existingIds.has(defaultBg.id)) {
         shopData.backgrounds.push({ ...defaultBg });
+      } else {
+        // Update existing backgrounds to match default categories (for migrations)
+        const existingBg = shopData.backgrounds.find(bg => bg.id === defaultBg.id);
+        if (existingBg && existingBg.category !== defaultBg.category) {
+          console.log(`[ShopService] Migrating ${existingBg.id} from ${existingBg.category} to ${defaultBg.category}`);
+          existingBg.category = defaultBg.category;
+        }
       }
     });
   }
