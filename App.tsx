@@ -331,26 +331,26 @@ function AppContent() {
         const streakResult = await PlayerStorageService.updateDailyStreak();
         console.log('[App] Daily streak check result:', streakResult);
         
-        if (streakResult && streakResult.checkedInToday) {
-          // Reload profile to get the updated streak value
-          const updatedProfile = await PlayerStorageService.loadPlayerProfile();
-          if (updatedProfile) {
-            console.log('[App] Current streak:', updatedProfile.currentStreak, 'Longest:', updatedProfile.longestStreak);
-            setPlayerProfile(updatedProfile);
-            setStreakValue(updatedProfile.currentStreak);
-            setTimeout(() => setShowStreakModal(true), 500);
-            
-            // Check for newly unlocked backgrounds based on streak
-            const { ShopService } = await import('./services/ShopService');
-            const newlyUnlocked = await ShopService.checkAndUnlockBackgrounds();
-            if (newlyUnlocked.length > 0) {
-              setTimeout(() => {
-                Alert.alert(
-                  '🎉 New Backgrounds Unlocked!',
-                  `You unlocked ${newlyUnlocked.length} new background${newlyUnlocked.length > 1 ? 's' : ''}:\n${newlyUnlocked.map(bg => bg.name).join('\n')}`
-                );
-              }, 1000);
-            }
+        // Reload profile to get the updated streak value
+        const updatedProfile = await PlayerStorageService.loadPlayerProfile();
+        if (updatedProfile) {
+          console.log('[App] Current streak:', updatedProfile.currentStreak, 'Longest:', updatedProfile.longestStreak);
+          setPlayerProfile(updatedProfile);
+          setStreakValue(updatedProfile.currentStreak);
+          
+          // Show streak modal on first app load (whether checked in today or not)
+          setTimeout(() => setShowStreakModal(true), 500);
+          
+          // Check for newly unlocked backgrounds based on streak
+          const { ShopService } = await import('./services/ShopService');
+          const newlyUnlocked = await ShopService.checkAndUnlockBackgrounds();
+          if (newlyUnlocked.length > 0) {
+            setTimeout(() => {
+              Alert.alert(
+                '🎉 New Backgrounds Unlocked!',
+                `You unlocked ${newlyUnlocked.length} new background${newlyUnlocked.length > 1 ? 's' : ''}:\n${newlyUnlocked.map(bg => bg.name).join('\n')}`
+              );
+            }, 1000);
           }
         }
       })();
@@ -1407,21 +1407,21 @@ function AppContent() {
           zIndex: 1000,
         }}>
           <View style={{
-            backgroundColor: 'white',
+            backgroundColor: theme.colors.card,
             borderRadius: 20,
             padding: 32,
             alignItems: 'center',
             maxWidth: 320,
             width: '80%',
-            shadowColor: '#000',
+            shadowColor: isDarkMode ? '#fff' : '#000',
             shadowOffset: { width: 0, height: 2 },
-            shadowOpacity: 0.2,
+            shadowOpacity: isDarkMode ? 0.1 : 0.2,
             shadowRadius: 8,
             elevation: 8,
           }}>
             <Text style={{ fontSize: 32, marginBottom: 8 }}>🔥</Text>
             <Text style={{ fontSize: 22, fontWeight: 'bold', color: '#4CAF50', marginBottom: 8 }}>Daily Streak!</Text>
-            <Text style={{ fontSize: 18, color: theme.colors.text, marginBottom: 12 }}>You're on a {streakValue} day streak!</Text>
+            <Text style={{ fontSize: 18, color: theme.colors.text, marginBottom: 12 }}>You're on a <Text style={{ fontWeight: 'bold', color: '#4CAF50' }}>{streakValue}</Text> day streak!</Text>
             <TouchableOpacity
               style={{
                 backgroundColor: '#4CAF50',
