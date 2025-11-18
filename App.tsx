@@ -1116,9 +1116,9 @@ function AppContent() {
                 />
                 
                 <IslandCard variant="floating" padding={12} style={styles.scoreIslandCard}>
-                  <Text style={[styles.scoreIsland, { color: '#333' }]}>Score: {gamePlayer.score}</Text>
+                  <Text style={[styles.scoreIsland, { color: theme.colors.text }]}>Score: {gamePlayer.score}</Text>
                   {gameMode === 'times_tables' && (
-                    <Text style={[styles.timesTableProgressIsland, { color: '#666' }]}>
+                    <Text style={[styles.timesTableProgressIsland, { color: theme.colors.text }]}>
                       {currentTable}× Table: {currentMultiplier}/15
                     </Text>
                   )}
@@ -1143,7 +1143,7 @@ function AppContent() {
               <IslandCard variant="floating" padding={16} style={styles.equationIslandCard}>
                 <Text style={[
                   styles.equation,
-                  { color: isDarkMode ? '#ffffff' : '#333' }
+                  { color: theme.colors.text }
                 ]}>{currentEquation.question}</Text>
               </IslandCard>
             </Animated.View>
@@ -1242,52 +1242,52 @@ function AppContent() {
           <View style={styles.statsContainer}>
             <IslandCard variant="elevated" padding={20} style={styles.statCardIsland}>
               <Text style={styles.statNumber}>{gamePlayer.score}</Text>
-              <Text style={[styles.statLabel, { color: '#666' }]}>Correct Answers</Text>
+              <Text style={[styles.statLabel, { color: theme.colors.textSecondary }]}>Correct Answers</Text>
             </IslandCard>
             
             <IslandCard variant="elevated" padding={20} style={styles.statCardIsland}>
               <Text style={styles.statNumber}>{accuracy}%</Text>
-              <Text style={[styles.statLabel, { color: '#666' }]}>Accuracy</Text>
+              <Text style={[styles.statLabel, { color: theme.colors.textSecondary }]}>Accuracy</Text>
             </IslandCard>
             
             <IslandCard variant="elevated" padding={20} style={styles.statCardIsland}>
               <Text style={styles.statNumber}>{avgTimePerEquation}s</Text>
-              <Text style={[styles.statLabel, { color: '#666' }]}>Avg Time</Text>
+              <Text style={[styles.statLabel, { color: theme.colors.textSecondary }]}>Avg Time</Text>
             </IslandCard>
           </View>
 
           <IslandCard variant="elevated" style={styles.scoreboardIsland}>
-            <Text style={[styles.scoreboardTitle, { color: '#333' }]}>
+            <Text style={[styles.scoreboardTitle, { color: theme.colors.text }]}>
               {gameMode === 'times_tables' ? 'Times Tables Summary' : 'Game Summary'}
             </Text>
             {gameMode === 'times_tables' ? (
               <>
                 <View style={styles.summaryRow}>
-                  <Text style={[styles.summaryLabel, { color: '#666' }]}>Tables Completed:</Text>
-                  <Text style={[styles.summaryValue, { color: '#333' }]}>{completedTables.length}/15</Text>
+                  <Text style={[styles.summaryLabel, { color: theme.colors.textSecondary }]}>Tables Completed:</Text>
+                  <Text style={[styles.summaryValue, { color: theme.colors.text }]}>{completedTables.length}/15</Text>
                 </View>
                 <View style={styles.summaryRow}>
-                  <Text style={[styles.summaryLabel, { color: '#666' }]}>Current Table:</Text>
-                  <Text style={[styles.summaryValue, { color: '#333' }]}>{currentTable}×</Text>
+                  <Text style={[styles.summaryLabel, { color: theme.colors.textSecondary }]}>Current Table:</Text>
+                  <Text style={[styles.summaryValue, { color: theme.colors.text }]}>{currentTable}×</Text>
                 </View>
                 <View style={styles.summaryRow}>
-                  <Text style={[styles.summaryLabel, { color: '#666' }]}>Progress:</Text>
-                  <Text style={[styles.summaryValue, { color: '#333' }]}>{currentMultiplier}/15</Text>
+                  <Text style={[styles.summaryLabel, { color: theme.colors.textSecondary }]}>Progress:</Text>
+                  <Text style={[styles.summaryValue, { color: theme.colors.text }]}>{currentMultiplier}/15</Text>
                 </View>
               </>
             ) : (
               <>
                 <View style={styles.summaryRow}>
-                  <Text style={[styles.summaryLabel, { color: '#666' }]}>Total Equations:</Text>
-                  <Text style={[styles.summaryValue, { color: '#333' }]}>{equationCount}</Text>
+                  <Text style={[styles.summaryLabel, { color: theme.colors.textSecondary }]}>Total Equations:</Text>
+                  <Text style={[styles.summaryValue, { color: theme.colors.text }]}>{equationCount}</Text>
                 </View>
                 <View style={styles.summaryRow}>
-                  <Text style={[styles.summaryLabel, { color: '#666' }]}>Difficulty:</Text>
-                  <Text style={[styles.summaryValue, { color: '#333' }]}>{difficulty.toUpperCase()}</Text>
+                  <Text style={[styles.summaryLabel, { color: theme.colors.textSecondary }]}>Difficulty:</Text>
+                  <Text style={[styles.summaryValue, { color: theme.colors.text }]}>{difficulty.toUpperCase()}</Text>
                 </View>
                 <View style={styles.summaryRow}>
-                  <Text style={[styles.summaryLabel, { color: '#666' }]}>Time Played:</Text>
-                  <Text style={[styles.summaryValue, { color: '#333' }]}>{gameTime - timeLeft}s</Text>
+                  <Text style={[styles.summaryLabel, { color: theme.colors.textSecondary }]}>Time Played:</Text>
+                  <Text style={[styles.summaryValue, { color: theme.colors.text }]}>{gameTime - timeLeft}s</Text>
                 </View>
               </>
             )}
@@ -1314,8 +1314,8 @@ function AppContent() {
   if (!authInitialized) {
     return (
       <SafeAreaProvider>
-        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#1a1a2e' }}>
-          <Text style={{ color: '#fff', fontSize: 18 }}>Loading...</Text>
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: theme.colors.primary }}>
+          <Text style={{ color: theme.colors.text, fontSize: 18 }}>Loading...</Text>
         </View>
       </SafeAreaProvider>
     );
@@ -1392,7 +1392,7 @@ function AppContent() {
           }}>
             <Text style={{ fontSize: 32, marginBottom: 8 }}>🔥</Text>
             <Text style={{ fontSize: 22, fontWeight: 'bold', color: '#4CAF50', marginBottom: 8 }}>Daily Streak!</Text>
-            <Text style={{ fontSize: 18, color: '#333', marginBottom: 12 }}>You're on a {streakValue} day streak!</Text>
+            <Text style={{ fontSize: 18, color: theme.colors.text, marginBottom: 12 }}>You're on a {streakValue} day streak!</Text>
             <TouchableOpacity
               style={{
                 backgroundColor: '#4CAF50',
@@ -1403,7 +1403,7 @@ function AppContent() {
               }}
               onPress={() => setShowStreakModal(false)}
             >
-              <Text style={{ color: 'white', fontWeight: 'bold', fontSize: 16 }}>Awesome!</Text>
+              <Text style={{ color: '#ffffff', fontWeight: 'bold', fontSize: 16 }}>Awesome!</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -1680,19 +1680,19 @@ function AppContent() {
           zIndex: 2000,
         }}>
           <View style={{
-            backgroundColor: '#fff',
+            backgroundColor: theme.colors.card,
             borderRadius: 20,
             padding: 25,
             width: '85%',
             maxWidth: 400,
           }}>
-            <Text style={{ fontSize: 24, fontWeight: 'bold', color: '#333', textAlign: 'center', marginBottom: 10 }}>
+            <Text style={{ fontSize: 24, fontWeight: 'bold', color: theme.colors.text, textAlign: 'center', marginBottom: 10 }}>
               ⚔️ Challenge Received!
             </Text>
-            <Text style={{ fontSize: 18, color: '#666', textAlign: 'center', marginBottom: 8 }}>
+            <Text style={{ fontSize: 18, color: theme.colors.textSecondary, textAlign: 'center', marginBottom: 8 }}>
               {incomingChallenge.from.name} challenges you!
             </Text>
-            <Text style={{ fontSize: 16, color: '#999', textAlign: 'center', marginBottom: 25 }}>
+            <Text style={{ fontSize: 16, color: theme.colors.textSecondary, textAlign: 'center', marginBottom: 25 }}>
               Difficulty: <Text style={{ fontWeight: 'bold', color: '#FF9800' }}>
                 {incomingChallenge.difficulty.toUpperCase()}
               </Text>
@@ -1701,7 +1701,7 @@ function AppContent() {
               style={{ backgroundColor: '#4CAF50', padding: 18, borderRadius: 12, marginBottom: 12 }}
               onPress={handleAcceptChallenge}
             >
-              <Text style={{ color: '#fff', fontSize: 18, fontWeight: 'bold', textAlign: 'center' }}>
+              <Text style={{ color: '#ffffff', fontSize: 18, fontWeight: 'bold', textAlign: 'center' }}>
                 ✓ Accept Challenge
               </Text>
             </TouchableOpacity>
@@ -1709,7 +1709,7 @@ function AppContent() {
               style={{ backgroundColor: '#f44336', padding: 18, borderRadius: 12 }}
               onPress={handleDeclineChallenge}
             >
-              <Text style={{ color: '#fff', fontSize: 18, fontWeight: 'bold', textAlign: 'center' }}>
+              <Text style={{ color: '#ffffff', fontSize: 18, fontWeight: 'bold', textAlign: 'center' }}>
                 ✗ Decline
               </Text>
             </TouchableOpacity>
