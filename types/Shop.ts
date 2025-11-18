@@ -16,6 +16,7 @@ export interface Background {
   isUnlocked: boolean;
   unlockedAt?: Date | null;
   animationType?: 'space' | 'particle' | 'wave' | 'forest'; // For animated backgrounds
+  isPlaceholder?: boolean; // True for "More Coming Soon!" placeholder items
 }
 
 export interface ShopItem {
@@ -248,7 +249,7 @@ function generateCategorizedBackgrounds(): Background[] {
     colors: ['#87CEEB', '#B0E0E6', '#E0F6FF'], // Sky blue colors
     preview: '🌲',
     rarity: 'epic',
-    category: 'Nature',
+    category: 'Special',
     unlockType: 'challenge',
     requirement: {
       type: 'streak',

@@ -563,6 +563,31 @@ export class ShopService {
         });
       });
       
+      // Ensure each category has minimum 2 items
+      Object.keys(categorized).forEach(category => {
+        const categoryData = categorized[category];
+        const totalItems = categoryData.unlocked.length + categoryData.locked.length;
+        
+        if (totalItems < 2) {
+          const itemsToAdd = 2 - totalItems;
+          for (let i = 0; i < itemsToAdd; i++) {
+            categoryData.locked.push({
+              id: `placeholder_${category}_${i}`,
+              name: 'More Coming Soon!',
+              type: 'gradient',
+              colors: ['#999999', '#666666'],
+              preview: '⏳',
+              price: 0,
+              rarity: 'common',
+              category: category,
+              unlockType: 'purchase',
+              isUnlocked: false,
+              isPlaceholder: true, // Flag to identify placeholders
+            } as any);
+          }
+        }
+      });
+      
       return categorized;
     } catch (error) {
       console.error('Error getting backgrounds for shop:', error);

@@ -227,13 +227,14 @@ export default function ShopScreen({ visible, onClose, player, onPlayerUpdated, 
   const renderBackgroundItem = ({ item: background }: { item: Background }) => {
     const isSelected = selectedBackground === background.id;
     const isUnlocked = background.isUnlocked;
+    const isPlaceholder = (background as any).isPlaceholder;
     
     return (
       <TouchableOpacity
-        onPress={() => isUnlocked ? handleSetActive(background.id) : showBackgroundPreview(background)}
-        disabled={loading}
-        activeOpacity={0.9}
-        style={{ minWidth: 90, maxWidth: 110, marginRight: 8 }}
+        onPress={() => !isPlaceholder && (isUnlocked ? handleSetActive(background.id) : showBackgroundPreview(background))}
+        disabled={loading || isPlaceholder}
+        activeOpacity={isPlaceholder ? 1 : 0.9}
+        style={{ minWidth: 90, maxWidth: 110, marginRight: 8, opacity: isPlaceholder ? 0.5 : 1 }}
       >
         <IslandCard
           variant={isSelected ? "floating" : "elevated"}
