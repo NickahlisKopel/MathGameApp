@@ -428,8 +428,8 @@ const FriendsScreen: React.FC<FriendsScreenProps> = ({
       {friendsData.length === 0 ? (
         <View style={styles.emptyState}>
           <Text style={styles.emptyIcon}>👥</Text>
-          <Text style={styles.emptyText}>No friends yet</Text>
-          <Text style={styles.emptySubtext}>
+          <Text style={[styles.emptyText, { color: theme.colors.text }]}>No friends yet</Text>
+          <Text style={[styles.emptySubtext, { color: theme.colors.textSecondary }]}>
             Add friends to play together!
           </Text>
         </View>
@@ -489,7 +489,7 @@ const FriendsScreen: React.FC<FriendsScreenProps> = ({
       {friendRequests.length === 0 ? (
         <View style={styles.emptyState}>
           <Text style={styles.emptyIcon}>📬</Text>
-          <Text style={styles.emptyText}>No pending requests</Text>
+          <Text style={[styles.emptyText, { color: theme.colors.text }]}>No pending requests</Text>
         </View>
       ) : (
         friendRequests.map((request) => (
@@ -497,8 +497,8 @@ const FriendsScreen: React.FC<FriendsScreenProps> = ({
             <View style={styles.friendInfo}>
               <Text style={styles.friendIcon}>👤</Text>
               <View style={styles.friendDetails}>
-                <Text style={styles.friendName}>{request.fromUsername}</Text>
-                <Text style={styles.friendStatus}>
+                <Text style={[styles.friendName, { color: theme.colors.text }]}>{request.fromUsername}</Text>
+                <Text style={[styles.friendStatus, { color: theme.colors.textSecondary }]}>
                   Sent {new Date(request.timestamp).toLocaleDateString()}
                 </Text>
               </View>
@@ -508,13 +508,13 @@ const FriendsScreen: React.FC<FriendsScreenProps> = ({
                 style={styles.acceptButton}
                 onPress={() => handleAcceptRequest(request.id, request.fromUsername)}
               >
-                <Text style={styles.acceptButtonText}>✓</Text>
+                <Text style={[styles.acceptButtonText, { color: '#fff' }]}>✓</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 style={styles.rejectButton}
                 onPress={() => handleRejectRequest(request.id)}
               >
-                <Text style={styles.rejectButtonText}>✗</Text>
+                <Text style={[styles.rejectButtonText, { color: '#fff' }]}>✗</Text>
               </TouchableOpacity>
             </View>
           </IslandCard>
@@ -536,7 +536,7 @@ const FriendsScreen: React.FC<FriendsScreenProps> = ({
               onPress={onBack}
             />
             <IslandCard variant="elevated" padding={12} style={styles.headerTitleCard}>
-              <Text style={styles.headerTitle}>👥 Friends</Text>
+              <Text style={[styles.headerTitle, { color: theme.colors.text }]}>👥 Friends</Text>
             </IslandCard>
             <View style={styles.headerRight} />
           </View>
@@ -545,9 +545,9 @@ const FriendsScreen: React.FC<FriendsScreenProps> = ({
           <View style={styles.searchContainer}>
             <IslandCard variant="elevated" style={styles.addFriendSection}>
               <TextInput
-                style={styles.searchInput}
+                style={[styles.searchInput, { color: theme.colors.text, backgroundColor: theme.colors.surface }]}
                 placeholder="Search by username"
-                placeholderTextColor="#999"
+                placeholderTextColor={theme.colors.textTertiary}
                 value={searchQuery}
                 onChangeText={handleSearchChange}
                 autoCapitalize="none"
@@ -558,7 +558,7 @@ const FriendsScreen: React.FC<FriendsScreenProps> = ({
                 }}
               />
               <TouchableOpacity style={styles.addButton} onPress={handleAddFriend}>
-                <Text style={styles.addButtonText}>➕ Add</Text>
+                <Text style={[styles.addButtonText, { color: '#fff' }]}>➕ Add</Text>
               </TouchableOpacity>
             </IslandCard>
             
@@ -603,7 +603,7 @@ const FriendsScreen: React.FC<FriendsScreenProps> = ({
               variant={selectedTab === 'friends' ? "elevated" : "subtle"}
               padding={12}
             >
-              <Text style={selectedTab === 'friends' ? styles.activeTabText : styles.tabText}>
+              <Text style={[selectedTab === 'friends' ? styles.activeTabText : styles.tabText, { color: selectedTab === 'friends' ? theme.colors.text : theme.colors.textSecondary }]}>
                 Friends ({friendIds.length})
               </Text>
             </IslandCard>
@@ -620,7 +620,7 @@ const FriendsScreen: React.FC<FriendsScreenProps> = ({
               variant={selectedTab === 'requests' ? "elevated" : "subtle"}
               padding={12}
             >
-              <Text style={selectedTab === 'requests' ? styles.activeTabText : styles.tabText}>
+              <Text style={[selectedTab === 'requests' ? styles.activeTabText : styles.tabText, { color: selectedTab === 'requests' ? theme.colors.text : theme.colors.textSecondary }]}>
                 Requests ({friendRequests.length})
               </Text>
             </IslandCard>
@@ -703,9 +703,9 @@ const FriendsScreen: React.FC<FriendsScreenProps> = ({
 
         {/* My Info - Island Style */}
         <IslandCard variant="floating" style={styles.myIdSection}>
-          <Text style={styles.myIdLabel}>Your Username:</Text>
-          <Text style={styles.myIdText}>{playerProfile.username}</Text>
-          <Text style={styles.myIdSubtext}>Friends can search for you by username!</Text>
+          <Text style={[styles.myIdLabel, { color: theme.colors.textSecondary }]}>Your Username:</Text>
+          <Text style={[styles.myIdText, { color: theme.colors.text }]}>{playerProfile.username}</Text>
+          <Text style={[styles.myIdSubtext, { color: theme.colors.textTertiary }]}>Friends can search for you by username!</Text>
         </IslandCard>
       </SafeAreaView>
     </BackgroundWrapper>
@@ -713,32 +713,32 @@ const FriendsScreen: React.FC<FriendsScreenProps> = ({
     {/* Challenge Modal */}
     {showChallengeModal && selectedFriend && (
       <View style={styles.challengeModalOverlay}>
-        <View style={styles.challengeModalContent}>
-          <Text style={styles.challengeModalTitle}>Challenge {selectedFriend.name}</Text>
-          <Text style={styles.challengeModalSubtitle}>Select Difficulty:</Text>
+        <View style={[styles.challengeModalContent, { backgroundColor: theme.colors.card }]}>
+          <Text style={[styles.challengeModalTitle, { color: theme.colors.text }]}>Challenge {selectedFriend.name}</Text>
+          <Text style={[styles.challengeModalSubtitle, { color: theme.colors.textSecondary }]}>Select Difficulty:</Text>
           
           <TouchableOpacity
             style={[styles.difficultyButton, styles.easyButton]}
             onPress={() => sendChallenge('easy')}
           >
-            <Text style={styles.difficultyButtonText}>😊 Easy</Text>
-            <Text style={styles.difficultyDescription}>Numbers 1-10</Text>
+            <Text style={[styles.difficultyButtonText, { color: '#fff' }]}>😊 Easy</Text>
+            <Text style={[styles.difficultyDescription, { color: 'rgba(255,255,255,0.9)' }]}>Numbers 1-10</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
             style={[styles.difficultyButton, styles.mediumButton]}
             onPress={() => sendChallenge('medium')}
           >
-            <Text style={styles.difficultyButtonText}>🤔 Medium</Text>
-            <Text style={styles.difficultyDescription}>Numbers 1-20</Text>
+            <Text style={[styles.difficultyButtonText, { color: '#fff' }]}>🤔 Medium</Text>
+            <Text style={[styles.difficultyDescription, { color: 'rgba(255,255,255,0.9)' }]}>Numbers 1-20</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
             style={[styles.difficultyButton, styles.hardButton]}
             onPress={() => sendChallenge('hard')}
           >
-            <Text style={styles.difficultyButtonText}>🔥 Hard</Text>
-            <Text style={styles.difficultyDescription}>Numbers 1-50</Text>
+            <Text style={[styles.difficultyButtonText, { color: '#fff' }]}>🔥 Hard</Text>
+            <Text style={[styles.difficultyDescription, { color: 'rgba(255,255,255,0.9)' }]}>Numbers 1-50</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
@@ -748,7 +748,7 @@ const FriendsScreen: React.FC<FriendsScreenProps> = ({
               setSelectedFriend(null);
             }}
           >
-            <Text style={styles.cancelButtonText}>Cancel</Text>
+            <Text style={[styles.cancelButtonText, { color: theme.colors.text }]}>Cancel</Text>
           </TouchableOpacity>
         </View>
       </View>

@@ -370,7 +370,7 @@ export default function PlayerProfileScreen({ player, onPlayerUpdated, onClose, 
           <Text style={[styles.progressLabel, { color: theme.colors.text }]}> 
             Progress to Level {getCurrentLevel() + 1}
           </Text>
-          <View style={styles.progressBar}>
+          <View style={[styles.progressBar, { backgroundColor: isDarkMode ? 'rgba(255,255,255,0.1)' : '#e0e0e0' }]}>
             <View 
               style={[styles.progressFill, { width: `${getProgressToNextLevel() * 100}%` }]} 
             />
@@ -386,19 +386,19 @@ export default function PlayerProfileScreen({ player, onPlayerUpdated, onClose, 
         <Text style={[styles.cardTitle, { color: theme.colors.text }]}>💰 Currency & Stats</Text>
         <View style={styles.statsGrid}>
           <View style={styles.statItem}>
-            <Text style={styles.statValue}>{player.coins}</Text>
+            <Text style={[styles.statValue, { color: theme.colors.text }]}>{player.coins}</Text>
             <Text style={[[styles.statLabel, { color: theme.colors.textTertiary }], { color: theme.colors.textTertiary }]}>Coins</Text>
           </View>
           <View style={styles.statItem}>
-            <Text style={styles.statValue}>{player.gamesPlayed}</Text>
+            <Text style={[styles.statValue, { color: theme.colors.text }]}>{player.gamesPlayed}</Text>
             <Text style={[styles.statLabel, { color: theme.colors.textTertiary }]}>Games</Text>
           </View>
           <View style={styles.statItem}>
-            <Text style={styles.statValue}>{player.bestScore}</Text>
+            <Text style={[styles.statValue, { color: theme.colors.text }]}>{player.bestScore}</Text>
             <Text style={[styles.statLabel, { color: theme.colors.textTertiary }]}>Best Score</Text>
           </View>
           <View style={styles.statItem}>
-            <Text style={styles.statValue}>
+            <Text style={[styles.statValue, { color: theme.colors.text }]}>
               {player.totalQuestions > 0 
                 ? Math.round((player.totalCorrectAnswers / player.totalQuestions) * 100)
                 : 0}%
@@ -458,22 +458,22 @@ export default function PlayerProfileScreen({ player, onPlayerUpdated, onClose, 
         
         <View style={styles.statRow}>
           <Text style={[styles.statRowLabel, { color: theme.colors.textSecondary }]}>Total Games Played</Text>
-          <Text style={styles.statRowValue}>{player.gamesPlayed}</Text>
+          <Text style={[styles.statRowValue, { color: theme.colors.text }]}>{player.gamesPlayed}</Text>
         </View>
         
         <View style={styles.statRow}>
           <Text style={[styles.statRowLabel, { color: theme.colors.textSecondary }]}>Correct Answers</Text>
-          <Text style={styles.statRowValue}>{player.totalCorrectAnswers}</Text>
+          <Text style={[styles.statRowValue, { color: theme.colors.text }]}>{player.totalCorrectAnswers}</Text>
         </View>
         
         <View style={styles.statRow}>
           <Text style={[styles.statRowLabel, { color: theme.colors.textSecondary }]}>Total Questions</Text>
-          <Text style={styles.statRowValue}>{player.totalQuestions}</Text>
+          <Text style={[styles.statRowValue, { color: theme.colors.text }]}>{player.totalQuestions}</Text>
         </View>
         
         <View style={styles.statRow}>
           <Text style={[styles.statRowLabel, { color: theme.colors.textSecondary }]}>Overall Accuracy</Text>
-          <Text style={styles.statRowValue}>
+          <Text style={[styles.statRowValue, { color: theme.colors.text }]}>
             {player.totalQuestions > 0 
               ? Math.round((player.totalCorrectAnswers / player.totalQuestions) * 100)
               : 0}%
@@ -482,29 +482,29 @@ export default function PlayerProfileScreen({ player, onPlayerUpdated, onClose, 
         
         <View style={styles.statRow}>
           <Text style={[styles.statRowLabel, { color: theme.colors.textSecondary }]}>Best Single Game Score</Text>
-          <Text style={styles.statRowValue}>{player.bestScore}</Text>
+          <Text style={[styles.statRowValue, { color: theme.colors.text }]}>{player.bestScore}</Text>
         </View>
         
         <View style={styles.statRow}>
           <Text style={[styles.statRowLabel, { color: theme.colors.textSecondary }]}>Best Accuracy</Text>
-          <Text style={styles.statRowValue}>{player.bestAccuracy}%</Text>
+          <Text style={[styles.statRowValue, { color: theme.colors.text }]}>{player.bestAccuracy}%</Text>
         </View>
         
         <View style={styles.statRow}>
           <Text style={[styles.statRowLabel, { color: theme.colors.textSecondary }]}>Fastest Answer Time</Text>
-          <Text style={styles.statRowValue}>
+          <Text style={[styles.statRowValue, { color: theme.colors.text }]}>
             {player.fastestAnswerTime > 0 ? `${player.fastestAnswerTime.toFixed(1)}s` : 'N/A'}
           </Text>
         </View>
         
         <View style={styles.statRow}>
           <Text style={[styles.statRowLabel, { color: theme.colors.textSecondary }]}>Total Coins Earned</Text>
-          <Text style={styles.statRowValue}>{player.totalCoinsEarned}</Text>
+          <Text style={[styles.statRowValue, { color: theme.colors.text }]}>{player.totalCoinsEarned}</Text>
         </View>
         
         <View style={styles.statRow}>
           <Text style={[styles.statRowLabel, { color: theme.colors.textSecondary }]}>Experience Points</Text>
-          <Text style={styles.statRowValue}>{player.experience} XP</Text>
+          <Text style={[styles.statRowValue, { color: theme.colors.text }]}>{player.experience} XP</Text>
         </View>
       </View>
     </ScrollView>
@@ -980,7 +980,7 @@ export default function PlayerProfileScreen({ player, onPlayerUpdated, onClose, 
               onPress={onClose}
             />
             <IslandCard variant="elevated" padding={12} style={styles.headerTitleCard}>
-              <Text style={styles.headerTitle}>👤 Profile</Text>
+              <Text style={[styles.headerTitle, { color: theme.colors.text }]}>👤 Profile</Text>
             </IslandCard>
             <View style={styles.placeholder} />
           </View>
