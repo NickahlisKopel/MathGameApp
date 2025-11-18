@@ -356,41 +356,15 @@ export default function ShopScreen({ visible, onClose, player, onPlayerUpdated, 
               
               {isExpanded && (
                 <View style={styles.categoryContent}>
-                  {totalUnlocked > 0 && (
-                    <>
-                      <View style={[styles.sectionHeader, { paddingVertical: 6 }]}>
-                        <Text style={[styles.sectionTitle, { color: theme.colors.text, fontSize: 12 }]}>🔓 Unlocked ({totalUnlocked})</Text>
-                      </View>
-                      
-                      <FlatList
-                        data={categoryData.unlocked}
-                        renderItem={renderBackgroundItem}
-                        keyExtractor={(item) => item.id}
-                        horizontal
-                        showsHorizontalScrollIndicator={true}
-                        contentContainerStyle={styles.horizontalGrid}
-                        style={styles.horizontalScroll}
-                      />
-                    </>
-                  )}
-                  
-                  {totalLocked > 0 && (
-                    <>
-                      <View style={[styles.sectionHeader, { paddingVertical: 6 }]}>
-                        <Text style={[styles.sectionTitle, { color: theme.colors.text, fontSize: 12 }]}>🔒 Locked ({totalLocked})</Text>
-                      </View>
-                      
-                      <FlatList
-                        data={categoryData.locked}
-                        renderItem={renderBackgroundItem}
-                        keyExtractor={(item) => item.id}
-                        horizontal
-                        showsHorizontalScrollIndicator={true}
-                        contentContainerStyle={styles.horizontalGrid}
-                        style={styles.horizontalScroll}
-                      />
-                    </>
-                  )}
+                  <FlatList
+                    data={[...categoryData.unlocked, ...categoryData.locked]}
+                    renderItem={renderBackgroundItem}
+                    keyExtractor={(item) => item.id}
+                    horizontal
+                    showsHorizontalScrollIndicator={true}
+                    contentContainerStyle={styles.horizontalGrid}
+                    style={styles.horizontalScroll}
+                  />
                 </View>
               )}
             </View>
