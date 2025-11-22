@@ -23,8 +23,8 @@ app.get('/', (req, res) => {
     status: 'ok', 
     message: 'Math Game Multiplayer Server', 
     timestamp: new Date().toISOString(),
-    version: '1.2.0',
-    features: ['email-verification', 'password-reset'],
+    version: '1.3.0',
+    features: ['email-verification', 'password-reset', 'community-backgrounds'],
   });
 });
 
@@ -32,7 +32,7 @@ app.get('/health', (req, res) => {
   res.json({ 
     status: 'healthy',
     emailConfigured: emailService.isConfigured(),
-    version: '1.2.0',
+    version: '1.3.0',
   });
 });
 
@@ -1268,6 +1268,267 @@ app.post('/api/friends/remove', async (req, res) => {
   } catch (error) {
     console.error('[API] Error removing friend:', error);
     res.status(500).json({ error: 'Failed to remove friend' });
+  }
+});
+
+// Community Backgrounds Endpoints
+
+const multer = require('multer');
+const fs = require('fs').promises;
+const crypto = require('crypto');
+
+// Create uploads directory if it doesn't exist
+const uploadsDir = path.join(__dirname, 'public', 'backgrounds');
+fs.mkdir(uploadsDir, { recursive: true }).catch(err => {
+  console.error('[Server] Failed to create uploads directory:', err);
+});
+
+// Configure multer for file uploads
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    cb(null, uploadsDir);
+  },
+  filename: (req, file, cb) => {
+    const uniqueSuffix = Date.now() + '-' + Math.random().toString(36).substr(2, 9);
+    cb(null, uniqueSuffix + path.extname(file.originalname));
+  }
+});
+
+const upload = multer({
+  storage: storage,
+  limits: {
+    fileSize: 5 * 1024 * 1024, // 5MB max
+  },
+  fileFilter: (req, file, cb) => {
+    // Accept images only
+    if (!file.originalname.match(/\.(jpg|jpeg|png|gif|webp)$/i)) {
+      return cb(new Error('Only image files are allowed!'), false);
+    }
+    cb(null, true);
+  }
+});
+
+// Upload a community background
+app.post('/api/community-backgrounds/upload', upload.single('image'), async (req, res) => {
+  try {
+    console.log('[API] Community background upload request');
+    
+    if (!req.file) {
+      return res.status(400).json({ error: 'No image file provided' });
+    }
+
+    const { name, description, tags, uploadedBy, uploaderName } = req.body;
+    
+    if (!name || !uploadedBy || !uploaderName) {
+      // Clean up uploaded file
+      await fs.unlink(req.file.path).catch(() => {});
+      return res.status(400).json({ error: 'Missing required fields' });
+    }
+
+    // Generate unique ID
+    const backgroundId = `community_${Date.now()}_${crypto.randomBytes(4).toString('hex')}`;
+    
+    // Create background object
+    const background = {
+      id: backgroundId,
+      name,
+      description: description || '',
+      tags: tags ? JSON.parse(tags) : [],
+      imageUrl: `/backgrounds/${req.file.filename}`,
+      uploadedBy,
+      uploaderName,
+      uploadedAt: new Date(),
+      status: 'pending', // Requires approval
+      likes: 0,
+      downloads: 0,
+      likedBy: [],
+    };
+
+    // Save to database
+    await database.saveCommunityBackground(background);
+    
+    console.log('[API] Community background uploaded:', backgroundId);
+    
+    res.json({
+      success: true,
+      background: {
+        ...background,
+        // Don't send likedBy array in response
+        likedBy: undefined,
+      },
+    });
+  } catch (error) {
+    console.error('[API] Error uploading background:', error);
+    // Clean up file if it was uploaded
+    if (req.file) {
+      await fs.unlink(req.file.path).catch(() => {});
+    }
+    res.status(500).json({ 
+      error: 'Failed to upload background',
+      message: error.message 
+    });
+  }
+});
+
+// Get community backgrounds
+app.get('/api/community-backgrounds', async (req, res) => {
+  try {
+    const { limit, skip, sortBy, sortOrder } = req.query;
+    
+    const options = {
+      limit: parseInt(limit) || 50,
+      skip: parseInt(skip) || 0,
+      sortBy: sortBy || 'uploadedAt',
+      sortOrder: parseInt(sortOrder) || -1,
+      status: 'approved', // Only show approved backgrounds
+    };
+    
+    const backgrounds = await database.getCommunityBackgrounds(options);
+    
+    // Remove sensitive data
+    const sanitized = backgrounds.map(bg => ({
+      ...bg,
+      likedBy: undefined,
+    }));
+    
+    res.json({ backgrounds: sanitized });
+  } catch (error) {
+    console.error('[API] Error getting community backgrounds:', error);
+    res.status(500).json({ error: 'Failed to get community backgrounds' });
+  }
+});
+
+// Get a specific community background
+app.get('/api/community-backgrounds/:backgroundId', async (req, res) => {
+  try {
+    const background = await database.getCommunityBackground(req.params.backgroundId);
+    
+    if (!background) {
+      return res.status(404).json({ error: 'Background not found' });
+    }
+    
+    res.json({
+      background: {
+        ...background,
+        likedBy: undefined,
+      },
+    });
+  } catch (error) {
+    console.error('[API] Error getting background:', error);
+    res.status(500).json({ error: 'Failed to get background' });
+  }
+});
+
+// Like/unlike a background
+app.post('/api/community-backgrounds/:backgroundId/like', async (req, res) => {
+  try {
+    const { userId } = req.body;
+    
+    if (!userId) {
+      return res.status(400).json({ error: 'User ID required' });
+    }
+    
+    const result = await database.likeBackground(req.params.backgroundId, userId);
+    
+    res.json(result);
+  } catch (error) {
+    console.error('[API] Error liking background:', error);
+    res.status(500).json({ error: 'Failed to like background' });
+  }
+});
+
+// Download/use a background (increment counter)
+app.post('/api/community-backgrounds/:backgroundId/download', async (req, res) => {
+  try {
+    const success = await database.incrementBackgroundDownloads(req.params.backgroundId);
+    
+    if (!success) {
+      return res.status(404).json({ error: 'Background not found' });
+    }
+    
+    res.json({ success: true });
+  } catch (error) {
+    console.error('[API] Error recording download:', error);
+    res.status(500).json({ error: 'Failed to record download' });
+  }
+});
+
+// Report a background
+app.post('/api/community-backgrounds/:backgroundId/report', async (req, res) => {
+  try {
+    const { userId, reason } = req.body;
+    
+    if (!userId || !reason) {
+      return res.status(400).json({ error: 'User ID and reason required' });
+    }
+    
+    await database.reportBackground(req.params.backgroundId, userId, reason);
+    
+    res.json({ success: true, message: 'Report submitted' });
+  } catch (error) {
+    console.error('[API] Error reporting background:', error);
+    res.status(500).json({ error: 'Failed to report background' });
+  }
+});
+
+// Admin: Approve a background
+app.post('/api/admin/backgrounds/:backgroundId/approve', async (req, res) => {
+  try {
+    const { adminKey } = req.body;
+    
+    // Simple admin authentication
+    if (adminKey !== process.env.ADMIN_KEY && adminKey !== 'ADMIN_APPROVE_KEY') {
+      return res.status(403).json({ error: 'Unauthorized' });
+    }
+    
+    const background = await database.getCommunityBackground(req.params.backgroundId);
+    
+    if (!background) {
+      return res.status(404).json({ error: 'Background not found' });
+    }
+    
+    background.status = 'approved';
+    background.approvedAt = new Date();
+    await database.saveCommunityBackground(background);
+    
+    res.json({ success: true, message: 'Background approved' });
+  } catch (error) {
+    console.error('[API] Error approving background:', error);
+    res.status(500).json({ error: 'Failed to approve background' });
+  }
+});
+
+// Admin: Reject a background
+app.post('/api/admin/backgrounds/:backgroundId/reject', async (req, res) => {
+  try {
+    const { adminKey, reason } = req.body;
+    
+    // Simple admin authentication
+    if (adminKey !== process.env.ADMIN_KEY && adminKey !== 'ADMIN_APPROVE_KEY') {
+      return res.status(403).json({ error: 'Unauthorized' });
+    }
+    
+    const background = await database.getCommunityBackground(req.params.backgroundId);
+    
+    if (!background) {
+      return res.status(404).json({ error: 'Background not found' });
+    }
+    
+    background.status = 'rejected';
+    background.rejectedAt = new Date();
+    background.rejectionReason = reason || 'Does not meet community guidelines';
+    await database.saveCommunityBackground(background);
+    
+    // Optionally delete the file
+    if (background.imageUrl) {
+      const filePath = path.join(__dirname, 'public', background.imageUrl);
+      await fs.unlink(filePath).catch(() => {});
+    }
+    
+    res.json({ success: true, message: 'Background rejected' });
+  } catch (error) {
+    console.error('[API] Error rejecting background:', error);
+    res.status(500).json({ error: 'Failed to reject background' });
   }
 });
 

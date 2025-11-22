@@ -13,13 +13,15 @@ import {
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Background, DailyChallenge, DailyChallengeSubmission, RARITY_COLORS } from '../types/Shop';
+import { Background, DailyChallenge, DailyChallengeSubmission, RARITY_COLORS, CommunityBackground } from '../types/Shop';
 import { PlayerProfile } from '../types/Player';
 import { ShopService } from '../services/ShopService';
+import { CommunityBackgroundService } from '../services/CommunityBackgroundService';
 import { useTheme, getContrastColor } from '../contexts/ThemeContext';
 import { IslandButton } from './IslandButton';
 import { IslandCard } from './IslandCard';
 import { IslandMenu } from './IslandMenu';
+import * as ImagePicker from 'expo-image-picker';
 
 interface Props {
   visible: boolean;
@@ -32,7 +34,7 @@ interface Props {
   onBackgroundChanged?: () => void;
 }
 
-type TabType = 'backgrounds' | 'daily';
+type TabType = 'backgrounds' | 'daily' | 'community';
 
 const { width, height } = Dimensions.get('window');
 
@@ -70,12 +72,39 @@ export default function ShopScreen({ visible, onClose, player, onPlayerUpdated, 
   const [showPreview, setShowPreview] = useState(false);
   const [previewBackground, setPreviewBackground] = useState<Background | null>(null);
   const [showHexCheatSheet, setShowHexCheatSheet] = useState(false);
+  const [communityBackgrounds, setCommunityBackgrounds] = useState<CommunityBackground[]>([]);
+  const [showUploadModal, setShowUploadModal] = useState(false);
+  const [uploadName, setUploadName] = useState('');
+  const [uploadDescription, setUploadDescription] = useState('');
+  const [uploadTags, setUploadTags] = useState('');
+  const [selectedImage, setSelectedImage] = useState<string | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const [sortBy, setSortBy] = useState<'uploadedAt' | 'likes' | 'downloads'>('uploadedAt');
 
   useEffect(() => {
     if (visible) {
       loadShopData();
       loadDailyChallenge();
-    }  }, [visible]);
+      if (activeTab === 'community') {
+        loadCommunityBackgrounds();
+      }
+    }
+  }, [visible, activeTab]);
+
+  const loadCommunityBackgrounds = async () => {
+    try {
+      const sortOrder = sortBy === 'uploadedAt' ? -1 : -1; // All sort by descending
+      const backgrounds = await CommunityBackgroundService.getCommunityBackgrounds({
+        limit: 50,
+        skip: 0,
+        sortBy,
+        sortOrder,
+      });
+      setCommunityBackgrounds(backgrounds);
+    } catch (error) {
+      console.error('Error loading community backgrounds:', error);
+    }
+  };
 
   const loadShopData = async () => {
     try {
@@ -513,6 +542,202 @@ export default function ShopScreen({ visible, onClose, player, onPlayerUpdated, 
     </ScrollView>
   );
 
+  const handlePickImage = async () => {
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    
+    if (status !== 'granted') {
+      Alert.alert('Permission Required', 'Please grant camera roll permissions to upload backgrounds.');
+      return;
+    }
+
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      aspect: [16, 9],
+      quality: 0.8,
+    });
+
+    if (!result.canceled && result.assets[0]) {
+      setSelectedImage(result.assets[0].uri);
+    }
+  };
+
+  const handleUpload = async () => {
+    if (!selectedImage || !uploadName.trim()) {
+      Alert.alert('Missing Information', 'Please select an image and enter a name.');
+      return;
+    }
+
+    setUploading(true);
+    try {
+      const tags = uploadTags.split(',').map(t => t.trim()).filter(t => t);
+      const result = await CommunityBackgroundService.uploadBackground(
+        selectedImage,
+        uploadName.trim(),
+        uploadDescription.trim(),
+        tags,
+        player.id,
+        player.username
+      );
+
+      if (result.success) {
+        Alert.alert('Success', 'Your background has been uploaded and is pending approval!');
+        setShowUploadModal(false);
+        setSelectedImage(null);
+        setUploadName('');
+        setUploadDescription('');
+        setUploadTags('');
+        loadCommunityBackgrounds();
+      } else {
+        Alert.alert('Upload Failed', result.error || 'Failed to upload background');
+      }
+    } catch (error) {
+      Alert.alert('Error', 'An error occurred while uploading');
+      console.error('Upload error:', error);
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const handleLike = async (backgroundId: string) => {
+    const result = await CommunityBackgroundService.toggleLike(backgroundId, player.id);
+    if (result.success) {
+      // Update local state
+      setCommunityBackgrounds(prev => 
+        prev.map(bg => 
+          bg.id === backgroundId 
+            ? { ...bg, likes: result.likes, isLiked: result.liked }
+            : bg
+        )
+      );
+    }
+  };
+
+  const handleUseCommunityBackground = async (background: CommunityBackground) => {
+    try {
+      // Record download
+      await CommunityBackgroundService.recordDownload(background.id);
+      
+      // For now, just show a message - actual implementation would need to save the image locally
+      Alert.alert(
+        'Community Background',
+        'Community backgrounds are downloaded and can be used! (Full implementation coming soon)',
+        [{ text: 'OK' }]
+      );
+      
+      // Update download count locally
+      setCommunityBackgrounds(prev => 
+        prev.map(bg => 
+          bg.id === background.id 
+            ? { ...bg, downloads: (bg.downloads || 0) + 1 }
+            : bg
+        )
+      );
+    } catch (error) {
+      console.error('Error using community background:', error);
+    }
+  };
+
+  const renderCommunityBackgrounds = () => (
+    <ScrollView style={styles.tabContent} showsVerticalScrollIndicator={false}>
+      <View style={[styles.card, { backgroundColor: theme.colors.card }]}>
+        <Text style={[styles.cardTitle, { color: theme.colors.text }]}>🌍 Community Market</Text>
+        <Text style={[styles.cardSubtitle, { color: theme.colors.textTertiary }]}>
+          Share your backgrounds with the community!
+        </Text>
+        
+        {/* Upload Button */}
+        <IslandButton
+          text="📤 Upload Background"
+          variant="primary"
+          onPress={() => setShowUploadModal(true)}
+          style={{ marginVertical: 16 }}
+        />
+
+        {/* Sort Options */}
+        <View style={styles.sortRow}>
+          <Text style={[styles.sortLabel, { color: theme.colors.text }]}>Sort by:</Text>
+          <View style={styles.sortButtons}>
+            <TouchableOpacity
+              style={[styles.sortButton, sortBy === 'uploadedAt' && styles.sortButtonActive]}
+              onPress={() => { setSortBy('uploadedAt'); loadCommunityBackgrounds(); }}
+            >
+              <Text style={[styles.sortButtonText, sortBy === 'uploadedAt' && styles.sortButtonTextActive]}>
+                Latest
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.sortButton, sortBy === 'likes' && styles.sortButtonActive]}
+              onPress={() => { setSortBy('likes'); loadCommunityBackgrounds(); }}
+            >
+              <Text style={[styles.sortButtonText, sortBy === 'likes' && styles.sortButtonTextActive]}>
+                Most Liked
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.sortButton, sortBy === 'downloads' && styles.sortButtonActive]}
+              onPress={() => { setSortBy('downloads'); loadCommunityBackgrounds(); }}
+            >
+              <Text style={[styles.sortButtonText, sortBy === 'downloads' && styles.sortButtonTextActive]}>
+                Popular
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+
+        {/* Community Backgrounds List */}
+        {communityBackgrounds.length === 0 ? (
+          <View style={styles.emptyState}>
+            <Text style={[styles.emptyStateText, { color: theme.colors.textTertiary }]}>
+              No community backgrounds yet. Be the first to upload! 🎨
+            </Text>
+          </View>
+        ) : (
+          <View style={styles.communityGrid}>
+            {communityBackgrounds.map((bg) => (
+              <View key={bg.id} style={[styles.communityBackgroundCard, { backgroundColor: theme.colors.inputBackground }]}>
+                <View style={styles.communityBackgroundImage}>
+                  <Text style={styles.communityBackgroundPlaceholder}>🖼️</Text>
+                </View>
+                <View style={styles.communityBackgroundInfo}>
+                  <Text style={[styles.communityBackgroundName, { color: theme.colors.text }]} numberOfLines={1}>
+                    {bg.name}
+                  </Text>
+                  <Text style={[styles.communityBackgroundAuthor, { color: theme.colors.textTertiary }]} numberOfLines={1}>
+                    by {bg.uploaderName}
+                  </Text>
+                  <Text style={[styles.communityBackgroundDescription, { color: theme.colors.textTertiary }]} numberOfLines={2}>
+                    {bg.description || 'No description'}
+                  </Text>
+                  <View style={styles.communityBackgroundStats}>
+                    <TouchableOpacity
+                      style={styles.likeButton}
+                      onPress={() => handleLike(bg.id)}
+                    >
+                      <Text style={styles.likeButtonText}>
+                        {bg.isLiked ? '❤️' : '🤍'} {bg.likes || 0}
+                      </Text>
+                    </TouchableOpacity>
+                    <Text style={[styles.downloadText, { color: theme.colors.textTertiary }]}>
+                      📥 {bg.downloads || 0}
+                    </Text>
+                  </View>
+                  <IslandButton
+                    text="Use Background"
+                    variant="primary"
+                    size="small"
+                    onPress={() => handleUseCommunityBackground(bg)}
+                    style={{ marginTop: 8 }}
+                  />
+                </View>
+              </View>
+            ))}
+          </View>
+        )}
+      </View>
+    </ScrollView>
+  );
+
   return (
     <Modal visible={visible} animationType="slide" presentationStyle="fullScreen">
       <BackgroundWrapper 
@@ -566,14 +791,33 @@ export default function ShopScreen({ visible, onClose, player, onPlayerUpdated, 
                 style={activeTab === 'daily' ? styles.activeTabBubble : styles.tabBubble}
               >
                 <Text style={[activeTab === 'daily' ? styles.activeTabText : styles.tabText, { color: theme.colors.text }]}>
-                  📅 Daily Challenge
+                  📅 Daily
+                </Text>
+              </IslandCard>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.tabButtonBubble}
+              onPress={() => setActiveTab('community')}
+              activeOpacity={0.8}
+            >
+              <IslandCard
+                variant={activeTab === 'community' ? "floating" : "elevated"}
+                padding={16}
+                style={activeTab === 'community' ? styles.activeTabBubble : styles.tabBubble}
+              >
+                <Text style={[activeTab === 'community' ? styles.activeTabText : styles.tabText, { color: theme.colors.text }]}>
+                  🌍 Community
                 </Text>
               </IslandCard>
             </TouchableOpacity>
           </View>
 
           {/* Content */}
-          <View style={{ width: '100%', flex: 1 }}>{activeTab === 'backgrounds' ? renderBackgrounds() : renderDailyChallenge()}</View>
+          <View style={{ width: '100%', flex: 1 }}>
+            {activeTab === 'backgrounds' && renderBackgrounds()}
+            {activeTab === 'daily' && renderDailyChallenge()}
+            {activeTab === 'community' && renderCommunityBackgrounds()}
+          </View>
         </SafeAreaView>
       </BackgroundWrapper>
 
@@ -699,6 +943,103 @@ export default function ShopScreen({ visible, onClose, player, onPlayerUpdated, 
             >
               <Text style={styles.cheatSheetCloseText}>Close</Text>
             </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Upload Background Modal */}
+      <Modal visible={showUploadModal} animationType="slide" transparent>
+        <View style={styles.previewOverlay}>
+          <View style={[styles.uploadModalContainer, { backgroundColor: theme.colors.surface }]}>
+            <Text style={[styles.uploadModalTitle, { color: theme.colors.text }]}>📤 Upload Background</Text>
+            
+            <ScrollView style={styles.uploadForm} showsVerticalScrollIndicator={false}>
+              {/* Image Picker */}
+              <TouchableOpacity
+                style={[styles.imagePickerButton, { backgroundColor: theme.colors.inputBackground, borderColor: theme.colors.border }]}
+                onPress={handlePickImage}
+              >
+                {selectedImage ? (
+                  <View style={styles.selectedImageContainer}>
+                    <Text style={[styles.selectedImageText, { color: theme.colors.text }]}>✓ Image Selected</Text>
+                  </View>
+                ) : (
+                  <View style={styles.imagePickerContent}>
+                    <Text style={styles.imagePickerIcon}>🖼️</Text>
+                    <Text style={[styles.imagePickerText, { color: theme.colors.textTertiary }]}>
+                      Tap to select image
+                    </Text>
+                  </View>
+                )}
+              </TouchableOpacity>
+
+              {/* Name Input */}
+              <Text style={[styles.uploadLabel, { color: theme.colors.text }]}>Name *</Text>
+              <TextInput
+                style={[styles.uploadInput, { backgroundColor: theme.colors.inputBackground, borderColor: theme.colors.border, color: theme.colors.inputText }]}
+                value={uploadName}
+                onChangeText={setUploadName}
+                placeholder="My Awesome Background"
+                placeholderTextColor={theme.colors.placeholderText}
+                maxLength={50}
+              />
+
+              {/* Description Input */}
+              <Text style={[styles.uploadLabel, { color: theme.colors.text }]}>Description</Text>
+              <TextInput
+                style={[styles.uploadInput, styles.uploadTextArea, { backgroundColor: theme.colors.inputBackground, borderColor: theme.colors.border, color: theme.colors.inputText }]}
+                value={uploadDescription}
+                onChangeText={setUploadDescription}
+                placeholder="A beautiful gradient background..."
+                placeholderTextColor={theme.colors.placeholderText}
+                maxLength={200}
+                multiline
+                numberOfLines={3}
+              />
+
+              {/* Tags Input */}
+              <Text style={[styles.uploadLabel, { color: theme.colors.text }]}>Tags (comma-separated)</Text>
+              <TextInput
+                style={[styles.uploadInput, { backgroundColor: theme.colors.inputBackground, borderColor: theme.colors.border, color: theme.colors.inputText }]}
+                value={uploadTags}
+                onChangeText={setUploadTags}
+                placeholder="gradient, blue, abstract"
+                placeholderTextColor={theme.colors.placeholderText}
+                maxLength={100}
+              />
+
+              <Text style={[styles.uploadHint, { color: theme.colors.textTertiary }]}>
+                ℹ️ Your background will be reviewed before appearing in the community market.
+              </Text>
+            </ScrollView>
+
+            <View style={styles.uploadModalButtons}>
+              <TouchableOpacity
+                style={[styles.uploadModalButton, styles.uploadModalButtonSecondary, { backgroundColor: theme.colors.inputBackground }]}
+                onPress={() => {
+                  setShowUploadModal(false);
+                  setSelectedImage(null);
+                  setUploadName('');
+                  setUploadDescription('');
+                  setUploadTags('');
+                }}
+              >
+                <Text style={[styles.uploadModalButtonText, { color: theme.colors.text }]}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[
+                  styles.uploadModalButton,
+                  styles.uploadModalButtonPrimary,
+                  (!selectedImage || !uploadName.trim() || uploading) && styles.uploadModalButtonDisabled
+                ]}
+                onPress={handleUpload}
+                disabled={!selectedImage || !uploadName.trim() || uploading}
+              >
+                <Text style={styles.uploadModalButtonText}>
+                  {uploading ? 'Uploading...' : 'Upload'}
+                </Text>
+              </TouchableOpacity>
+            </View>
           </View>
         </View>
       </Modal>
@@ -1248,5 +1589,191 @@ const styles = StyleSheet.create({
     marginHorizontal: 5,
     fontWeight: 'bold',  },
   categoryContent: {
-    marginLeft: 10,  },
+    marginLeft: 10,
+  },
+  // Community styles
+  sortRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 16,
+    gap: 12,
+  },
+  sortLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  sortButtons: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  sortButton: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+    backgroundColor: 'rgba(255,255,255,0.1)',
+  },
+  sortButtonActive: {
+    backgroundColor: 'rgba(102, 126, 234, 0.3)',
+  },
+  sortButtonText: {
+    fontSize: 12,
+    color: '#999',
+  },
+  sortButtonTextActive: {
+    color: '#667eea',
+    fontWeight: '600',
+  },
+  emptyState: {
+    padding: 32,
+    alignItems: 'center',
+  },
+  emptyStateText: {
+    fontSize: 14,
+    textAlign: 'center',
+  },
+  communityGrid: {
+    gap: 16,
+  },
+  communityBackgroundCard: {
+    borderRadius: 12,
+    padding: 12,
+    marginBottom: 12,
+  },
+  communityBackgroundImage: {
+    width: '100%',
+    height: 150,
+    borderRadius: 8,
+    backgroundColor: 'rgba(0,0,0,0.1)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  communityBackgroundPlaceholder: {
+    fontSize: 48,
+  },
+  communityBackgroundInfo: {
+    gap: 4,
+  },
+  communityBackgroundName: {
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  communityBackgroundAuthor: {
+    fontSize: 12,
+  },
+  communityBackgroundDescription: {
+    fontSize: 12,
+    marginTop: 4,
+  },
+  communityBackgroundStats: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 16,
+    marginTop: 8,
+  },
+  likeButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  likeButtonText: {
+    fontSize: 14,
+  },
+  downloadText: {
+    fontSize: 12,
+  },
+  // Upload modal styles
+  uploadModalContainer: {
+    width: '90%',
+    maxHeight: '80%',
+    borderRadius: 20,
+    padding: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+  uploadModalTitle: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    marginBottom: 20,
+    textAlign: 'center',
+  },
+  uploadForm: {
+    flex: 1,
+  },
+  imagePickerButton: {
+    height: 150,
+    borderRadius: 12,
+    borderWidth: 2,
+    borderStyle: 'dashed',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  imagePickerContent: {
+    alignItems: 'center',
+  },
+  imagePickerIcon: {
+    fontSize: 48,
+    marginBottom: 8,
+  },
+  imagePickerText: {
+    fontSize: 14,
+  },
+  selectedImageContainer: {
+    alignItems: 'center',
+  },
+  selectedImageText: {
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  uploadLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    marginBottom: 8,
+  },
+  uploadInput: {
+    borderWidth: 1,
+    borderRadius: 8,
+    padding: 12,
+    fontSize: 14,
+    marginBottom: 16,
+  },
+  uploadTextArea: {
+    height: 80,
+    textAlignVertical: 'top',
+  },
+  uploadHint: {
+    fontSize: 12,
+    fontStyle: 'italic',
+    marginTop: 8,
+    textAlign: 'center',
+  },
+  uploadModalButtons: {
+    flexDirection: 'row',
+    gap: 12,
+    marginTop: 16,
+  },
+  uploadModalButton: {
+    flex: 1,
+    paddingVertical: 14,
+    borderRadius: 10,
+    alignItems: 'center',
+  },
+  uploadModalButtonSecondary: {
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.2)',
+  },
+  uploadModalButtonPrimary: {
+    backgroundColor: '#667eea',
+  },
+  uploadModalButtonDisabled: {
+    opacity: 0.5,
+  },
+  uploadModalButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#fff',
+  },
 });

@@ -1,12 +1,12 @@
 export interface Background {
   id: string;
   name: string;
-  type: 'gradient' | 'solid' | 'custom' | 'animated';
+  type: 'gradient' | 'solid' | 'custom' | 'animated' | 'community';
   colors: string[]; // For gradients: [color1, color2], for solid: [color], for custom: [hexCode], for animated: theme colors
   preview: string; // Preview emoji or icon
   rarity: 'common' | 'uncommon' | 'rare' | 'epic' | 'legendary' | 'special';
   category?: string; // Color category (Red, Blue, Green, etc.)
-  unlockType: 'free' | 'purchase' | 'achievement' | 'daily' | 'challenge' | 'default' | 'event';
+  unlockType: 'free' | 'purchase' | 'achievement' | 'daily' | 'challenge' | 'default' | 'event' | 'community';
   price?: number; // Cost in coins (if purchasable)
   requirement?: {
     type: 'achievement' | 'challenge' | 'level' | 'games_played' | 'accuracy' | 'score' | 'streak';
@@ -17,6 +17,31 @@ export interface Background {
   unlockedAt?: Date | null;
   animationType?: 'space' | 'particle' | 'wave' | 'forest'; // For animated backgrounds
   isPlaceholder?: boolean; // True for "More Coming Soon!" placeholder items
+  // Community background fields
+  imageUrl?: string; // URL to uploaded image
+  description?: string; // Description from uploader
+  tags?: string[]; // Tags for searching
+  uploadedBy?: string; // User ID who uploaded
+  uploaderName?: string; // Username who uploaded
+  uploadedAt?: Date; // When it was uploaded
+  likes?: number; // Number of likes
+  downloads?: number; // Number of downloads
+  isLiked?: boolean; // Whether current user liked it
+}
+
+export interface CommunityBackground {
+  id: string;
+  name: string;
+  description: string;
+  tags: string[];
+  imageUrl: string;
+  uploadedBy: string;
+  uploaderName: string;
+  uploadedAt: Date;
+  status: 'pending' | 'approved' | 'rejected';
+  likes: number;
+  downloads: number;
+  isLiked?: boolean; // Client-side only
 }
 
 export interface ShopItem {
