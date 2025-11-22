@@ -983,7 +983,8 @@ class DatabaseService {
       if (!this.inMemoryStorage.backgroundReports) {
         this.inMemoryStorage.backgroundReports = new Map();
       }
-      const reportId = `report_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`;
+      const crypto = require('crypto');
+      const reportId = `report_${Date.now()}_${crypto.randomBytes(4).toString('hex')}`;
       this.inMemoryStorage.backgroundReports.set(reportId, {
         id: reportId,
         backgroundId,
@@ -996,9 +997,10 @@ class DatabaseService {
     }
 
     if (!this.db) return false;
+    const crypto = require('crypto');
     const reports = this.db.collection('backgroundReports');
     await reports.insertOne({
-      id: `report_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`,
+      id: `report_${Date.now()}_${crypto.randomBytes(4).toString('hex')}`,
       backgroundId,
       userId,
       reason,
