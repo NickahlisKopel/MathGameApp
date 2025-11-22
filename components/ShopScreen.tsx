@@ -93,7 +93,8 @@ export default function ShopScreen({ visible, onClose, player, onPlayerUpdated, 
 
   const loadCommunityBackgrounds = async () => {
     try {
-      const sortOrder = sortBy === 'uploadedAt' ? -1 : -1; // All sort by descending
+      // All sorts default to descending order (newest/most first)
+      const sortOrder = -1;
       const backgrounds = await CommunityBackgroundService.getCommunityBackgrounds({
         limit: 50,
         skip: 0,

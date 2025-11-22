@@ -40,9 +40,8 @@ export class CommunityBackgroundService {
       const response = await fetch(`${serverUrl}/api/community-backgrounds/upload`, {
         method: 'POST',
         body: formData,
-        headers: {
-          'Content-Type': 'multipart/form-data',
-        },
+        // Note: Don't set Content-Type header manually for FormData
+        // The browser will set it automatically with the correct boundary
       });
       
       const data = await response.json();

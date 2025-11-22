@@ -1289,7 +1289,7 @@ const storage = multer.diskStorage({
     cb(null, uploadsDir);
   },
   filename: (req, file, cb) => {
-    const uniqueSuffix = Date.now() + '-' + Math.random().toString(36).substr(2, 9);
+    const uniqueSuffix = Date.now() + '-' + Math.random().toString(36).substring(2, 11);
     cb(null, uniqueSuffix + path.extname(file.originalname));
   }
 });
@@ -1476,8 +1476,8 @@ app.post('/api/admin/backgrounds/:backgroundId/approve', async (req, res) => {
   try {
     const { adminKey } = req.body;
     
-    // Simple admin authentication
-    if (adminKey !== process.env.ADMIN_KEY && adminKey !== 'ADMIN_APPROVE_KEY') {
+    // Simple admin authentication - requires ADMIN_KEY environment variable
+    if (!process.env.ADMIN_KEY || adminKey !== process.env.ADMIN_KEY) {
       return res.status(403).json({ error: 'Unauthorized' });
     }
     
@@ -1503,8 +1503,8 @@ app.post('/api/admin/backgrounds/:backgroundId/reject', async (req, res) => {
   try {
     const { adminKey, reason } = req.body;
     
-    // Simple admin authentication
-    if (adminKey !== process.env.ADMIN_KEY && adminKey !== 'ADMIN_APPROVE_KEY') {
+    // Simple admin authentication - requires ADMIN_KEY environment variable
+    if (!process.env.ADMIN_KEY || adminKey !== process.env.ADMIN_KEY) {
       return res.status(403).json({ error: 'Unauthorized' });
     }
     

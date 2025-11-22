@@ -983,7 +983,7 @@ class DatabaseService {
       if (!this.inMemoryStorage.backgroundReports) {
         this.inMemoryStorage.backgroundReports = new Map();
       }
-      const reportId = `report_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+      const reportId = `report_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`;
       this.inMemoryStorage.backgroundReports.set(reportId, {
         id: reportId,
         backgroundId,
@@ -998,7 +998,7 @@ class DatabaseService {
     if (!this.db) return false;
     const reports = this.db.collection('backgroundReports');
     await reports.insertOne({
-      id: `report_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+      id: `report_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`,
       backgroundId,
       userId,
       reason,
