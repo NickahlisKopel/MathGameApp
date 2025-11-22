@@ -934,7 +934,7 @@ class DatabaseService {
       if (background.likedBy.includes(userId)) {
         // Unlike
         background.likedBy = background.likedBy.filter(id => id !== userId);
-        background.likes = (background.likes || 1) - 1;
+        background.likes = Math.max(0, (background.likes || 0) - 1);
         return { success: true, liked: false, likes: background.likes };
       } else {
         // Like
@@ -984,7 +984,7 @@ class DatabaseService {
         this.inMemoryStorage.backgroundReports = new Map();
       }
       const crypto = require('crypto');
-      const reportId = `report_${Date.now()}_${crypto.randomBytes(4).toString('hex')}`;
+      const reportId = `report_${crypto.randomUUID()}`;
       this.inMemoryStorage.backgroundReports.set(reportId, {
         id: reportId,
         backgroundId,
@@ -1000,7 +1000,7 @@ class DatabaseService {
     const crypto = require('crypto');
     const reports = this.db.collection('backgroundReports');
     await reports.insertOne({
-      id: `report_${Date.now()}_${crypto.randomBytes(4).toString('hex')}`,
+      id: `report_${crypto.randomUUID()}`,
       backgroundId,
       userId,
       reason,

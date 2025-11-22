@@ -1275,13 +1275,17 @@ app.post('/api/friends/remove', async (req, res) => {
 
 const multer = require('multer');
 const fs = require('fs').promises;
+const fsSync = require('fs');
 const crypto = require('crypto');
 
-// Create uploads directory if it doesn't exist
+// Create uploads directory if it doesn't exist (synchronously to ensure it's ready)
 const uploadsDir = path.join(__dirname, 'public', 'backgrounds');
-fs.mkdir(uploadsDir, { recursive: true }).catch(err => {
+try {
+  fsSync.mkdirSync(uploadsDir, { recursive: true });
+  console.log('[Server] Uploads directory ready:', uploadsDir);
+} catch (err) {
   console.error('[Server] Failed to create uploads directory:', err);
-});
+}
 
 // Configure multer for file uploads
 const storage = multer.diskStorage({
@@ -1325,8 +1329,8 @@ app.post('/api/community-backgrounds/upload', upload.single('image'), async (req
       return res.status(400).json({ error: 'Missing required fields' });
     }
 
-    // Generate unique ID
-    const backgroundId = `community_${Date.now()}_${crypto.randomBytes(4).toString('hex')}`;
+    // Generate unique ID using UUID for better security
+    const backgroundId = `community_${crypto.randomUUID()}`;
     
     // Create background object
     const background = {
@@ -1477,7 +1481,15 @@ app.post('/api/admin/backgrounds/:backgroundId/approve', async (req, res) => {
     const { adminKey } = req.body;
     
     // Simple admin authentication - requires ADMIN_KEY environment variable
-    if (!process.env.ADMIN_KEY || adminKey !== process.env.ADMIN_KEY) {
+    // Use timing-safe comparison to prevent timing attacks
+    if (!process.env.ADMIN_KEY || !adminKey) {
+      return res.status(403).json({ error: 'Unauthorized' });
+    }
+    
+    const expectedKey = Buffer.from(process.env.ADMIN_KEY);
+    const providedKey = Buffer.from(adminKey);
+    
+    if (expectedKey.length !== providedKey.length || !crypto.timingSafeEqual(expectedKey, providedKey)) {
       return res.status(403).json({ error: 'Unauthorized' });
     }
     
@@ -1504,7 +1516,15 @@ app.post('/api/admin/backgrounds/:backgroundId/reject', async (req, res) => {
     const { adminKey, reason } = req.body;
     
     // Simple admin authentication - requires ADMIN_KEY environment variable
-    if (!process.env.ADMIN_KEY || adminKey !== process.env.ADMIN_KEY) {
+    // Use timing-safe comparison to prevent timing attacks
+    if (!process.env.ADMIN_KEY || !adminKey) {
+      return res.status(403).json({ error: 'Unauthorized' });
+    }
+    
+    const expectedKey = Buffer.from(process.env.ADMIN_KEY);
+    const providedKey = Buffer.from(adminKey);
+    
+    if (expectedKey.length !== providedKey.length || !crypto.timingSafeEqual(expectedKey, providedKey)) {
       return res.status(403).json({ error: 'Unauthorized' });
     }
     

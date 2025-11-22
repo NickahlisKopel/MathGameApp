@@ -619,10 +619,15 @@ export default function ShopScreen({ visible, onClose, player, onPlayerUpdated, 
       // Record download
       await CommunityBackgroundService.recordDownload(background.id);
       
-      // For now, just show a message - actual implementation would need to save the image locally
+      // Note: This is a placeholder implementation
+      // Full implementation requires:
+      // 1. Download image from server
+      // 2. Save to local storage
+      // 3. Add to user's backgrounds collection
+      // 4. Allow setting as active background
       Alert.alert(
-        'Community Background',
-        'Community backgrounds are downloaded and can be used! (Full implementation coming soon)',
+        'Download Recorded',
+        `Thanks for downloading "${background.name}"! Full background application coming in a future update.`,
         [{ text: 'OK' }]
       );
       
@@ -635,7 +640,8 @@ export default function ShopScreen({ visible, onClose, player, onPlayerUpdated, 
         )
       );
     } catch (error) {
-      console.error('Error using community background:', error);
+      console.error('Error recording download:', error);
+      Alert.alert('Error', 'Failed to record download. Please try again.');
     }
   };
 
