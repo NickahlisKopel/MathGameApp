@@ -261,8 +261,14 @@ For example, if `imageUrl` is `/backgrounds/1234567890-abc123.png`, the full URL
 1. **File Size Limit:** 5MB maximum
 2. **File Types:** Only image files (jpg, jpeg, png, gif, webp) are accepted
 3. **Moderation:** All uploads start with `status: 'pending'` and require admin approval
-4. **Admin Key:** Set via environment variable `ADMIN_KEY` or use default `ADMIN_APPROVE_KEY`
-5. **Rate Limiting:** Consider implementing rate limiting for uploads in production
+4. **Admin Key:** Set via environment variable `ADMIN_KEY` (required for admin endpoints)
+5. **Timing-Safe Auth:** Admin authentication uses `crypto.timingSafeEqual()` to prevent timing attacks
+6. **Secure IDs:** All IDs use `crypto.randomUUID()` for unpredictability
+7. **Rate Limiting:** **IMPORTANT** - Implement rate limiting in production to prevent abuse:
+   - Recommended: Use express-rate-limit middleware
+   - Upload endpoint: 5 uploads per hour per IP
+   - Admin endpoints: 100 requests per hour per IP
+   - Like/download endpoints: 1000 requests per hour per IP
 
 ## Database Schema
 

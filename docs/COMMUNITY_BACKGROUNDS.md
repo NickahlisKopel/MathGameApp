@@ -132,15 +132,24 @@ curl -X POST http://localhost:3000/api/admin/backgrounds/BACKGROUND_ID/reject \
 - Only image file types accepted
 - Files validated by multer middleware
 - Unique filenames prevent collisions
+- Cryptographically secure ID generation (UUID v4)
 
 ### Content Moderation
 - All uploads require approval before display
 - Report system for inappropriate content
 - Admin authentication for moderation actions
+- Timing-safe credential comparison prevents attacks
 
 ### User Privacy
 - User IDs and usernames are public for attribution
 - Like actions are tracked but not publicly displayed individually
+
+### Rate Limiting (Production Recommendation)
+For production deployments, implement rate limiting:
+- **Upload endpoint:** 5 uploads per hour per user/IP
+- **Like/download endpoints:** 1000 requests per hour per user/IP
+- **Admin endpoints:** 100 requests per hour per IP
+- Consider using middleware like `express-rate-limit`
 
 ## Future Enhancements
 
