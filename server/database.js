@@ -24,6 +24,8 @@ class DatabaseService {
           emailVerifications: new Map(), // key: token, value: {email, userId, createdAt}
           emailAccounts: new Map(), // key: email, value: {userId, verified, createdAt}
           passwordResetTokens: new Map(), // key: token, value: {email, userId, createdAt, expiresAt}
+          communityBackgrounds: new Map(), // key: backgroundId, value: background data
+          backgroundReports: new Map(), // key: reportId, value: report data
         };
         return true;
       }
@@ -50,6 +52,11 @@ class DatabaseService {
       await this.db.collection('dailyChallengeSubmissions').createIndex({ date: 1, playerId: 1 }, { unique: true });
       await this.db.collection('dailyChallengeSubmissions').createIndex({ date: 1, isCorrect: 1 });
       await this.db.collection('dailyHexCodes').createIndex({ date: 1 }, { unique: true });
+      await this.db.collection('communityBackgrounds').createIndex({ id: 1 }, { unique: true });
+      await this.db.collection('communityBackgrounds').createIndex({ uploadedBy: 1 });
+      await this.db.collection('communityBackgrounds').createIndex({ status: 1, uploadedAt: -1 });
+      await this.db.collection('communityBackgrounds').createIndex({ status: 1, likes: -1 });
+      await this.db.collection('communityBackgrounds').createIndex({ status: 1, downloads: -1 });
       console.log('[Database] Indexes created');
       
       return true;
@@ -64,6 +71,8 @@ class DatabaseService {
         emailVerifications: new Map(),
         emailAccounts: new Map(),
         passwordResetTokens: new Map(),
+        communityBackgrounds: new Map(),
+        backgroundReports: new Map(),
       };
       return true; // Return true to allow server to continue
     }
@@ -812,6 +821,193 @@ class DatabaseService {
     const player = await players.findOne({ email: normalizedEmail });
     console.log('[Database] Player search result:', player ? `Found: ${player.id}` : 'Not found');
     return player;
+  }
+
+  // Community Background Methods
+  async saveCommunityBackground(background) {
+    if (this.inMemoryStorage) {
+      if (!this.inMemoryStorage.communityBackgrounds) {
+        this.inMemoryStorage.communityBackgrounds = new Map();
+      }
+      this.inMemoryStorage.communityBackgrounds.set(background.id, background);
+      return true;
+    }
+
+    if (!this.db) return false;
+    const communityBackgrounds = this.db.collection('communityBackgrounds');
+    await communityBackgrounds.updateOne(
+      { id: background.id },
+      { $set: background },
+      { upsert: true }
+    );
+    return true;
+  }
+
+  async getCommunityBackground(backgroundId) {
+    if (this.inMemoryStorage) {
+      if (!this.inMemoryStorage.communityBackgrounds) {
+        return null;
+      }
+      return this.inMemoryStorage.communityBackgrounds.get(backgroundId) || null;
+    }
+
+    if (!this.db) return null;
+    const communityBackgrounds = this.db.collection('communityBackgrounds');
+    return await communityBackgrounds.findOne({ id: backgroundId });
+  }
+
+  async getCommunityBackgrounds(options = {}) {
+    const { limit = 50, skip = 0, sortBy = 'uploadedAt', sortOrder = -1, status = 'approved' } = options;
+    
+    if (this.inMemoryStorage) {
+      if (!this.inMemoryStorage.communityBackgrounds) {
+        return [];
+      }
+      let backgrounds = Array.from(this.inMemoryStorage.communityBackgrounds.values());
+      
+      // Filter by status
+      if (status) {
+        backgrounds = backgrounds.filter(bg => bg.status === status);
+      }
+      
+      // Sort
+      backgrounds.sort((a, b) => {
+        if (sortBy === 'likes') {
+          return sortOrder === -1 ? (b.likes || 0) - (a.likes || 0) : (a.likes || 0) - (b.likes || 0);
+        } else if (sortBy === 'downloads') {
+          return sortOrder === -1 ? (b.downloads || 0) - (a.downloads || 0) : (a.downloads || 0) - (b.downloads || 0);
+        } else { // uploadedAt
+          const aTime = new Date(a.uploadedAt).getTime();
+          const bTime = new Date(b.uploadedAt).getTime();
+          return sortOrder === -1 ? bTime - aTime : aTime - bTime;
+        }
+      });
+      
+      return backgrounds.slice(skip, skip + limit);
+    }
+
+    if (!this.db) return [];
+    const communityBackgrounds = this.db.collection('communityBackgrounds');
+    const query = status ? { status } : {};
+    return await communityBackgrounds
+      .find(query)
+      .sort({ [sortBy]: sortOrder })
+      .skip(skip)
+      .limit(limit)
+      .toArray();
+  }
+
+  async incrementBackgroundDownloads(backgroundId) {
+    if (this.inMemoryStorage) {
+      if (!this.inMemoryStorage.communityBackgrounds) {
+        return false;
+      }
+      const background = this.inMemoryStorage.communityBackgrounds.get(backgroundId);
+      if (background) {
+        background.downloads = (background.downloads || 0) + 1;
+        return true;
+      }
+      return false;
+    }
+
+    if (!this.db) return false;
+    const communityBackgrounds = this.db.collection('communityBackgrounds');
+    const result = await communityBackgrounds.updateOne(
+      { id: backgroundId },
+      { $inc: { downloads: 1 } }
+    );
+    return result.modifiedCount > 0;
+  }
+
+  async likeBackground(backgroundId, userId) {
+    if (this.inMemoryStorage) {
+      if (!this.inMemoryStorage.communityBackgrounds) {
+        return { success: false, message: 'Background not found' };
+      }
+      const background = this.inMemoryStorage.communityBackgrounds.get(backgroundId);
+      if (!background) {
+        return { success: false, message: 'Background not found' };
+      }
+      
+      if (!background.likedBy) background.likedBy = [];
+      
+      if (background.likedBy.includes(userId)) {
+        // Unlike
+        background.likedBy = background.likedBy.filter(id => id !== userId);
+        background.likes = Math.max(0, (background.likes || 0) - 1);
+        return { success: true, liked: false, likes: background.likes };
+      } else {
+        // Like
+        background.likedBy.push(userId);
+        background.likes = (background.likes || 0) + 1;
+        return { success: true, liked: true, likes: background.likes };
+      }
+    }
+
+    if (!this.db) return { success: false, message: 'Database not connected' };
+    const communityBackgrounds = this.db.collection('communityBackgrounds');
+    const background = await communityBackgrounds.findOne({ id: backgroundId });
+    
+    if (!background) {
+      return { success: false, message: 'Background not found' };
+    }
+    
+    const likedBy = background.likedBy || [];
+    const isLiked = likedBy.includes(userId);
+    
+    if (isLiked) {
+      // Unlike
+      await communityBackgrounds.updateOne(
+        { id: backgroundId },
+        { 
+          $pull: { likedBy: userId },
+          $inc: { likes: -1 }
+        }
+      );
+      return { success: true, liked: false, likes: (background.likes || 1) - 1 };
+    } else {
+      // Like
+      await communityBackgrounds.updateOne(
+        { id: backgroundId },
+        { 
+          $addToSet: { likedBy: userId },
+          $inc: { likes: 1 }
+        }
+      );
+      return { success: true, liked: true, likes: (background.likes || 0) + 1 };
+    }
+  }
+
+  async reportBackground(backgroundId, userId, reason) {
+    if (this.inMemoryStorage) {
+      if (!this.inMemoryStorage.backgroundReports) {
+        this.inMemoryStorage.backgroundReports = new Map();
+      }
+      const crypto = require('crypto');
+      const reportId = `report_${crypto.randomUUID()}`;
+      this.inMemoryStorage.backgroundReports.set(reportId, {
+        id: reportId,
+        backgroundId,
+        userId,
+        reason,
+        reportedAt: new Date(),
+        status: 'pending'
+      });
+      return true;
+    }
+
+    if (!this.db) return false;
+    const crypto = require('crypto');
+    const reports = this.db.collection('backgroundReports');
+    await reports.insertOne({
+      id: `report_${crypto.randomUUID()}`,
+      backgroundId,
+      userId,
+      reason,
+      reportedAt: new Date(),
+      status: 'pending'
+    });
+    return true;
   }
 
   async close() {

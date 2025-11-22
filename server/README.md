@@ -27,6 +27,11 @@ The server will run on `http://localhost:3000`
 - **Matchmaking**: Players are matched by difficulty level (easy/medium/hard)
 - **Real-time gameplay**: Instant answer submission and score updates
 - **Disconnect handling**: Graceful handling when players leave
+- **Email Verification**: Email account verification system
+- **Password Reset**: Secure password reset via email
+- **Community Backgrounds**: User-uploaded background sharing marketplace
+- **Friends System**: Send and accept friend requests
+- **Daily Challenges**: Daily color guessing challenges
 
 ## Testing Locally
 
