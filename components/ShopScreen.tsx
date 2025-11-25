@@ -10,10 +10,11 @@ import {
   Modal,
   TextInput,
   FlatList,
+  Image,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Background, DailyChallenge, DailyChallengeSubmission, RARITY_COLORS } from '../types/Shop';
+import { Background, ProfileIcon, DailyChallenge, DailyChallengeSubmission, RARITY_COLORS } from '../types/Shop';
 import { PlayerProfile } from '../types/Player';
 import { ShopService } from '../services/ShopService';
 import { useTheme, getContrastColor } from '../contexts/ThemeContext';
@@ -32,7 +33,7 @@ interface Props {
   onBackgroundChanged?: () => void;
 }
 
-type TabType = 'backgrounds' | 'daily';
+type TabType = 'backgrounds' | 'icons' | 'daily';
 
 const { width, height } = Dimensions.get('window');
 
@@ -58,22 +59,44 @@ const BackgroundWrapper: React.FC<{
   }
 };
 
+// Static image mapping for profile icons
+const PROFILE_ICON_IMAGES: { [key: string]: any } = {
+  'Alien/AlienwHaloWhite.png': require('../assets/Alien/AlienwHaloWhite.png'),
+  'Alien/AlienwHaloPink.png': require('../assets/Alien/AlienwHaloPink.png'),
+  'Alien/AlienwHaloBlack.png': require('../assets/Alien/AlienwHaloBlack.png'),
+  'Alien/AlienBlackGoldHalo.png': require('../assets/Alien/AlienBlackGoldHalo.png'),
+  'InChangeWeTrustPink.png': require('../assets/InChangeWeTrustPink.png'),
+  'InChangeWeTrustPinkfilled.png': require('../assets/InChangeWeTrustPinkfilled.png'),
+  'InChangeWeTrust.png': require('../assets/InChangeWeTrust.png'),
+};
+
 export default function ShopScreen({ visible, onClose, player, onPlayerUpdated, activeBackgroundColors, activeBackgroundType, activeAnimationType, onBackgroundChanged }: Props) {
   const { theme } = useTheme();
   const [activeTab, setActiveTab] = useState<TabType>('backgrounds');
   const [backgrounds, setBackgrounds] = useState<{ [category: string]: { unlocked: Background[]; locked: Background[] } }>({});
+  const [profileIcons, setProfileIcons] = useState<{ [category: string]: { unlocked: ProfileIcon[]; locked: ProfileIcon[] } }>({});
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set(['Blue'])); // Default expand Blue category
+  const [expandedIconCategories, setExpandedIconCategories] = useState<Set<string>>(new Set(['Aliens'])); // Default expand Aliens category
   const [selectedBackground, setSelectedBackground] = useState<string>('');
+  const [selectedIcon, setSelectedIcon] = useState<string>('');
   const [loading, setLoading] = useState(false);
   const [dailyChallenge, setDailyChallenge] = useState<(DailyChallenge & { submissions?: DailyChallengeSubmission[] }) | null>(null);
   const [hexCodeInput, setHexCodeInput] = useState('');
   const [showPreview, setShowPreview] = useState(false);
   const [previewBackground, setPreviewBackground] = useState<Background | null>(null);
+  const [showIconPreview, setShowIconPreview] = useState(false);
+  const [previewIcon, setPreviewIcon] = useState<ProfileIcon | null>(null);
   const [showHexCheatSheet, setShowHexCheatSheet] = useState(false);
+  
+  // Helper function to get image source
+  const getIconImageSource = (imagePath: string) => {
+    return PROFILE_ICON_IMAGES[imagePath] || null;
+  };
 
   useEffect(() => {
     if (visible) {
       loadShopData();
+      loadProfileIcons();
       loadDailyChallenge();
     }  }, [visible]);
 
@@ -89,6 +112,18 @@ export default function ShopScreen({ visible, onClose, player, onPlayerUpdated, 
     }
   };
 
+  const loadProfileIcons = async () => {
+    try {
+      const iconsData = await ShopService.getProfileIconsForShop();
+      setProfileIcons(iconsData);
+      
+      const activeIcon = await ShopService.getActiveProfileIcon();
+      setSelectedIcon(activeIcon?.id || '');
+    } catch (error) {
+      console.error('Error loading profile icons:', error);
+    }
+  };
+
   const toggleCategory = (category: string) => {
     const newExpanded = new Set(expandedCategories);
     if (newExpanded.has(category)) {
@@ -97,6 +132,16 @@ export default function ShopScreen({ visible, onClose, player, onPlayerUpdated, 
       newExpanded.add(category);
     }
     setExpandedCategories(newExpanded);
+  };
+
+  const toggleIconCategory = (category: string) => {
+    const newExpanded = new Set(expandedIconCategories);
+    if (newExpanded.has(category)) {
+      newExpanded.delete(category);
+    } else {
+      newExpanded.add(category);
+    }
+    setExpandedIconCategories(newExpanded);
   };
 
   const getCategoryEmoji = (category: string) => {
@@ -179,6 +224,86 @@ export default function ShopScreen({ visible, onClose, player, onPlayerUpdated, 
     }
   };
 
+  const handlePurchaseIcon = async (icon: ProfileIcon) => {
+    if (!icon.price) return;
+    
+    Alert.alert(
+      'Purchase Profile Icon',
+      `Do you want to purchase "${icon.name}" for ${icon.price} coins?\n\nYou have ${player.coins} coins.`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Purchase',
+          onPress: async () => {
+            setLoading(true);
+            try {
+              const result = await ShopService.purchaseProfileIcon(icon.id);
+              
+              if (result.success) {
+                await loadProfileIcons();
+                
+                // Reload player profile to get updated coins
+                const updatedPlayer = await require('../services/PlayerStorageService').PlayerStorageService.loadPlayerProfile();
+                if (updatedPlayer) {
+                  onPlayerUpdated(updatedPlayer);
+                }
+                
+                // Ask if user wants to equip the icon
+                Alert.alert(
+                  'Purchase Successful! 🎉',
+                  `${result.message}\n\nWould you like to equip "${icon.name}" as your profile icon now?`,
+                  [
+                    { 
+                      text: 'Not Now', 
+                      style: 'cancel' 
+                    },
+                    {
+                      text: 'Equip Now',
+                      onPress: async () => {
+                        await handleSetActiveIcon(icon.id);
+                      },
+                    },
+                  ]
+                );
+              } else {
+                Alert.alert('Purchase Failed', result.message);
+              }
+            } catch (error) {
+              Alert.alert('Error', 'Failed to purchase profile icon');
+            } finally {
+              setLoading(false);
+            }
+          },
+        },
+      ]
+    );
+  };
+
+  const handleSetActiveIcon = async (iconId: string) => {
+    try {
+      setLoading(true);
+      const success = await ShopService.setActiveProfileIcon(iconId);
+      
+      if (success) {
+        setSelectedIcon(iconId);
+        
+        // Reload player profile to update the profile icon in parent component
+        const updatedPlayer = await require('../services/PlayerStorageService').PlayerStorageService.loadPlayerProfile();
+        if (updatedPlayer) {
+          onPlayerUpdated(updatedPlayer);
+        }
+        
+        Alert.alert('Success!', 'Profile icon applied successfully');
+      } else {
+        Alert.alert('Error', 'Failed to apply profile icon');
+      }
+    } catch (error) {
+      Alert.alert('Error', 'Failed to apply profile icon');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleDailyChallengeSubmit = async () => {
     if (!hexCodeInput.trim()) {
       Alert.alert('Error', 'Please enter a hex code');
@@ -218,6 +343,11 @@ export default function ShopScreen({ visible, onClose, player, onPlayerUpdated, 
   const showBackgroundPreview = (background: Background) => {
     setPreviewBackground(background);
     setShowPreview(true);
+  };
+
+  const showProfileIconPreview = (icon: ProfileIcon) => {
+    setPreviewIcon(icon);
+    setShowIconPreview(true);
   };
 
   const getRarityColor = (rarity: string) => {
@@ -320,6 +450,87 @@ export default function ShopScreen({ visible, onClose, player, onPlayerUpdated, 
     );
   };
 
+  const renderProfileIconItem = ({ item: icon }: { item: ProfileIcon }) => {
+    const isSelected = selectedIcon === icon.id;
+    const isUnlocked = icon.isUnlocked;
+    const isImageFile = icon.imagePath.endsWith('.png') || icon.imagePath.endsWith('.jpg') || icon.imagePath.endsWith('.jpeg');
+    
+    return (
+      <TouchableOpacity
+        onPress={() => isUnlocked ? handleSetActiveIcon(icon.id) : showProfileIconPreview(icon)}
+        disabled={loading}
+        activeOpacity={0.9}
+        style={{ minWidth: 90, maxWidth: 110, marginRight: 8 }}
+      >
+        <IslandCard
+          variant={isSelected ? "floating" : "elevated"}
+          padding={8}
+          style={styles.backgroundItem}
+        >
+          <View
+            style={[
+              styles.backgroundPreview,
+              { backgroundColor: theme.colors.surface, minHeight: 45, maxHeight: 60, justifyContent: 'center', alignItems: 'center' }
+            ]}
+          >
+            {isImageFile && getIconImageSource(icon.imagePath) ? (
+              <Image 
+                source={getIconImageSource(icon.imagePath)} 
+                style={{ width: 35, height: 35 }}
+                resizeMode="contain"
+              />
+            ) : (
+              <Text style={[styles.backgroundEmoji, { fontSize: 28 }]}>{icon.imagePath}</Text>
+            )}
+            {isSelected && <Text style={[styles.activeIndicator, { fontSize: 16, position: 'absolute', top: 2, right: 2 }]}>✓</Text>}
+            {!isUnlocked && <View style={styles.lockedOverlay} />}
+          </View>
+        
+        <View style={styles.backgroundInfo}>
+          <Text style={[styles.backgroundName, { color: theme.colors.textSecondary, fontSize: 10 }, !isUnlocked && styles.lockedText]} numberOfLines={1}>
+            {icon.name}
+          </Text>
+          {icon.rarity && (
+            <Text style={[styles.backgroundRarity, { color: getRarityColor(icon.rarity), fontSize: 9 }]}>
+              {icon.rarity.toUpperCase()}
+            </Text>
+          )}
+          
+          {!isUnlocked && (
+            <View style={styles.unlockInfo}>
+              {icon.unlockType === 'purchase' && icon.price && (
+                <TouchableOpacity
+                  style={[
+                    styles.purchaseButton,
+                    player.coins < icon.price && styles.purchaseButtonDisabled,
+                    { paddingVertical: 3, paddingHorizontal: 6 }
+                  ]}
+                  onPress={() => handlePurchaseIcon(icon)}
+                  disabled={loading || player.coins < icon.price}
+                >
+                  <Text style={[
+                    styles.purchaseButtonText,
+                    player.coins < icon.price && styles.purchaseButtonTextDisabled,
+                    { fontSize: 10 }
+                  ]}>
+                    {icon.price} 🪙
+                  </Text>
+                </TouchableOpacity>
+              )}
+              
+              {icon.unlockType === 'achievement' && icon.requirement && (
+                <Text style={[styles.requirementText, { fontSize: 9, color: theme.colors.textSecondary }]} numberOfLines={2}>
+                  {icon.requirement.description}
+                </Text>
+              )}
+            </View>
+          )}
+        </View>
+        </IslandCard>
+      </TouchableOpacity>
+    );
+  };
+
   const renderBackgrounds = () => {
     const sortedCategories = Object.keys(backgrounds).sort();
     
@@ -361,6 +572,64 @@ export default function ShopScreen({ visible, onClose, player, onPlayerUpdated, 
                   <FlatList
                     data={[...categoryData.unlocked, ...categoryData.locked]}
                     renderItem={renderBackgroundItem}
+                    keyExtractor={(item) => item.id}
+                    horizontal
+                    showsHorizontalScrollIndicator={true}
+                    contentContainerStyle={styles.horizontalGrid}
+                    style={styles.horizontalScroll}
+                  />
+                </View>
+              )}
+            </View>
+          );
+        })}
+      </ScrollView>
+    );
+  };
+
+  const renderProfileIcons = () => {
+    const sortedCategories = Object.keys(profileIcons).sort();
+    
+    return (
+      <ScrollView style={styles.tabContent} showsVerticalScrollIndicator={true}>
+        {!sortedCategories.some(cat => expandedIconCategories.has(cat)) && (
+          <View style={{ paddingHorizontal: 16, paddingVertical: 8 }}>
+            <Text style={{ textAlign: 'center', opacity: 0.7, color: theme.colors.textSecondary }}>
+              Tap a category to view profile icons
+            </Text>
+          </View>
+        )}
+        {sortedCategories.map(category => {
+          const categoryData = profileIcons[category];
+          const totalUnlocked = categoryData.unlocked.length;
+          const totalLocked = categoryData.locked.length;
+          const isExpanded = expandedIconCategories.has(category);
+          
+          return (
+            <View key={category} style={styles.categorySection}>
+              <TouchableOpacity 
+                style={[styles.categoryHeader, { backgroundColor: theme.colors.card, paddingVertical: 10, paddingHorizontal: 12 }]}
+                onPress={() => toggleIconCategory(category)}
+              >
+                <View style={styles.categoryTitleRow}>
+                  <Text style={[styles.categoryEmoji, { fontSize: 16 }]}>
+                    {category === 'Alphabet' ? '🔤' : category === 'Logo' ? '🎨' : category === 'Aliens' ? '👽' : '⭐'}
+                  </Text>
+                  <Text style={[styles.categoryTitle, { color: theme.colors.text, fontSize: 14 }]}>{category}</Text>
+                  <Text style={[styles.categoryCount, { color: theme.colors.textTertiary, backgroundColor: theme.colors.surface, fontSize: 11, paddingHorizontal: 6, paddingVertical: 2 }]}>
+                    {totalUnlocked}/{totalUnlocked + totalLocked}
+                  </Text>
+                </View>
+                <Text style={[styles.categoryToggle, { color: theme.colors.textSecondary, fontSize: 12 }]}>
+                  {isExpanded ? '▼' : '▶'}
+                </Text>
+              </TouchableOpacity>
+              
+              {isExpanded && (
+                <View style={styles.categoryContent}>
+                  <FlatList
+                    data={[...categoryData.unlocked, ...categoryData.locked]}
+                    renderItem={renderProfileIconItem}
                     keyExtractor={(item) => item.id}
                     horizontal
                     showsHorizontalScrollIndicator={true}
@@ -538,8 +807,13 @@ export default function ShopScreen({ visible, onClose, player, onPlayerUpdated, 
             />
           </View>
 
-          {/* Tab Navigation - Bubble Islands */}
-          <View style={styles.tabBubbleRow}>
+          {/* Tab Navigation - Scrollable Bubble Islands */}
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.tabBubbleRow}
+            style={styles.tabScrollContainer}
+          >
             <TouchableOpacity
               style={styles.tabButtonBubble}
               onPress={() => setActiveTab('backgrounds')}
@@ -552,6 +826,21 @@ export default function ShopScreen({ visible, onClose, player, onPlayerUpdated, 
               >
                 <Text style={[activeTab === 'backgrounds' ? styles.activeTabText : styles.tabText, { color: theme.colors.text }]}>
                   🎨 Backgrounds
+                </Text>
+              </IslandCard>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.tabButtonBubble}
+              onPress={() => setActiveTab('icons')}
+              activeOpacity={0.8}
+            >
+              <IslandCard
+                variant={activeTab === 'icons' ? "floating" : "elevated"}
+                padding={16}
+                style={activeTab === 'icons' ? styles.activeTabBubble : styles.tabBubble}
+              >
+                <Text style={[activeTab === 'icons' ? styles.activeTabText : styles.tabText, { color: theme.colors.text }]}>
+                  👤 Profile Icons
                 </Text>
               </IslandCard>
             </TouchableOpacity>
@@ -570,10 +859,14 @@ export default function ShopScreen({ visible, onClose, player, onPlayerUpdated, 
                 </Text>
               </IslandCard>
             </TouchableOpacity>
-          </View>
+          </ScrollView>
 
           {/* Content */}
-          <View style={{ width: '100%', flex: 1 }}>{activeTab === 'backgrounds' ? renderBackgrounds() : renderDailyChallenge()}</View>
+          <View style={{ width: '100%', flex: 1 }}>
+            {activeTab === 'backgrounds' && renderBackgrounds()}
+            {activeTab === 'icons' && renderProfileIcons()}
+            {activeTab === 'daily' && renderDailyChallenge()}
+          </View>
         </SafeAreaView>
       </BackgroundWrapper>
 
@@ -607,6 +900,49 @@ export default function ShopScreen({ visible, onClose, player, onPlayerUpdated, 
                 <TouchableOpacity
                   style={styles.previewCloseButton}
                   onPress={() => setShowPreview(false)}
+                >
+                  <Text style={[styles.previewCloseText, { color: theme.colors.text }]}>Close</Text>
+                </TouchableOpacity>
+              </>
+            )}
+          </View>
+        </View>
+      </Modal>
+
+      {/* Profile Icon Preview Modal */}
+      <Modal visible={showIconPreview} animationType="fade" transparent>
+        <View style={styles.previewOverlay}>
+          <View style={[styles.previewContainer, { backgroundColor: theme.colors.surface }]}>
+            {previewIcon && (
+              <>
+                <View
+                  style={[
+                    styles.previewLarge,
+                    { backgroundColor: theme.colors.card, justifyContent: 'center', alignItems: 'center' }
+                  ]}
+                >
+                  {getIconImageSource(previewIcon.imagePath) ? (
+                    <Image 
+                      source={getIconImageSource(previewIcon.imagePath)} 
+                      style={{ width: 120, height: 120 }}
+                      resizeMode="contain"
+                    />
+                  ) : (
+                    <Text style={[styles.previewEmoji, { fontSize: 80 }]}>{previewIcon.imagePath}</Text>
+                  )}
+                </View>
+                <Text style={[styles.previewName, { color: theme.colors.text }]}>{previewIcon.name}</Text>
+                <Text style={[styles.previewRarity, { color: getRarityColor(previewIcon.rarity) }]}>
+                  {previewIcon.rarity.toUpperCase()}
+                </Text>
+                {previewIcon.requirement && (
+                  <Text style={[styles.requirementText, { color: theme.colors.textSecondary, textAlign: 'center', marginTop: 8 }]}>
+                    {previewIcon.requirement.description}
+                  </Text>
+                )}
+                <TouchableOpacity
+                  style={styles.previewCloseButton}
+                  onPress={() => setShowIconPreview(false)}
                 >
                   <Text style={[styles.previewCloseText, { color: theme.colors.text }]}>Close</Text>
                 </TouchableOpacity>
@@ -756,12 +1092,15 @@ const styles = StyleSheet.create({
       marginRight: 0,
       alignSelf: 'center',
     },
+    tabScrollContainer: {
+      flexGrow: 0,
+      marginBottom: 10,
+    },
     tabBubbleRow: {
       flexDirection: 'row',
       alignItems: 'center',
-      justifyContent: 'center',
+      paddingHorizontal: 16,
       gap: 16,
-      marginBottom: 10,
     },
     tabButtonBubble: {
       alignItems: 'center',

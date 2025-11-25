@@ -1,0 +1,16 @@
+{
+  "name": "math-game-app",
+  "version": "1.0.0",
+  "description": "Math Game App",
+  "main": "server/index.js",
+  "scripts": {
+    "start": "node index.js",
+    "dev": "nodemon index.js",
+    "db:maintenance": "node ../scripts/mongoMaintenance.js",
+    "db:setup-indexes": "node ../scripts/setupIndexes.js",
+    "db:stats": "node ../scripts/dbStats.js"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.9"
+  }
+}

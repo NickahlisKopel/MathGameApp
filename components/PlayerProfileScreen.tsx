@@ -24,6 +24,17 @@ import { IslandButton } from './IslandButton';
 import { IslandCard } from './IslandCard';
 import { IslandMenu } from './IslandMenu';
 
+// Static image mapping for profile icons
+const PROFILE_ICON_IMAGES: { [key: string]: any } = {
+  'Alien/AlienwHaloWhite.png': require('../assets/Alien/AlienwHaloWhite.png'),
+  'Alien/AlienwHaloPink.png': require('../assets/Alien/AlienwHaloPink.png'),
+  'Alien/AlienwHaloBlack.png': require('../assets/Alien/AlienwHaloBlack.png'),
+  'Alien/AlienBlackGoldHalo.png': require('../assets/Alien/AlienBlackGoldHalo.png'),
+  'InChangeWeTrustPink.png': require('../assets/InChangeWeTrustPink.png'),
+  'InChangeWeTrustPinkfilled.png': require('../assets/InChangeWeTrustPinkfilled.png'),
+  'InChangeWeTrust.png': require('../assets/InChangeWeTrust.png'),
+};
+
 interface Props {
   player: PlayerProfile;
   onPlayerUpdated: (player: PlayerProfile) => void;
@@ -73,14 +84,16 @@ export default function PlayerProfileScreen({ player, onPlayerUpdated, onClose, 
   const [newUsername, setNewUsername] = useState('');
   const [showAvatarModal, setShowAvatarModal] = useState(false);
   const [newAvatarUrl, setNewAvatarUrl] = useState('');
+  const [profileIconData, setProfileIconData] = useState<any>(null);
 
   useEffect(() => {
     if (visible) {
       loadGameHistory();
+      loadProfileIcon();
       // Reset to initialTab when modal is opened
       setActiveTab(initialTab);
     }
-  }, [visible, initialTab]);
+  }, [visible, initialTab, player.customization.profileIcon]);
 
   const loadGameHistory = async () => {
     try {
@@ -88,6 +101,18 @@ export default function PlayerProfileScreen({ player, onPlayerUpdated, onClose, 
       setGameHistory(history);
     } catch (error) {
       console.error('Error loading game history:', error);
+    }
+  };
+
+  const loadProfileIcon = async () => {
+    try {
+      if (player.customization.profileIcon) {
+        const { ShopService } = await import('../services/ShopService');
+        const icon = await ShopService.getActiveProfileIcon();
+        setProfileIconData(icon);
+      }
+    } catch (error) {
+      console.error('Error loading profile icon:', error);
     }
   };
 
@@ -339,7 +364,21 @@ export default function PlayerProfileScreen({ player, onPlayerUpdated, onClose, 
       <View style={[styles.card, { backgroundColor: theme.colors.card }]}>
         <View style={styles.playerHeader}>
           <View style={styles.avatarContainer}>
-            {player.customization.avatar ? (
+            {profileIconData && player.customization.profileIcon ? (
+              <View style={[styles.avatarImage, { justifyContent: 'center', alignItems: 'center', backgroundColor: theme.colors.surface }]}>
+                {PROFILE_ICON_IMAGES[profileIconData.imagePath] ? (
+                  <Image 
+                    source={PROFILE_ICON_IMAGES[profileIconData.imagePath]} 
+                    style={{ width: 70, height: 70 }}
+                    resizeMode="contain"
+                  />
+                ) : (
+                  <Text style={{ fontSize: 48 }}>
+                    {profileIconData.imagePath}
+                  </Text>
+                )}
+              </View>
+            ) : player.customization.avatar ? (
               <Image source={{ uri: player.customization.avatar }} style={styles.avatarImage} />
             ) : (
               <Text style={styles.avatarText}>

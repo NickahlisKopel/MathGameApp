@@ -71,6 +71,7 @@ export interface PlayerSettings {
 export interface PlayerCustomization {
   theme: string;
   avatar: string; // URL or asset name for profile picture
+  profileIcon?: string; // ID of selected profile icon from shop
   selectedBadge?: string;
   unlockedThemes: string[];
   unlockedAvatars: string[];

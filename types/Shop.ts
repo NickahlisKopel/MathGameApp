@@ -19,6 +19,23 @@ export interface Background {
   isPlaceholder?: boolean; // True for "More Coming Soon!" placeholder items
 }
 
+export interface ProfileIcon {
+  id: string;
+  name: string;
+  imagePath: string; // For PNG: 'InChangeWeTrust.png' or 'alphabet/A.png' | For emoji: just the emoji character
+  rarity: 'common' | 'uncommon' | 'rare' | 'epic' | 'legendary' | 'special';
+  category?: string; // Category like Alphabet, Animals, Symbols, Logo, etc.
+  unlockType: 'free' | 'purchase' | 'achievement' | 'default';
+  price?: number; // Cost in coins (if purchasable)
+  requirement?: {
+    type: 'achievement' | 'level' | 'games_played' | 'accuracy' | 'score' | 'streak';
+    target: string | number;
+    description: string;
+  };
+  isUnlocked: boolean;
+  unlockedAt?: Date | null;
+}
+
 export interface ShopItem {
   id: string;
   type: 'background' | 'avatar' | 'badge' | 'powerup';
@@ -55,6 +72,7 @@ export interface DailyChallengeSubmission {
 
 export interface ShopData {
   backgrounds: Background[];
+  profileIcons: ProfileIcon[];
   purchaseHistory: {
     itemId: string;
     purchasedAt: Date;
@@ -62,6 +80,7 @@ export interface ShopData {
   }[];
   dailyChallenges: DailyChallenge[];
   selectedBackground: string; // Current active background ID
+  selectedProfileIcon: string; // Current active profile icon ID
   lastDailyCheck: Date;
 }
 
@@ -266,6 +285,75 @@ function generateCategorizedBackgrounds(): Background[] {
 // Default backgrounds available to all players
 export const DEFAULT_BACKGROUNDS: Background[] = generateCategorizedBackgrounds();
 
+// Generate default profile icons
+function generateDefaultProfileIcons(): ProfileIcon[] {
+  const icons: ProfileIcon[] = [];
+  
+  // Alien variants - using your White and Black alien PNGs
+  const alienVariants = [
+    // White Alien variants
+    { id: 'alien_white_halo', name: 'Angel Alien', imagePath: 'Alien/AlienwHaloWhite.png', rarity: 'epic' as const, price: 150, unlocked: true },
+    { id: 'alien_pink_halo', name: 'Pink Halo Alien', imagePath: 'Alien/AlienwHaloPink.png', rarity: 'rare' as const, price: 100, unlocked: false },
+    { id: 'alien_black_halo', name: 'Dark Angel Alien', imagePath: 'Alien/AlienwHaloBlack.png', rarity: 'epic' as const, price: 150, unlocked: false },
+    { id: 'alien_black_gold', name: 'Golden Alien', imagePath: 'Alien/AlienBlackGoldHalo.png', rarity: 'legendary' as const, price: 250, unlocked: false },
+  ];
+  
+  alienVariants.forEach((alien) => {
+    icons.push({
+      id: alien.id,
+      name: alien.name,
+      imagePath: alien.imagePath,
+      rarity: alien.rarity,
+      category: 'Aliens',
+      unlockType: alien.unlocked ? 'default' : 'purchase',
+      price: alien.price,
+      isUnlocked: alien.unlocked,
+      unlockedAt: alien.unlocked ? new Date() : undefined,
+    });
+  });
+  
+  // Alphabet icons (A-Z) - Using emoji as placeholder
+  const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
+  alphabet.forEach((letter, index) => {
+    icons.push({
+      id: `icon_${letter.toLowerCase()}`,
+      name: `Letter ${letter}`,
+      imagePath: `${letter}`,
+      rarity: index < 5 ? 'common' : index < 15 ? 'uncommon' : 'rare',
+      category: 'Alphabet',
+      unlockType: 'purchase',
+      price: index < 5 ? 25 : index < 15 ? 50 : 100,
+      isUnlocked: false,
+      unlockedAt: undefined,
+    });
+  });
+  
+  // Logo icons from assets
+  const logoIcons = [
+    { id: 'icon_pink_logo', name: 'Pink Logo', imagePath: 'InChangeWeTrustPink.png', unlocked: false, price: 500 },
+    { id: 'icon_pink_filled_logo', name: 'Pink Filled Logo', imagePath: 'InChangeWeTrustPinkfilled.png', unlocked: false, price: 500 },
+    { id: 'icon_black_logo', name: 'Black Logo', imagePath: 'InChangeWeTrust.png', unlocked: false, price: 500 },
+  ];
+  
+  logoIcons.forEach((logo) => {
+    icons.push({
+      id: logo.id,
+      name: logo.name,
+      imagePath: logo.imagePath,
+      rarity: 'special',
+      category: 'Logo',
+      unlockType: 'purchase',
+      price: logo.price,
+      isUnlocked: logo.unlocked,
+      unlockedAt: logo.unlocked ? new Date() : undefined,
+    });
+  });
+  
+  return icons;
+}
+
+export const DEFAULT_PROFILE_ICONS: ProfileIcon[] = generateDefaultProfileIcons();
+
 // Rarity colors for UI
 export const RARITY_COLORS = {
   common: '#95a5a6',
@@ -288,8 +376,10 @@ export const RARITY_ORDER = {
 
 export const DEFAULT_SHOP_DATA: ShopData = {
   backgrounds: DEFAULT_BACKGROUNDS,
+  profileIcons: DEFAULT_PROFILE_ICONS,
   purchaseHistory: [],
   dailyChallenges: [],
   selectedBackground: 'blue_1e90ff_gradient', // Dodger Blue Gradient
+  selectedProfileIcon: 'icon_a', // Default to letter 'A'
   lastDailyCheck: new Date(0), // Start with epoch to ensure first check
 };

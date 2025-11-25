@@ -5,7 +5,8 @@ import {
   DailyChallenge,
   DailyChallengeSubmission, 
   DEFAULT_SHOP_DATA,
-  DEFAULT_BACKGROUNDS 
+  DEFAULT_BACKGROUNDS,
+  DEFAULT_PROFILE_ICONS 
 } from '../types/Shop';
 import { PlayerStorageService } from './PlayerStorageService';
 import { getServerUrl } from '../config/ServerConfig';
@@ -21,6 +22,7 @@ export class ShopService {
     const shopData: ShopData = {
       ...DEFAULT_SHOP_DATA,
       backgrounds: DEFAULT_BACKGROUNDS.map(bg => ({ ...bg })),
+      profileIcons: DEFAULT_PROFILE_ICONS.map(icon => ({ ...icon })),
     };
     
     await this.saveShopData(shopData);
@@ -51,11 +53,28 @@ export class ShopService {
         ...bg,
         unlockedAt: bg.unlockedAt ? new Date(bg.unlockedAt) : null,
       }));
+      
+      // Handle profile icons (for app updates - may not exist in old data)
+      if (!shopData.profileIcons) {
+        shopData.profileIcons = DEFAULT_PROFILE_ICONS.map(icon => ({ ...icon }));
+      } else {
+        shopData.profileIcons = shopData.profileIcons.map(icon => ({
+          ...icon,
+          unlockedAt: icon.unlockedAt ? new Date(icon.unlockedAt) : null,
+        }));
+      }
+      
+      // Ensure selected profile icon exists
+      if (!shopData.selectedProfileIcon) {
+        shopData.selectedProfileIcon = 'icon_a';
+      }
+      
       // Debug: log backgrounds and their unlockedAt values
       console.log('DEBUG backgrounds after mapping:', shopData.backgrounds.map(bg => ({ id: bg.id, unlockedAt: bg.unlockedAt })));
       
       // Ensure all default backgrounds exist (for app updates)
       this.ensureDefaultBackgrounds(shopData);
+      this.ensureDefaultProfileIcons(shopData);
       
       return shopData;
     } catch (error) {
@@ -88,6 +107,21 @@ export class ShopService {
           console.log(`[ShopService] Migrating ${existingBg.id} from ${existingBg.category} to ${defaultBg.category}`);
           existingBg.category = defaultBg.category;
         }
+      }
+    });
+  }
+  
+  // Ensure all default profile icons exist (for app updates)
+  private static ensureDefaultProfileIcons(shopData: ShopData): void {
+    if (!shopData.profileIcons) {
+      shopData.profileIcons = [];
+    }
+    
+    const existingIds = new Set(shopData.profileIcons.map(icon => icon.id));
+    
+    DEFAULT_PROFILE_ICONS.forEach(defaultIcon => {
+      if (!existingIds.has(defaultIcon.id)) {
+        shopData.profileIcons.push({ ...defaultIcon });
       }
     });
   }
@@ -704,6 +738,138 @@ export class ShopService {
     } catch (error) {
       console.error('Error resetting shop data:', error);
       throw new Error('Failed to reset shop data');
+    }
+  }
+
+  // ========== Profile Icon Methods ==========
+  
+  // Get profile icons organized by category for shop display
+  static async getProfileIconsForShop(): Promise<{ [category: string]: { unlocked: any[]; locked: any[] } }> {
+    try {
+      const shopData = await this.loadShopData();
+      
+      // Ensure profile icons exist (for app updates)
+      if (!shopData.profileIcons || shopData.profileIcons.length === 0) {
+        const { DEFAULT_PROFILE_ICONS } = await import('../types/Shop');
+        shopData.profileIcons = DEFAULT_PROFILE_ICONS.map(icon => ({ ...icon }));
+        await this.saveShopData(shopData);
+      }
+      
+      const categorized: { [category: string]: { unlocked: any[]; locked: any[] } } = {};
+      
+      shopData.profileIcons.forEach(icon => {
+        const category = icon.category || 'Other';
+        
+        if (!categorized[category]) {
+          categorized[category] = { unlocked: [], locked: [] };
+        }
+        
+        if (icon.isUnlocked) {
+          categorized[category].unlocked.push(icon);
+        } else {
+          categorized[category].locked.push(icon);
+        }
+      });
+      
+      return categorized;
+    } catch (error) {
+      console.error('Error getting profile icons for shop:', error);
+      return {};
+    }
+  }
+  
+  // Purchase a profile icon
+  static async purchaseProfileIcon(iconId: string): Promise<{ success: boolean; message: string }> {
+    try {
+      const [shopData, player] = await Promise.all([
+        this.loadShopData(),
+        PlayerStorageService.loadPlayerProfile(),
+      ]);
+      
+      if (!player) {
+        return { success: false, message: 'Player profile not found' };
+      }
+      
+      const icon = shopData.profileIcons?.find(ic => ic.id === iconId);
+      if (!icon) {
+        return { success: false, message: 'Profile icon not found' };
+      }
+      
+      if (icon.isUnlocked) {
+        return { success: false, message: 'Profile icon already unlocked' };
+      }
+      
+      if (icon.unlockType !== 'purchase' || !icon.price) {
+        return { success: false, message: 'Profile icon cannot be purchased' };
+      }
+      
+      if (player.coins < icon.price) {
+        return { success: false, message: `Not enough coins. Need ${icon.price}, have ${player.coins}` };
+      }
+      
+      // Deduct coins
+      const success = await PlayerStorageService.spendCoins(icon.price);
+      if (!success) {
+        return { success: false, message: 'Failed to process payment' };
+      }
+      
+      // Unlock icon
+      icon.isUnlocked = true;
+      icon.unlockedAt = new Date();
+      
+      // Add to purchase history
+      shopData.purchaseHistory.push({
+        itemId: iconId,
+        purchasedAt: new Date(),
+        price: icon.price,
+      });
+      
+      await this.saveShopData(shopData);
+      
+      return { success: true, message: `Successfully purchased ${icon.name}!` };
+    } catch (error) {
+      console.error('Error purchasing profile icon:', error);
+      return { success: false, message: 'Failed to purchase profile icon' };
+    }
+  }
+  
+  // Set active profile icon
+  static async setActiveProfileIcon(iconId: string): Promise<boolean> {
+    try {
+      const shopData = await this.loadShopData();
+      const icon = shopData.profileIcons?.find(ic => ic.id === iconId);
+      
+      if (!icon || !icon.isUnlocked) {
+        return false;
+      }
+      
+      shopData.selectedProfileIcon = iconId;
+      await this.saveShopData(shopData);
+      
+      // Also update player customization
+      const player = await PlayerStorageService.loadPlayerProfile();
+      if (player) {
+        player.customization.profileIcon = iconId;
+        await PlayerStorageService.savePlayerProfile(player);
+      }
+      
+      return true;
+    } catch (error) {
+      console.error('Error setting active profile icon:', error);
+      return false;
+    }
+  }
+  
+  // Get current active profile icon
+  static async getActiveProfileIcon(): Promise<any | null> {
+    try {
+      const shopData = await this.loadShopData();
+      if (!shopData.profileIcons) return null;
+      
+      return shopData.profileIcons.find(ic => ic.id === shopData.selectedProfileIcon) || null;
+    } catch (error) {
+      console.error('Error getting active profile icon:', error);
+      return null;
     }
   }
 

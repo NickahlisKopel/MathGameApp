@@ -49,7 +49,7 @@ const FriendsScreen: React.FC<FriendsScreenProps> = ({
   const animationType = hookAnimationType;
   const [selectedTab, setSelectedTab] = useState<'friends' | 'requests'>('friends');
   const [friendIds, setFriendIds] = useState<string[]>([]);
-  const [friendsData, setFriendsData] = useState<{ id: string; username: string; avatar?: string }[]>([]);
+  const [friendsData, setFriendsData] = useState<{ id: string; username: string; avatar?: string; profileIcon?: string }[]>([]);
   const [friendRequests, setFriendRequests] = useState<FriendRequest[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [searchSuggestions, setSearchSuggestions] = useState<{ id: string; username: string }[]>([]);
@@ -183,6 +183,7 @@ const FriendsScreen: React.FC<FriendsScreenProps> = ({
             id: friendId,
             username: friendData?.username || friendId,
             avatar: friendData?.customization?.avatar,
+            profileIcon: friendData?.customization?.profileIcon,
           };
         })
       );
@@ -441,7 +442,9 @@ const FriendsScreen: React.FC<FriendsScreenProps> = ({
               <View style={styles.friendCardInner}>
                 <View style={styles.friendInfo}>
                   <View style={styles.friendIconContainer}>
-                    <Text style={styles.friendIcon}>{(friend.avatar && friend.avatar !== 'default') ? friend.avatar : '👤'}</Text>
+                    <Text style={styles.friendIcon}>
+                      {friend.profileIcon ? friend.profileIcon.charAt(0).toUpperCase() : (friend.avatar && friend.avatar !== 'default') ? friend.avatar : '👤'}
+                    </Text>
                     {isOnline && <View style={styles.onlineDot} />}
                   </View>
                   <View style={styles.friendDetails}>
