@@ -1,9 +1,10 @@
 import React, { useRef, useState } from 'react';
-import { View, Image, StyleSheet, Pressable, Animated } from 'react-native';
+import { View, Text, Image, StyleSheet, Pressable, Animated } from 'react-native';
 
 interface MainMenuIslandsProps {
   onClassicMode: () => void;
   onTimesTableMode: () => void;
+  onBubblePopMode: () => void;
   onLocalPvPMode: () => void;
   onOnlinePvPMode: () => void;
   onShop: () => void;
@@ -58,15 +59,82 @@ const PopImageButton: React.FC<{ source: any; size?: number; onPress: () => void
   );
 };
 
-export const MainMenuIslands: React.FC<MainMenuIslandsProps> = ({ 
-  onClassicMode, 
-  onTimesTableMode, 
-  onLocalPvPMode, 
-  onOnlinePvPMode, 
-  onShop, 
-  onFriends, 
-  onProfile, 
-  onSettings 
+const PopEmojiButton: React.FC<{ emoji: string; size?: number; onPress: () => void; testID?: string; backgroundColor?: string }>
+  = ({ emoji, size = 96, onPress, testID, backgroundColor = '#4ECDC4' }) => {
+  const scale = useRef(new Animated.Value(1)).current;
+
+  const handlePressIn = () => {
+    Animated.spring(scale, {
+      toValue: 0.95,
+      useNativeDriver: true,
+      friction: 6,
+      tension: 200,
+    }).start();
+  };
+
+  const handlePressOut = () => {
+    Animated.spring(scale, {
+      toValue: 1,
+      useNativeDriver: true,
+      friction: 6,
+      tension: 200,
+    }).start();
+  };
+
+  const handlePress = () => {
+    Animated.sequence([
+      Animated.spring(scale, { toValue: 1.06, useNativeDriver: true, friction: 6, tension: 200 }),
+      Animated.spring(scale, { toValue: 1, useNativeDriver: true, friction: 6, tension: 200 }),
+    ]).start(onPress);
+  };
+
+  return (
+    <Pressable
+      onPressIn={handlePressIn}
+      onPressOut={handlePressOut}
+      onPress={handlePress}
+      testID={testID}
+      android_ripple={{ color: 'rgba(0,0,0,0.05)', borderless: true }}
+      style={({ pressed }) => [styles.buttonWrapper, pressed && styles.pressed]}
+    >
+      <Animated.View
+        style={{
+          transform: [{ scale }],
+          width: size,
+          height: size,
+          borderRadius: size / 2,
+          backgroundColor,
+          justifyContent: 'center',
+          alignItems: 'center',
+          shadowColor: '#000',
+          shadowOffset: { width: 0, height: 4 },
+          shadowOpacity: 0.3,
+          shadowRadius: 8,
+          elevation: 8,
+        }}
+      >
+        <View style={{ fontSize: size * 0.5 }}>
+          {/* Bubble emoji with text fallback */}
+          <View style={{ alignItems: 'center' }}>
+            {/* eslint-disable-next-line react-native/no-inline-styles */}
+            <Text style={{ fontSize: size * 0.55, textAlign: 'center' }}>{emoji}</Text>
+          </View>
+        </View>
+      </Animated.View>
+    </Pressable>
+  );
+};
+
+export const MainMenuIslands: React.FC<MainMenuIslandsProps> = ({
+  onClassicMode,
+  onTimesTableMode,
+  onBubblePopMode,
+  onLocalPvPMode,
+  onOnlinePvPMode,
+  onShop,
+  onFriends,
+  onProfile,
+  onSettings
 }) => {
   const [playMenuExpanded, setPlayMenuExpanded] = useState(false);
   const scaffoldAnim = useRef(new Animated.Value(0)).current;
@@ -106,6 +174,11 @@ export const MainMenuIslands: React.FC<MainMenuIslandsProps> = ({
   const timesTableTranslateY = scaffoldAnim.interpolate({
     inputRange: [0, 1],
     outputRange: [0, -220],
+  });
+
+  const bubblePopTranslateY = scaffoldAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0, -330],
   });
 
   const localPvPTranslateX = scaffoldAnim.interpolate({
@@ -171,8 +244,8 @@ export const MainMenuIslands: React.FC<MainMenuIslandsProps> = ({
           />
         </Animated.View>
 
-        <Animated.View 
-          style={[ 
+        <Animated.View
+          style={[
             styles.scaffoldButton,
             {
               opacity: scaffoldOpacity,
@@ -181,11 +254,30 @@ export const MainMenuIslands: React.FC<MainMenuIslandsProps> = ({
           ]}
           pointerEvents={playMenuExpanded ? 'auto' : 'none'}
         >
-          <PopImageButton 
-            source={require('../assets/Times Table.png')} 
+          <PopImageButton
+            source={require('../assets/Times Table.png')}
             size={80}
-            onPress={() => handlePlayModeSelect(onTimesTableMode)} 
-            testID="menu-timestable" 
+            onPress={() => handlePlayModeSelect(onTimesTableMode)}
+            testID="menu-timestable"
+          />
+        </Animated.View>
+
+        <Animated.View
+          style={[
+            styles.scaffoldButton,
+            {
+              opacity: scaffoldOpacity,
+              transform: [{ translateY: bubblePopTranslateY }],
+            }
+          ]}
+          pointerEvents={playMenuExpanded ? 'auto' : 'none'}
+        >
+          <PopEmojiButton
+            emoji="🫧"
+            size={80}
+            backgroundColor="#4ECDC4"
+            onPress={() => handlePlayModeSelect(onBubblePopMode)}
+            testID="menu-bubblepop"
           />
         </Animated.View>
 

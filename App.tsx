@@ -49,6 +49,7 @@ import { IslandButton } from './components/IslandButton';
 import { IslandCard } from './components/IslandCard';
 import { IslandMenu } from './components/IslandMenu';
 import { MainMenuIslands } from './components/MainMenuIslands';
+import BubblePopGameScreen from './components/BubblePopGameScreen';
 
 // Types
 interface Equation {
@@ -137,7 +138,7 @@ function AppContent() {
   const [difficulty, setDifficulty] = useState<'easy' | 'medium' | 'hard'>('easy');
   // Online PvP difficulty selection modal
   const [showOnlineDifficultySelect, setShowOnlineDifficultySelect] = useState(false);
-  const [gameMode, setGameMode] = useState<'classic' | 'times_tables' | 'multiplayer'>('classic');
+  const [gameMode, setGameMode] = useState<'classic' | 'times_tables' | 'multiplayer' | 'bubble_pop'>('classic');
   const [fadeAnim] = useState(new Animated.Value(1));
   const [showNotepad, setShowNotepad] = useState(false);
   const [multiplayerResults, setMultiplayerResults] = useState<any>(null);
@@ -952,6 +953,10 @@ function AppContent() {
               setGameMode('times_tables');
               startGame();
             }}
+            onBubblePopMode={() => {
+              setGameMode('bubble_pop');
+              setGameState('difficulty-select');
+            }}
             onLocalPvPMode={() => {
               setGameMode('multiplayer');
               setGameState('local-1v1');
@@ -1526,6 +1531,24 @@ function AppContent() {
             setGameState('multiplayer_results');
           }}
           onBackToMenu={() => setGameState('setup')}
+        />
+      )}
+      {gameState === 'playing' && gameMode === 'bubble_pop' && (
+        <BubblePopGameScreen
+          difficulty={difficulty}
+          onBack={() => {
+            setGameState('setup');
+            setScore(0);
+            setQuestionNumber(1);
+          }}
+          onGameComplete={(finalScore, totalQuestions, accuracy) => {
+            setScore(finalScore);
+            setEquationCount(totalQuestions);
+            setGameState('finished');
+          }}
+          backgroundColors={backgroundColors}
+          backgroundType={backgroundType}
+          animationType={animationType}
         />
       )}
       {gameState === 'local-1v1' && playerProfile && (

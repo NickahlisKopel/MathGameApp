@@ -93,10 +93,31 @@ const FriendsScreen: React.FC<FriendsScreenProps> = ({
       // Realtime friend request notification
       socketMultiplayerService.onFriendRequestReceived = async (data: { request: { id: string; fromUserId: string; fromUsername: string } }) => {
         console.log('[FriendsScreen] Realtime friend request received:', data.request);
-        Alert.alert('New Friend Request', `${data.request.fromUsername} sent you a friend request!`);
-        // Reload friend requests
+
+        // Reload friend requests FIRST (before showing alert)
         const requests = await ServerFriendsService.getFriendRequests();
+        console.log('[FriendsScreen] Updated friend requests, count:', requests.length);
         setFriendRequests(requests);
+
+        // Force a small delay to ensure state update completes
+        setTimeout(() => {
+          Alert.alert(
+            'New Friend Request',
+            `${data.request.fromUsername} sent you a friend request!`,
+            [
+              {
+                text: 'View',
+                onPress: () => {
+                  setSelectedTab('requests');
+                }
+              },
+              {
+                text: 'OK',
+                style: 'cancel'
+              }
+            ]
+          );
+        }, 100);
       };
     } catch (error) {
       console.error('[FriendsScreen] Error setting up listeners:', error);
@@ -334,6 +355,9 @@ const FriendsScreen: React.FC<FriendsScreenProps> = ({
   const handleAcceptRequest = async (requestId: string, username: string) => {
     const success = await ServerFriendsService.acceptFriendRequest(requestId);
     if (success) {
+      // Immediately remove the request from UI for instant feedback
+      setFriendRequests(prev => prev.filter(req => req.id !== requestId));
+
       Alert.alert('Success', `You are now friends with ${username}!`);
       // Force a complete reload of friends data
       setIsLoadingFriends(false); // Reset loading flag in case it's stuck
@@ -348,6 +372,9 @@ const FriendsScreen: React.FC<FriendsScreenProps> = ({
   const handleRejectRequest = async (requestId: string) => {
     const success = await ServerFriendsService.rejectFriendRequest(requestId);
     if (success) {
+      // Immediately remove the request from UI for instant feedback
+      setFriendRequests(prev => prev.filter(req => req.id !== requestId));
+
       Alert.alert('Rejected', 'Friend request rejected');
       await loadFriends();
     }
