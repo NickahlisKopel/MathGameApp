@@ -124,8 +124,9 @@ If you didn't create an account with Math Game App, you can safely ignore this e
       `;
 
       const result = await this.brevoClient.sendTransacEmail(sendSmtpEmail);
-      console.log(`[EmailService] Verification email sent to ${email} (ID: ${result.response.body.messageId})`);
-      return { success: true, message: 'Verification email sent', emailId: result.response.body.messageId };
+      const messageId = result?.response?.body?.messageId || result?.body?.messageId || 'unknown';
+      console.log(`[EmailService] Verification email sent to ${email} (ID: ${messageId})`);
+      return { success: true, message: 'Verification email sent', emailId: messageId };
     } catch (error) {
       console.error('[EmailService] Failed to send email:', error.message);
       if (error.response) {
@@ -218,9 +219,10 @@ If you didn't request a password reset, you can safely ignore this email.
       const result = await this.brevoClient.sendTransacEmail(sendSmtpEmail);
       console.log(`[EmailService] ✅ Password reset email sent successfully!`);
       console.log(`[EmailService] To: ${email}`);
-      console.log(`[EmailService] Email ID: ${result.response.body.messageId}`);
+      const messageId = result?.response?.body?.messageId || result?.body?.messageId || 'unknown';
+      console.log(`[EmailService] Email ID: ${messageId}`);
       console.log('[EmailService] ===== EMAIL SEND COMPLETED =====');
-      return { success: true, message: 'Password reset email sent', emailId: result.response.body.messageId };
+      return { success: true, message: 'Password reset email sent', emailId: messageId };
     } catch (error) {
       console.error('[EmailService] ❌ Exception sending email:', error.message);
       console.error('[EmailService] Stack trace:', error.stack);
