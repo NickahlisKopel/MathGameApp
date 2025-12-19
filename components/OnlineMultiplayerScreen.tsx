@@ -15,9 +15,7 @@ import { socketMultiplayerService } from '../services/socketMultiplayerService';
 import { authService } from '../services/AuthService';
 import { useBackground } from '../hooks/useBackground';
 import { useTheme } from '../contexts/ThemeContext';
-import ForestBackground from './ForestBackground';
-import SpaceBackground from './SpaceBackground';
-import { LinearGradient } from 'expo-linear-gradient';
+import { BackgroundWrapper } from './BackgroundWrapper';
 
 interface OnlineMultiplayerScreenProps {
   playerProfile: PlayerProfile;
@@ -28,40 +26,13 @@ interface OnlineMultiplayerScreenProps {
 
 type GameState = 'connecting' | 'matchmaking' | 'ready' | 'playing' | 'finished';
 
-// Background wrapper component
-const BackgroundWrapper: React.FC<{
-  colors: string[];
-  type: string;
-  animationType?: string;
-  style: any;
-  children: React.ReactNode;
-}> = ({ colors, type, animationType, style, children }) => {
-  if (type === 'animated' && animationType === 'space') {
-    return (
-      <SpaceBackground starCount={50} spaceshipVisible={true} animated={true}>
-        <View style={style}>{children}</View>
-      </SpaceBackground>
-    );
-  } else if (type === 'animated' && animationType === 'forest') {
-    return (
-      <ForestBackground treeCount={8} birdCount={3} animated={true}>
-        <View style={style}>{children}</View>
-      </ForestBackground>
-    );
-  } else if (type === 'solid') {
-    return <View style={[style, { backgroundColor: colors[0] }]}>{children}</View>;
-  } else {
-    return <LinearGradient colors={colors as [string, string, ...string[]]} style={style}>{children}</LinearGradient>;
-  }
-};
-
 export const OnlineMultiplayerScreen: React.FC<OnlineMultiplayerScreenProps> = ({
   playerProfile,
   difficulty,
   onGameEnd,
   onBackToMenu,
 }) => {
-  const { backgroundColors, backgroundType, animationType } = useBackground();
+  const { backgroundColors, backgroundType, animationType, isLoading: backgroundLoading } = useBackground();
   const { theme } = useTheme();
   
   const [gameState, setGameState] = useState<GameState>('connecting');
@@ -83,6 +54,8 @@ export const OnlineMultiplayerScreen: React.FC<OnlineMultiplayerScreenProps> = (
   const [opponentQuestionsCompleted, setOpponentQuestionsCompleted] = useState(0);
   const [waitingForOpponent, setWaitingForOpponent] = useState(false);
   const [countdown, setCountdown] = useState<number | null>(null);
+  const [showCorrectFeedback, setShowCorrectFeedback] = useState(false);
+  const [showIncorrectFeedback, setShowIncorrectFeedback] = useState(false);
 
   useEffect(() => {
     initializeConnection();
@@ -620,7 +593,18 @@ export const OnlineMultiplayerScreen: React.FC<OnlineMultiplayerScreenProps> = (
   );
 
   return (
-    <BackgroundWrapper colors={backgroundColors} type={backgroundType} animationType={animationType} style={styles.container}>
+    <BackgroundWrapper
+      colors={backgroundColors}
+      type={backgroundType}
+      animationType={animationType}
+      style={styles.container}
+      onCorrectAnswer={showCorrectFeedback}
+      onIncorrectAnswer={showIncorrectFeedback}
+      feedbackReset={() => {
+        setShowCorrectFeedback(false);
+        setShowIncorrectFeedback(false);
+      }}
+    >
       <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
         <View style={styles.header}>
           <TouchableOpacity style={styles.backButton} onPress={onBackToMenu}>

@@ -50,6 +50,7 @@ import { IslandCard } from './components/IslandCard';
 import { IslandMenu } from './components/IslandMenu';
 import { MainMenuIslands } from './components/MainMenuIslands';
 import BubblePopGameScreen from './components/BubblePopGameScreen';
+import BubblePlusGameScreen from './components/BubblePlusGameScreen';
 
 // Types
 interface Equation {
@@ -138,7 +139,7 @@ function AppContent() {
   const [difficulty, setDifficulty] = useState<'easy' | 'medium' | 'hard'>('easy');
   // Online PvP difficulty selection modal
   const [showOnlineDifficultySelect, setShowOnlineDifficultySelect] = useState(false);
-  const [gameMode, setGameMode] = useState<'classic' | 'times_tables' | 'multiplayer' | 'bubble_pop'>('classic');
+  const [gameMode, setGameMode] = useState<'classic' | 'times_tables' | 'multiplayer' | 'bubble_pop' | 'bubble_plus'>('classic');
   const [fadeAnim] = useState(new Animated.Value(1));
   const [showNotepad, setShowNotepad] = useState(false);
   const [multiplayerResults, setMultiplayerResults] = useState<any>(null);
@@ -161,6 +162,19 @@ function AppContent() {
   const [showTextFeedback, setShowTextFeedback] = useState(false);
   const [textFeedbackCorrect, setTextFeedbackCorrect] = useState(false);
   const [textFeedbackMessage, setTextFeedbackMessage] = useState('');
+
+  // Stable callbacks for game components
+  const handleBubbleGameComplete = useCallback((finalScore: number, totalQuestions: number, accuracy: number) => {
+    setGamePlayer(prev => ({ ...prev, score: finalScore }));
+    setEquationCount(totalQuestions);
+    setGameState('finished');
+  }, []);
+
+  const handleBubbleGameBack = useCallback(() => {
+    setGameState('setup');
+    setGamePlayer(prev => ({ ...prev, score: 0 }));
+    setQuestionNumber(1);
+  }, []);
 
   // Keypad handlers
   const handleNumberPress = (num: string) => {
@@ -957,6 +971,10 @@ function AppContent() {
               setGameMode('bubble_pop');
               setGameState('difficulty-select');
             }}
+            onBubblePlusMode={() => {
+              setGameMode('bubble_plus');
+              setGameState('difficulty-select');
+            }}
             onLocalPvPMode={() => {
               setGameMode('multiplayer');
               setGameState('local-1v1');
@@ -1518,8 +1536,71 @@ function AppContent() {
         </BackgroundWrapper>
       )}
       {/* Old username setup removed - now handled by AuthenticationScreen */}
+      {gameState === 'difficulty-select' && (
+        <BackgroundWrapper
+          colors={backgroundColors}
+          type={backgroundType}
+          animationType={animationType}
+          style={styles.container}
+        >
+          <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
+            <View style={styles.difficultySelectContainer}>
+              <View style={[styles.difficultySelectCard, { backgroundColor: theme.colors.card }]}>
+                <Text style={[styles.difficultySelectTitle, { color: theme.colors.text }]}>
+                  Select Difficulty
+                </Text>
+                <Text style={[styles.difficultySelectSubtitle, { color: theme.colors.textSecondary }]}>
+                  {gameMode === 'bubble_plus' ? 'Bubble Pop PLUS ⚡ - Fast Mode!' : 'Choose your challenge for Bubble Pop'}
+                </Text>
+
+                <View style={styles.difficultyOptionsColumn}>
+                  <TouchableOpacity
+                    style={[styles.difficultyOptionButtonLarge, styles.difficultyEasy]}
+                    onPress={() => {
+                      setDifficulty('easy');
+                      setGameState('playing');
+                    }}
+                  >
+                    <Text style={styles.difficultyOptionTextLarge}>🟢 Easy</Text>
+                    <Text style={styles.difficultyOptionDesc}>Numbers 1-10, +/−</Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    style={[styles.difficultyOptionButtonLarge, styles.difficultyMedium]}
+                    onPress={() => {
+                      setDifficulty('medium');
+                      setGameState('playing');
+                    }}
+                  >
+                    <Text style={styles.difficultyOptionTextLarge}>🟡 Medium</Text>
+                    <Text style={styles.difficultyOptionDesc}>Numbers 1-20, +/−/×</Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    style={[styles.difficultyOptionButtonLarge, styles.difficultyHard]}
+                    onPress={() => {
+                      setDifficulty('hard');
+                      setGameState('playing');
+                    }}
+                  >
+                    <Text style={styles.difficultyOptionTextLarge}>🔴 Hard</Text>
+                    <Text style={styles.difficultyOptionDesc}>Numbers 1-50, +/−/×/÷</Text>
+                  </TouchableOpacity>
+                </View>
+
+                <TouchableOpacity
+                  style={[styles.difficultyCancelButton, { backgroundColor: theme.colors.surface }]}
+                  onPress={() => setGameState('setup')}
+                >
+                  <Text style={[styles.difficultyCancelText, { color: theme.colors.text }]}>Back</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </SafeAreaView>
+        </BackgroundWrapper>
+      )}
       {gameState === 'setup' && renderSetup()}
-      {gameState === 'playing' && renderGame()}
+      {gameState === 'playing' && gameMode !== 'bubble_pop' && gameMode !== 'bubble_plus' && renderGame()}
       {gameState === 'finished' && renderResults()}
       {gameState === 'bot-battle' && playerProfile && (
         <SimpleMultiplayerGameScreen
@@ -1536,16 +1617,18 @@ function AppContent() {
       {gameState === 'playing' && gameMode === 'bubble_pop' && (
         <BubblePopGameScreen
           difficulty={difficulty}
-          onBack={() => {
-            setGameState('setup');
-            setScore(0);
-            setQuestionNumber(1);
-          }}
-          onGameComplete={(finalScore, totalQuestions, accuracy) => {
-            setScore(finalScore);
-            setEquationCount(totalQuestions);
-            setGameState('finished');
-          }}
+          onBack={handleBubbleGameBack}
+          onGameComplete={handleBubbleGameComplete}
+          backgroundColors={backgroundColors}
+          backgroundType={backgroundType}
+          animationType={animationType}
+        />
+      )}
+      {gameState === 'playing' && gameMode === 'bubble_plus' && (
+        <BubblePlusGameScreen
+          difficulty={difficulty}
+          onBack={handleBubbleGameBack}
+          onGameComplete={handleBubbleGameComplete}
           backgroundColors={backgroundColors}
           backgroundType={backgroundType}
           animationType={animationType}
@@ -1937,6 +2020,56 @@ const styles = StyleSheet.create({
   difficultyCancelText: {
     fontSize: 14,
     fontWeight: '600',
+  },
+  // Bubble Pop difficulty selection screen styles
+  difficultySelectContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 24,
+  },
+  difficultySelectCard: {
+    width: '100%',
+    maxWidth: 400,
+    borderRadius: 20,
+    padding: 24,
+    shadowColor: '#000',
+    shadowOpacity: 0.25,
+    shadowRadius: 10,
+    elevation: 8,
+  },
+  difficultySelectTitle: {
+    fontSize: 28,
+    fontWeight: 'bold',
+    textAlign: 'center',
+    marginBottom: 8,
+  },
+  difficultySelectSubtitle: {
+    fontSize: 14,
+    textAlign: 'center',
+    marginBottom: 24,
+  },
+  difficultyOptionsColumn: {
+    marginBottom: 20,
+  },
+  difficultyOptionButtonLarge: {
+    paddingVertical: 20,
+    paddingHorizontal: 20,
+    borderRadius: 16,
+    marginBottom: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  difficultyOptionTextLarge: {
+    color: 'white',
+    fontSize: 20,
+    fontWeight: '700',
+    marginBottom: 4,
+  },
+  difficultyOptionDesc: {
+    color: 'rgba(255, 255, 255, 0.9)',
+    fontSize: 12,
+    fontWeight: '500',
   },
   startButton: {
     backgroundColor: '#ff6b6b',

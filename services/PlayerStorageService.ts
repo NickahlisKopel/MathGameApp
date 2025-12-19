@@ -44,8 +44,11 @@ export class PlayerStorageService {
       player.lastStreakDate = todayStr;
       checkedInToday = true;
     } else {
-      const last = new Date(lastStreakDate + 'T00:00:00');
-      const diffDays = Math.floor((now.getTime() - last.getTime()) / (1000 * 60 * 60 * 24));
+      // Compare calendar dates, not time differences
+      const lastDate = new Date(lastStreakDate + 'T00:00:00');
+      const todayDate = new Date(todayStr + 'T00:00:00');
+      const diffDays = Math.floor((todayDate.getTime() - lastDate.getTime()) / (1000 * 60 * 60 * 24));
+
       if (diffDays === 0) {
         // Already logged in today, do nothing
         checkedInToday = false;

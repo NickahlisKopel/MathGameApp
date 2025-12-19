@@ -5,6 +5,7 @@ interface MainMenuIslandsProps {
   onClassicMode: () => void;
   onTimesTableMode: () => void;
   onBubblePopMode: () => void;
+  onBubblePlusMode: () => void;
   onLocalPvPMode: () => void;
   onOnlinePvPMode: () => void;
   onShop: () => void;
@@ -129,6 +130,7 @@ export const MainMenuIslands: React.FC<MainMenuIslandsProps> = ({
   onClassicMode,
   onTimesTableMode,
   onBubblePopMode,
+  onBubblePlusMode,
   onLocalPvPMode,
   onOnlinePvPMode,
   onShop,
@@ -272,13 +274,22 @@ export const MainMenuIslands: React.FC<MainMenuIslandsProps> = ({
           ]}
           pointerEvents={playMenuExpanded ? 'auto' : 'none'}
         >
-          <PopEmojiButton
-            emoji="🫧"
-            size={80}
-            backgroundColor="#4ECDC4"
-            onPress={() => handlePlayModeSelect(onBubblePopMode)}
-            testID="menu-bubblepop"
-          />
+          <View style={{ flexDirection: 'row', gap: 10 }}>
+            <PopEmojiButton
+              emoji="🫧"
+              size={80}
+              backgroundColor="#4ECDC4"
+              onPress={() => handlePlayModeSelect(onBubblePopMode)}
+              testID="menu-bubblepop"
+            />
+            <PopEmojiButton
+              emoji="⚡"
+              size={80}
+              backgroundColor="#FF6B9D"
+              onPress={() => handlePlayModeSelect(onBubblePlusMode)}
+              testID="menu-bubbleplus"
+            />
+          </View>
         </Animated.View>
 
         <Animated.View 

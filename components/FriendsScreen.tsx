@@ -94,10 +94,13 @@ const FriendsScreen: React.FC<FriendsScreenProps> = ({
       socketMultiplayerService.onFriendRequestReceived = async (data: { request: { id: string; fromUserId: string; fromUsername: string } }) => {
         console.log('[FriendsScreen] Realtime friend request received:', data.request);
 
-        // Reload friend requests FIRST (before showing alert)
-        const requests = await ServerFriendsService.getFriendRequests();
-        console.log('[FriendsScreen] Updated friend requests, count:', requests.length);
-        setFriendRequests(requests);
+        // Force reload by clearing the loading flag first
+        setIsLoadingFriends(false);
+
+        // Reload ALL friends data (not just requests)
+        await loadFriends();
+
+        console.log('[FriendsScreen] Friends data reloaded after realtime request');
 
         // Force a small delay to ensure state update completes
         setTimeout(() => {
@@ -117,7 +120,7 @@ const FriendsScreen: React.FC<FriendsScreenProps> = ({
               }
             ]
           );
-        }, 100);
+        }, 200);
       };
     } catch (error) {
       console.error('[FriendsScreen] Error setting up listeners:', error);

@@ -71,11 +71,18 @@ export class ShopService {
       
       // Debug: log backgrounds and their unlockedAt values
       console.log('DEBUG backgrounds after mapping:', shopData.backgrounds.map(bg => ({ id: bg.id, unlockedAt: bg.unlockedAt })));
-      
+
       // Ensure all default backgrounds exist (for app updates)
+      const backgroundCountBefore = shopData.backgrounds.length;
       this.ensureDefaultBackgrounds(shopData);
       this.ensureDefaultProfileIcons(shopData);
-      
+
+      // Save if new items were added
+      if (shopData.backgrounds.length > backgroundCountBefore) {
+        console.log('[ShopService] New backgrounds added, saving shop data');
+        await this.saveShopData(shopData);
+      }
+
       return shopData;
     } catch (error) {
       console.error('Error loading shop data:', error);
@@ -294,7 +301,7 @@ export class ShopService {
 
   // Generate daily challenge
   static generateDailyChallenge(date: string): DailyChallenge {
-    // Generate a random hex code based on the date (deterministic)
+    // Generate a deterministic hex code based on the date
     const dateNum = parseInt(date.replace(/-/g, ''));
     const colors = [
       '#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#FECA57',
@@ -302,31 +309,19 @@ export class ShopService {
       '#10AC84', '#EE5A24', '#0984E3', '#6C5CE7', '#A29BFE',
       '#FD79A8', '#E84393', '#00B894', '#00CEC9', '#FFB8B8',
     ];
-    // Helper to generate a random hex string matching /^#?([0-9a-fA-F]{6}|[0-9a-fA-F]{3})$/
-    function generateRandomHexColor(): string {
-      const length = Math.random() < 0.5 ? 3 : 6;
-      let hex = '';
-      for (let i = 0; i < length; i++) {
-        hex += Math.floor(Math.random() * 16).toString(16);
-      }
-      // Optionally prepend '#'
-      return Math.random() < 0.5 ? `#${hex}` : hex;
-    }
-    // Example usage:
-    // let randomHex = generateRandomHexColor();
-    
+
     const colorIndex = dateNum % colors.length;
-    const hexCode = generateRandomHexColor();
-    
+    const hexCode = colors[colorIndex];
+
     const names = [
       'Mystical Aura', 'Daily Wonder', 'Secret Shade', 'Hidden Hue',
       'Magic Moment', 'Special Spectrum', 'Unique Universe', 'Daily Delight',
       'Precious Palette', 'Treasure Tone', 'Wonder Wave', 'Special Spark',
     ];
-    
+
     const nameIndex = Math.floor(dateNum / 100) % names.length;
     const backgroundName = names[nameIndex];
-    
+
     return {
       id: `daily_${date}`,
       date,
@@ -473,6 +468,7 @@ export class ShopService {
           type: 'solid' as const,
           colors: [normalizedInputColor],
           preview: '⬛',
+          category: 'Daily Challenge',
         },
         {
           id: `custom_${today}_${inputHex}_gradient`,
@@ -480,6 +476,7 @@ export class ShopService {
           type: 'gradient' as const,
           colors: [normalizedInputColor, this.getLighterShade(normalizedInputColor)],
           preview: '🌅',
+          category: 'Daily Challenge',
         },
         {
           id: `custom_${today}_${inputHex}_dark_gradient`,
@@ -487,6 +484,7 @@ export class ShopService {
           type: 'gradient' as const,
           colors: [normalizedInputColor, this.getDarkerShade(normalizedInputColor)],
           preview: '🌙',
+          category: 'Daily Challenge',
         },
         {
           id: `custom_${today}_${inputHex}_rainbow`,
@@ -494,6 +492,7 @@ export class ShopService {
           type: 'gradient' as const,
           colors: [normalizedInputColor, this.getComplementaryColor(normalizedInputColor), normalizedInputColor],
           preview: '🌈',
+          category: 'Daily Challenge',
         },
       ];
 
@@ -526,6 +525,7 @@ export class ShopService {
           colors: [todayChallenge.hexCode, '#FFD700'], // Add gold accent for perfect match
           preview: '🏆',
           rarity: 'legendary',
+          category: 'Daily Challenge',
           unlockType: 'daily',
           isUnlocked: true,
           unlockedAt: new Date(),

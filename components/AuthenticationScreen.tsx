@@ -107,7 +107,7 @@ export default function AuthenticationScreen({
         },
         {
           text: 'Send Reset Link',
-          onPress: async (emailInput) => {
+          onPress: async (emailInput?: string) => {
             if (!emailInput || !emailInput.trim()) {
               Alert.alert('Error', 'Please enter your email address');
               return;

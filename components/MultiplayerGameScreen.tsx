@@ -14,6 +14,8 @@ import { localAuth } from '../services/localAuth';
 import { GameRewards } from '../utils/GameRewards';
 import { PlayerStorageService } from '../services/PlayerStorageService';
 import { PlayerProfile } from '../types/Player';
+import { useBackground } from '../hooks/useBackground';
+import { BackgroundWrapper } from './BackgroundWrapper';
 
 interface Equation {
   question: string;
@@ -42,6 +44,7 @@ export const MultiplayerGameScreen: React.FC<MultiplayerGameScreenProps> = ({
   onBackToMenu,
   difficulty,
 }) => {
+  const { backgroundColors, backgroundType, animationType } = useBackground();
   const [gameState, setGameState] = useState<'waiting' | 'playing' | 'finished'>('waiting');
   const [currentEquation, setCurrentEquation] = useState<Equation | null>(null);
   const [players, setPlayers] = useState<GamePlayer[]>([]);
@@ -54,6 +57,8 @@ export const MultiplayerGameScreen: React.FC<MultiplayerGameScreenProps> = ({
   const [questionStartTime, setQuestionStartTime] = useState<Date | null>(null);
   const [fadeAnim] = useState(new Animated.Value(1));
   const [isCorrect, setIsCorrect] = useState<boolean | null>(null);
+  const [showCorrectFeedback, setShowCorrectFeedback] = useState(false);
+  const [showIncorrectFeedback, setShowIncorrectFeedback] = useState(false);
 
   // Initialize multiplayer connection
   useEffect(() => {
@@ -292,9 +297,12 @@ export const MultiplayerGameScreen: React.FC<MultiplayerGameScreenProps> = ({
     
     setIsCorrect(correct);
     setCurrentAnswer(answer);
-    
+
     if (correct) {
       setMyScore(prev => prev + 1);
+      setShowCorrectFeedback(true);
+    } else {
+      setShowIncorrectFeedback(true);
     }
 
     // Send answer to other players
@@ -449,19 +457,44 @@ export const MultiplayerGameScreen: React.FC<MultiplayerGameScreenProps> = ({
 
   if (gameState === 'waiting') {
     return (
-      <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
-        <View style={styles.waitingContainer}>
-          <Text style={styles.title}>🎮 Multiplayer Math Battle</Text>
-          <Text style={styles.subtitle}>Connecting to game...</Text>
-          <Text style={styles.playerCount}>Players: {players.length}/4</Text>
-        </View>
-      </SafeAreaView>
+      <BackgroundWrapper
+        colors={backgroundColors}
+        type={backgroundType}
+        animationType={animationType}
+        style={styles.container}
+        onCorrectAnswer={showCorrectFeedback}
+        onIncorrectAnswer={showIncorrectFeedback}
+        feedbackReset={() => {
+          setShowCorrectFeedback(false);
+          setShowIncorrectFeedback(false);
+        }}
+      >
+        <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
+          <View style={styles.waitingContainer}>
+            <Text style={styles.title}>🎮 Multiplayer Math Battle</Text>
+            <Text style={styles.subtitle}>Connecting to game...</Text>
+            <Text style={styles.playerCount}>Players: {players.length}/4</Text>
+          </View>
+        </SafeAreaView>
+      </BackgroundWrapper>
     );
   }
 
   return (
-    <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
-      <View style={styles.gameContainer}>
+    <BackgroundWrapper
+      colors={backgroundColors}
+      type={backgroundType}
+      animationType={animationType}
+      style={styles.container}
+      onCorrectAnswer={showCorrectFeedback}
+      onIncorrectAnswer={showIncorrectFeedback}
+      feedbackReset={() => {
+        setShowCorrectFeedback(false);
+        setShowIncorrectFeedback(false);
+      }}
+    >
+      <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
+        <View style={styles.gameContainer}>
         {/* Header */}
         <View style={styles.header}>
           <View style={styles.gameInfo}>
@@ -515,6 +548,7 @@ export const MultiplayerGameScreen: React.FC<MultiplayerGameScreenProps> = ({
         {renderKeypad()}
       </View>
     </SafeAreaView>
+    </BackgroundWrapper>
   );
 };
 
@@ -523,7 +557,7 @@ const { width } = Dimensions.get('window');
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f0f8ff',
+    backgroundColor: 'transparent',
   },
   waitingContainer: {
     flex: 1,
@@ -536,15 +570,16 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     marginBottom: 20,
     textAlign: 'center',
+    color: '#fff',
   },
   subtitle: {
     fontSize: 18,
     marginBottom: 10,
-    color: '#666',
+    color: '#ddd',
   },
   playerCount: {
     fontSize: 16,
-    color: '#888',
+    color: '#ccc',
   },
   gameContainer: {
     flex: 1,
@@ -562,6 +597,7 @@ const styles = StyleSheet.create({
   questionCounter: {
     fontSize: 16,
     fontWeight: 'bold',
+    color: '#fff',
   },
   timer: {
     fontSize: 18,

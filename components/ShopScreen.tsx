@@ -962,25 +962,25 @@ export default function ShopScreen({ visible, onClose, player, onPlayerUpdated, 
               <View style={styles.colorSection}>
                 <Text style={[styles.cheatSheetSectionTitle, { color: theme.colors.text }]}>Basic Colors</Text>
                 <View style={styles.colorRow}>
-                  <TouchableOpacity style={[styles.colorChip, { backgroundColor: '#FF0000' }]} onPress={() => { setHexCodeInput('#FF0000'); setShowHexCheatSheet(false); }}>
+                  <TouchableOpacity style={[styles.colorChip, { backgroundColor: '#FF0000' }]} onPress={() => { setHexCodeInput('FF0000'); setShowHexCheatSheet(false); }}>
                     <Text style={styles.colorCode}>Red{'\n'}#FF0000</Text>
                   </TouchableOpacity>
-                  <TouchableOpacity style={[styles.colorChip, { backgroundColor: '#00FF00' }]} onPress={() => { setHexCodeInput('#00FF00'); setShowHexCheatSheet(false); }}>
+                  <TouchableOpacity style={[styles.colorChip, { backgroundColor: '#00FF00' }]} onPress={() => { setHexCodeInput('00FF00'); setShowHexCheatSheet(false); }}>
                     <Text style={styles.colorCode}>Green{'\n'}#00FF00</Text>
                   </TouchableOpacity>
-                  <TouchableOpacity style={[styles.colorChip, { backgroundColor: '#0000FF' }]} onPress={() => { setHexCodeInput('#0000FF'); setShowHexCheatSheet(false); }}>
+                  <TouchableOpacity style={[styles.colorChip, { backgroundColor: '#0000FF' }]} onPress={() => { setHexCodeInput('0000FF'); setShowHexCheatSheet(false); }}>
                     <Text style={styles.colorCode}>Blue{'\n'}#0000FF</Text>
                   </TouchableOpacity>
                 </View>
-                
+
                 <View style={styles.colorRow}>
-                  <TouchableOpacity style={[styles.colorChip, { backgroundColor: '#FFFF00' }]} onPress={() => { setHexCodeInput('#FFFF00'); setShowHexCheatSheet(false); }}>
+                  <TouchableOpacity style={[styles.colorChip, { backgroundColor: '#FFFF00' }]} onPress={() => { setHexCodeInput('FFFF00'); setShowHexCheatSheet(false); }}>
                     <Text style={[styles.colorCode, { color: '#000' }]}>Yellow{'\n'}#FFFF00</Text>
                   </TouchableOpacity>
-                  <TouchableOpacity style={[styles.colorChip, { backgroundColor: '#FF00FF' }]} onPress={() => { setHexCodeInput('#FF00FF'); setShowHexCheatSheet(false); }}>
+                  <TouchableOpacity style={[styles.colorChip, { backgroundColor: '#FF00FF' }]} onPress={() => { setHexCodeInput('FF00FF'); setShowHexCheatSheet(false); }}>
                     <Text style={styles.colorCode}>Magenta{'\n'}#FF00FF</Text>
                   </TouchableOpacity>
-                  <TouchableOpacity style={[styles.colorChip, { backgroundColor: '#00FFFF' }]} onPress={() => { setHexCodeInput('#00FFFF'); setShowHexCheatSheet(false); }}>
+                  <TouchableOpacity style={[styles.colorChip, { backgroundColor: '#00FFFF' }]} onPress={() => { setHexCodeInput('00FFFF'); setShowHexCheatSheet(false); }}>
                     <Text style={[styles.colorCode, { color: '#000' }]}>Cyan{'\n'}#00FFFF</Text>
                   </TouchableOpacity>
                 </View>
@@ -989,25 +989,25 @@ export default function ShopScreen({ visible, onClose, player, onPlayerUpdated, 
               <View style={styles.colorSection}>
                 <Text style={[styles.cheatSheetSectionTitle, { color: theme.colors.text }]}>Popular Colors</Text>
                 <View style={styles.colorRow}>
-                  <TouchableOpacity style={[styles.colorChip, { backgroundColor: '#FF6B6B' }]} onPress={() => { setHexCodeInput('#FF6B6B'); setShowHexCheatSheet(false); }}>
+                  <TouchableOpacity style={[styles.colorChip, { backgroundColor: '#FF6B6B' }]} onPress={() => { setHexCodeInput('FF6B6B'); setShowHexCheatSheet(false); }}>
                     <Text style={styles.colorCode}>Coral{'\n'}#FF6B6B</Text>
                   </TouchableOpacity>
-                  <TouchableOpacity style={[styles.colorChip, { backgroundColor: '#4ECDC4' }]} onPress={() => { setHexCodeInput('#4ECDC4'); setShowHexCheatSheet(false); }}>
+                  <TouchableOpacity style={[styles.colorChip, { backgroundColor: '#4ECDC4' }]} onPress={() => { setHexCodeInput('4ECDC4'); setShowHexCheatSheet(false); }}>
                     <Text style={styles.colorCode}>Turquoise{'\n'}#4ECDC4</Text>
                   </TouchableOpacity>
-                  <TouchableOpacity style={[styles.colorChip, { backgroundColor: '#45B7D1' }]} onPress={() => { setHexCodeInput('#45B7D1'); setShowHexCheatSheet(false); }}>
+                  <TouchableOpacity style={[styles.colorChip, { backgroundColor: '#45B7D1' }]} onPress={() => { setHexCodeInput('45B7D1'); setShowHexCheatSheet(false); }}>
                     <Text style={styles.colorCode}>Sky Blue{'\n'}#45B7D1</Text>
                   </TouchableOpacity>
                 </View>
-                
+
                 <View style={styles.colorRow}>
-                  <TouchableOpacity style={[styles.colorChip, { backgroundColor: '#96CEB4' }]} onPress={() => { setHexCodeInput('#96CEB4'); setShowHexCheatSheet(false); }}>
+                  <TouchableOpacity style={[styles.colorChip, { backgroundColor: '#96CEB4' }]} onPress={() => { setHexCodeInput('96CEB4'); setShowHexCheatSheet(false); }}>
                     <Text style={[styles.colorCode, { color: '#000' }]}>Mint{'\n'}#96CEB4</Text>
                   </TouchableOpacity>
-                  <TouchableOpacity style={[styles.colorChip, { backgroundColor: '#FECA57' }]} onPress={() => { setHexCodeInput('#FECA57'); setShowHexCheatSheet(false); }}>
+                  <TouchableOpacity style={[styles.colorChip, { backgroundColor: '#FECA57' }]} onPress={() => { setHexCodeInput('FECA57'); setShowHexCheatSheet(false); }}>
                     <Text style={[styles.colorCode, { color: '#000' }]}>Orange{'\n'}#FECA57</Text>
                   </TouchableOpacity>
-                  <TouchableOpacity style={[styles.colorChip, { backgroundColor: '#FF9FF3' }]} onPress={() => { setHexCodeInput('#FF9FF3'); setShowHexCheatSheet(false); }}>
+                  <TouchableOpacity style={[styles.colorChip, { backgroundColor: '#FF9FF3' }]} onPress={() => { setHexCodeInput('FF9FF3'); setShowHexCheatSheet(false); }}>
                     <Text style={[styles.colorCode, { color: '#000' }]}>Pink{'\n'}#FF9FF3</Text>
                   </TouchableOpacity>
                 </View>
@@ -1016,13 +1016,13 @@ export default function ShopScreen({ visible, onClose, player, onPlayerUpdated, 
               <View style={styles.colorSection}>
                 <Text style={[styles.cheatSheetSectionTitle, { color: theme.colors.text }]}>Dark Colors</Text>
                 <View style={styles.colorRow}>
-                  <TouchableOpacity style={[styles.colorChip, { backgroundColor: '#2C3E50' }]} onPress={() => { setHexCodeInput('#2C3E50'); setShowHexCheatSheet(false); }}>
+                  <TouchableOpacity style={[styles.colorChip, { backgroundColor: '#2C3E50' }]} onPress={() => { setHexCodeInput('2C3E50'); setShowHexCheatSheet(false); }}>
                     <Text style={styles.colorCode}>Navy{'\n'}#2C3E50</Text>
                   </TouchableOpacity>
-                  <TouchableOpacity style={[styles.colorChip, { backgroundColor: '#8B4513' }]} onPress={() => { setHexCodeInput('#8B4513'); setShowHexCheatSheet(false); }}>
+                  <TouchableOpacity style={[styles.colorChip, { backgroundColor: '#8B4513' }]} onPress={() => { setHexCodeInput('8B4513'); setShowHexCheatSheet(false); }}>
                     <Text style={styles.colorCode}>Brown{'\n'}#8B4513</Text>
                   </TouchableOpacity>
-                  <TouchableOpacity style={[styles.colorChip, { backgroundColor: '#800080' }]} onPress={() => { setHexCodeInput('#800080'); setShowHexCheatSheet(false); }}>
+                  <TouchableOpacity style={[styles.colorChip, { backgroundColor: '#800080' }]} onPress={() => { setHexCodeInput('800080'); setShowHexCheatSheet(false); }}>
                     <Text style={styles.colorCode}>Purple{'\n'}#800080</Text>
                   </TouchableOpacity>
                 </View>

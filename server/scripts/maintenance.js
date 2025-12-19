@@ -169,15 +169,9 @@ async function runMaintenance() {
         }
 
         console.log('\n=== Database Maintenance Completed ===');
-
-
-
-
-
-
-
-
-runMaintenance().catch(console.error);}    }        maintenance.close();    } finally {        console.error('Maintenance failed:', error);    } catch (error) {        process.exit(1);
+    } catch (error) {
+        console.error('Maintenance failed:', error);
+        process.exit(1);
     } finally {
         maintenance.close();
     }

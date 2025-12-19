@@ -17,7 +17,7 @@ import { BackgroundWrapper } from './BackgroundWrapper';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
-interface BubblePopGameScreenProps {
+interface BubblePlusGameScreenProps {
   difficulty: 'easy' | 'medium' | 'hard';
   onBack: () => void;
   onGameComplete: (score: number, totalQuestions: number, accuracy: number) => void;
@@ -37,8 +37,6 @@ interface Bubble {
   size: number;
   color: string;
   isCorrect: boolean;
-  velocityX: number;
-  velocityY: number;
 }
 
 interface Equation {
@@ -60,7 +58,7 @@ const BUBBLE_COLORS = [
   '#A8E6CF', // Light Green
 ];
 
-export const BubblePopGameScreen: React.FC<BubblePopGameScreenProps> = ({
+export const BubblePlusGameScreen: React.FC<BubblePlusGameScreenProps> = ({
   difficulty,
   onBack,
   onGameComplete,
@@ -68,7 +66,7 @@ export const BubblePopGameScreen: React.FC<BubblePopGameScreenProps> = ({
   backgroundType,
   animationType,
 }) => {
-  const { theme} = useTheme();
+  const { theme } = useTheme();
   const [score, setScore] = useState(0);
   const [questionNumber, setQuestionNumber] = useState(1);
   const [currentEquation, setCurrentEquation] = useState<Equation | null>(null);
@@ -87,8 +85,6 @@ export const BubblePopGameScreen: React.FC<BubblePopGameScreenProps> = ({
   const totalCorrectRef = useRef(totalCorrect);
   const setScoreRef = useRef(setScore);
   const setTotalCorrectRef = useRef(setTotalCorrect);
-  const physicsIntervalRef = useRef<NodeJS.Timeout | null>(null);
-  const bubblesRef = useRef<Bubble[]>([]);
   const escapedBubblesRef = useRef<Set<string>>(new Set());
   const isProcessingAnswerRef = useRef(false);
   const isGameActiveRef = useRef(true);
@@ -146,9 +142,6 @@ export const BubblePopGameScreen: React.FC<BubblePopGameScreenProps> = ({
         break;
     }
 
-    // Round to avoid floating point errors
-    answer = Math.round(answer * 10) / 10;
-
     return {
       question: `${num1} ${operation} ${num2}`,
       answer,
@@ -166,17 +159,14 @@ export const BubblePopGameScreen: React.FC<BubblePopGameScreenProps> = ({
     while (wrongAnswers.size < count) {
       // Generate offset but ensure final answer is always >= 0
       let wrongAnswer: number;
-      if (correctAnswer < Math.floor(range / 2)) {
+      if (correctAnswer < range / 2) {
         // If correct answer is small, bias towards positive offsets
         const offset = Math.floor(Math.random() * range);
-        wrongAnswer = Math.max(0, correctAnswer - Math.floor(range / 4) + offset);
+        wrongAnswer = Math.max(0, correctAnswer - range / 4 + offset);
       } else {
-        const offset = Math.floor(Math.random() * range) - Math.floor(range / 2);
+        const offset = Math.floor(Math.random() * range) - range / 2;
         wrongAnswer = Math.max(0, correctAnswer + offset);
       }
-
-      // Round to whole numbers only
-      wrongAnswer = Math.round(wrongAnswer);
 
       if (wrongAnswer !== correctAnswer && wrongAnswer >= 0) {
         wrongAnswers.add(wrongAnswer);
@@ -201,10 +191,10 @@ export const BubblePopGameScreen: React.FC<BubblePopGameScreenProps> = ({
       const bubbleSize = 80 + Math.random() * 30;
       const padding = 40;
 
-      // Start bubbles at the bottom with more staggered spacing
+      // Start bubbles at the bottom with staggered positions
       const xPos = padding + Math.random() * (SCREEN_WIDTH - bubbleSize - padding * 2);
-      // More spacing between bubbles (200px instead of 120px)
-      const startY = SCREEN_HEIGHT + 50 + (index * 200);
+      // Stagger starting positions so they don't overlap
+      const startY = SCREEN_HEIGHT + 50 + (index * 120); // Each bubble starts 120px below the previous one
 
       return {
         id: `bubble_${Date.now()}_${index}_${Math.random()}`,
@@ -217,8 +207,6 @@ export const BubblePopGameScreen: React.FC<BubblePopGameScreenProps> = ({
         size: bubbleSize,
         color: BUBBLE_COLORS[Math.floor(Math.random() * BUBBLE_COLORS.length)],
         isCorrect: value === equation.answer,
-        velocityX: 0,
-        velocityY: -2, // Initial upward velocity
       };
     });
 
@@ -234,121 +222,7 @@ export const BubblePopGameScreen: React.FC<BubblePopGameScreenProps> = ({
     });
 
     setBubbles(newBubbles);
-    bubblesRef.current = newBubbles;
     animateBubbles(newBubbles);
-    startPhysicsSimulation();
-  };
-
-  // Check collision between two bubbles
-  const checkCollision = (bubble1: Bubble, bubble2: Bubble): boolean => {
-    const dx = bubble1.x - bubble2.x;
-    const dy = bubble1.y - bubble2.y;
-    const distance = Math.sqrt(dx * dx + dy * dy);
-    // Add a small buffer (5px) to prevent bubbles from getting too close
-    const minDistance = (bubble1.size + bubble2.size) / 2 + 5;
-    return distance < minDistance;
-  };
-
-  // Resolve collision between two bubbles
-  const resolveCollision = (bubble1: Bubble, bubble2: Bubble) => {
-    const dx = bubble1.x - bubble2.x;
-    const dy = bubble1.y - bubble2.y;
-    const distance = Math.sqrt(dx * dx + dy * dy);
-
-    if (distance === 0) return; // Prevent division by zero
-
-    // Normalize collision vector
-    const nx = dx / distance;
-    const ny = dy / distance;
-
-    // Relative velocity
-    const dvx = bubble1.velocityX - bubble2.velocityX;
-    const dvy = bubble1.velocityY - bubble2.velocityY;
-
-    // Relative velocity in collision normal direction
-    const dvn = dvx * nx + dvy * ny;
-
-    // Do not resolve if velocities are separating
-    if (dvn > 0) return;
-
-    // Collision impulse (reduced bounciness for gentler collisions)
-    const impulse = -1.2 * dvn; // Bounciness factor
-
-    // Apply impulse
-    bubble1.velocityX += impulse * nx;
-    bubble1.velocityY += impulse * ny;
-    bubble2.velocityX -= impulse * nx;
-    bubble2.velocityY -= impulse * ny;
-
-    // Separate overlapping bubbles
-    const overlap = (bubble1.size + bubble2.size) / 2 - distance;
-    const separationX = (overlap / 2) * nx;
-    const separationY = (overlap / 2) * ny;
-
-    bubble1.x += separationX;
-    bubble1.y += separationY;
-    bubble2.x -= separationX;
-    bubble2.y -= separationY;
-  };
-
-  // Physics simulation loop
-  const startPhysicsSimulation = () => {
-    if (physicsIntervalRef.current) {
-      clearInterval(physicsIntervalRef.current);
-    }
-
-    physicsIntervalRef.current = setInterval(() => {
-      const currentBubbles = bubblesRef.current;
-      if (!currentBubbles.length || !isGameActiveRef.current) return;
-
-      // Update physics for each bubble
-      currentBubbles.forEach((bubble, i) => {
-        // Apply upward movement
-        bubble.velocityY -= 0.1; // Constant upward force
-
-        // Apply slight horizontal drift
-        bubble.velocityX += (Math.random() - 0.5) * 0.2;
-
-        // Damping to prevent bubbles from moving too fast
-        bubble.velocityX *= 0.98;
-        bubble.velocityY *= 0.995;
-
-        // Limit maximum velocity
-        const maxVel = 5;
-        bubble.velocityX = Math.max(-maxVel, Math.min(maxVel, bubble.velocityX));
-        bubble.velocityY = Math.max(-maxVel, Math.min(maxVel, bubble.velocityY));
-
-        // Update position
-        bubble.x += bubble.velocityX;
-        bubble.y += bubble.velocityY;
-
-        // Bounce off screen edges
-        const padding = 40;
-        if (bubble.x < padding) {
-          bubble.x = padding;
-          bubble.velocityX *= -0.7;
-        } else if (bubble.x > SCREEN_WIDTH - bubble.size - padding) {
-          bubble.x = SCREEN_WIDTH - bubble.size - padding;
-          bubble.velocityX *= -0.7;
-        }
-
-        // Check collision with other bubbles
-        for (let j = i + 1; j < currentBubbles.length; j++) {
-          if (checkCollision(bubble, currentBubbles[j])) {
-            resolveCollision(bubble, currentBubbles[j]);
-          }
-        }
-
-        // Update animated values
-        bubble.animatedX.setValue(bubble.x);
-        bubble.animatedY.setValue(bubble.y);
-
-        // Check if bubble escaped off top
-        if (bubble.y < -200 && bubble.isCorrect && isGameActiveRef.current && !isProcessingAnswerRef.current) {
-          handleBubbleEscape(bubble);
-        }
-      });
-    }, 1000 / 60); // 60 FPS
   };
 
   // Animate bubbles floating up
@@ -361,12 +235,40 @@ export const BubblePopGameScreen: React.FC<BubblePopGameScreenProps> = ({
         tension: 40,
         useNativeDriver: true,
       }).start();
+
+      // Float upward continuously from bottom to top
+      const floatDuration = 8000 + Math.random() * 2000; // 8-10 seconds to cross screen
+      Animated.timing(bubble.animatedY, {
+        toValue: -200, // Float off the top of screen
+        duration: floatDuration,
+        useNativeDriver: true,
+      }).start(({ finished }) => {
+        // If animation finished (bubble went off-screen) and game is still active
+        if (finished && isGameActiveRef.current && !isProcessingAnswerRef.current) {
+          handleBubbleEscape(bubble);
+        }
+      });
+
+      // Gentle horizontal drift
+      Animated.loop(
+        Animated.sequence([
+          Animated.timing(bubble.animatedX, {
+            toValue: bubble.x + 20,
+            duration: 2000 + Math.random() * 1000,
+            useNativeDriver: true,
+          }),
+          Animated.timing(bubble.animatedX, {
+            toValue: bubble.x - 20,
+            duration: 2000 + Math.random() * 1000,
+            useNativeDriver: true,
+          }),
+        ])
+      ).start();
     });
   };
 
   // Handle bubble escaping off-screen
   const handleBubbleEscape = (bubble: Bubble) => {
-    console.log('[BubblePop] handleBubbleEscape called', { bubbleId: bubble.id, isCorrect: bubble.isCorrect });
     if (!isGameActiveRef.current || isProcessingAnswerRef.current || !isMountedRef.current) return;
 
     // Prevent handling the same bubble escape multiple times
@@ -378,13 +280,10 @@ export const BubblePopGameScreen: React.FC<BubblePopGameScreenProps> = ({
 
     // If the correct bubble escaped, count as incorrect
     if (bubble.isCorrect && isMountedRef.current) {
-      console.log('[BubblePop] Correct bubble escaped, updating score');
       setShowIncorrectFeedback(true);
       const newScore = Math.max(0, scoreRef.current - 5);
-      console.log('[BubblePop] About to update score', { newScore, setScore: typeof setScore });
       scoreRef.current = newScore;
       setScore(newScore);
-      console.log('[BubblePop] Score updated successfully');
     }
 
     // Clear any existing timeout
@@ -409,11 +308,9 @@ export const BubblePopGameScreen: React.FC<BubblePopGameScreenProps> = ({
 
     if (bubble.isCorrect) {
       // Correct answer!
-      console.log('[BubblePop] Correct bubble popped');
       setShowCorrectFeedback(true);
       const newScore = scoreRef.current + 10;
       scoreRef.current = newScore;
-      console.log('[BubblePop] Updating score in handleBubblePop (correct)', { newScore, setScore: typeof setScore });
       setScore(newScore);
 
       const newTotalCorrect = totalCorrectRef.current + 1;
@@ -433,17 +330,14 @@ export const BubblePopGameScreen: React.FC<BubblePopGameScreenProps> = ({
           useNativeDriver: true,
         }),
       ]).start(() => {
-        console.log('[BubblePop] Correct animation completed, calling nextQuestion');
         setShowCorrectFeedback(false);
         nextQuestion();
       });
     } else {
       // Wrong answer - continue playing, don't move to next question
-      console.log('[BubblePop] Wrong bubble popped');
       setShowIncorrectFeedback(true);
       const newScore = Math.max(0, scoreRef.current - 5);
       scoreRef.current = newScore;
-      console.log('[BubblePop] Updating score in handleBubblePop (wrong)', { newScore, setScore: typeof setScore });
       setScore(newScore);
 
       // Shake animation
@@ -492,7 +386,6 @@ export const BubblePopGameScreen: React.FC<BubblePopGameScreenProps> = ({
 
   // End game
   const endGame = useCallback(() => {
-    console.log('[BubblePop] endGame called');
     isGameActiveRef.current = false;
     isMountedRef.current = false;
     setIsGameActive(false);
@@ -500,9 +393,6 @@ export const BubblePopGameScreen: React.FC<BubblePopGameScreenProps> = ({
     // Clear all timers and intervals
     if (timerRef.current) {
       clearInterval(timerRef.current);
-    }
-    if (physicsIntervalRef.current) {
-      clearInterval(physicsIntervalRef.current);
     }
     if (escapeTimeoutRef.current) {
       clearTimeout(escapeTimeoutRef.current);
@@ -512,9 +402,7 @@ export const BubblePopGameScreen: React.FC<BubblePopGameScreenProps> = ({
     const accuracy = totalQuestions > 0 ? (totalCorrectRef.current / totalQuestions) * 100 : 0;
     const finalScore = scoreRef.current;
 
-    console.log('[BubblePop] Game ending with', { finalScore, totalQuestions, accuracy });
     setTimeout(() => {
-      console.log('[BubblePop] Calling onGameComplete');
       onGameComplete(finalScore, totalQuestions, accuracy);
     }, 500);
   }, [onGameComplete]);
@@ -541,9 +429,6 @@ export const BubblePopGameScreen: React.FC<BubblePopGameScreenProps> = ({
       if (timerRef.current) {
         clearInterval(timerRef.current);
       }
-      if (physicsIntervalRef.current) {
-        clearInterval(physicsIntervalRef.current);
-      }
       if (escapeTimeoutRef.current) {
         clearTimeout(escapeTimeoutRef.current);
       }
@@ -565,9 +450,6 @@ export const BubblePopGameScreen: React.FC<BubblePopGameScreenProps> = ({
             setIsGameActive(false);
             if (timerRef.current) {
               clearInterval(timerRef.current);
-            }
-            if (physicsIntervalRef.current) {
-              clearInterval(physicsIntervalRef.current);
             }
             if (escapeTimeoutRef.current) {
               clearTimeout(escapeTimeoutRef.current);
@@ -618,7 +500,7 @@ export const BubblePopGameScreen: React.FC<BubblePopGameScreenProps> = ({
         {/* Equation Display */}
         <View style={styles.equationContainer}>
           <IslandCard variant="floating" padding={20}>
-            <Text style={styles.equationLabel}>Solve:</Text>
+            <Text style={styles.equationLabel}>Bubble Pop PLUS ⚡</Text>
             <Text style={[styles.equation, { color: theme.colors.text }]}>
               {currentEquation?.question} = ?
             </Text>
@@ -631,7 +513,7 @@ export const BubblePopGameScreen: React.FC<BubblePopGameScreenProps> = ({
         {/* Instruction */}
         <IslandCard variant="subtle" padding={10} style={styles.instructionCard}>
           <Text style={[styles.instruction, { color: theme.colors.textSecondary }]}>
-            🫧 Pop the bubble with the correct answer!
+            🫧 Fast mode! Pop before they escape!
           </Text>
         </IslandCard>
 
@@ -650,12 +532,11 @@ export const BubblePopGameScreen: React.FC<BubblePopGameScreenProps> = ({
                   ],
                 },
               ]}
-              pointerEvents={isProcessingAnswer ? 'none' : 'auto'}
             >
               <TouchableOpacity
                 activeOpacity={0.8}
                 onPress={() => handleBubblePop(bubble)}
-                disabled={!isGameActive || isProcessingAnswer}
+                disabled={!isGameActive}
               >
                 <LinearGradient
                   colors={[bubble.color, `${bubble.color}CC`]}
@@ -815,4 +696,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default BubblePopGameScreen;
+export default BubblePlusGameScreen;

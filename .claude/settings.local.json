@@ -9,7 +9,11 @@
       "Bash(git push)",
       "Bash(git rebase:*)",
       "Bash(git push:*)",
-      "Bash(node scripts/checkBrevoLogs.js:*)"
+      "Bash(node scripts/checkBrevoLogs.js:*)",
+      "Bash(cp:*)",
+      "Bash(npm start)",
+      "Bash(timeout 5 tail:*)",
+      "Bash(node:*)"
     ],
     "deny": [],
     "ask": []
