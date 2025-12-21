@@ -433,20 +433,33 @@ const FriendsScreen: React.FC<FriendsScreenProps> = ({
   };
 
   const handleAcceptRequest = async (requestId: string, username: string) => {
-    const success = await ServerFriendsService.acceptFriendRequest(requestId);
-    if (success) {
-      // Immediately remove the request from UI for instant feedback
-      setFriendRequests(prev => prev.filter(req => req.id !== requestId));
+    console.log('[FriendsScreen] Accepting friend request:', requestId, 'from', username);
+    try {
+      const success = await ServerFriendsService.acceptFriendRequest(requestId);
+      console.log('[FriendsScreen] Accept request result:', success);
 
-      // Force a complete reload of friends data BEFORE showing alert
-      setIsLoadingFriends(false); // Reset loading flag in case it's stuck
-      await loadFriends();
-      // Also trigger a refresh to ensure everything is synced
-      onRefresh?.();
+      if (success) {
+        // Immediately remove the request from UI for instant feedback
+        setFriendRequests(prev => {
+          console.log('[FriendsScreen] Removing request from UI. Current count:', prev.length);
+          return prev.filter(req => req.id !== requestId);
+        });
 
-      Alert.alert('Success', `You are now friends with ${username}!`);
-    } else {
-      Alert.alert('Error', 'Failed to accept friend request. Please try again.');
+        // Force a complete reload of friends data BEFORE showing alert
+        setIsLoadingFriends(false); // Reset loading flag in case it's stuck
+        console.log('[FriendsScreen] Reloading friends data after accept');
+        await loadFriends();
+        // Also trigger a refresh to ensure everything is synced
+        onRefresh?.();
+
+        Alert.alert('Success', `You are now friends with ${username}!`);
+      } else {
+        console.error('[FriendsScreen] Failed to accept friend request');
+        Alert.alert('Error', 'Failed to accept friend request. The request may have expired or been canceled.');
+      }
+    } catch (error) {
+      console.error('[FriendsScreen] Error accepting friend request:', error);
+      Alert.alert('Error', 'An error occurred while accepting the friend request. Please try again.');
     }
   };
 
@@ -618,29 +631,31 @@ const FriendsScreen: React.FC<FriendsScreenProps> = ({
           </View>
         ) : (
           friendRequests.map((request) => (
-          <IslandCard key={request.id} variant="elevated" padding={15} style={styles.requestCard}>
-            <View style={styles.friendInfo}>
-              <Text style={styles.friendIcon}>👤</Text>
-              <View style={styles.friendDetails}>
-                <Text style={[styles.friendName, { color: theme.colors.text }]}>{request.fromUsername}</Text>
-                <Text style={[styles.friendStatus, { color: theme.colors.textSecondary }]}>
-                  Sent {request.timestamp ? new Date(request.timestamp).toLocaleDateString() : new Date(request.createdAt || Date.now()).toLocaleDateString()}
-                </Text>
+          <IslandCard key={request.id} variant="elevated" padding={12} style={styles.requestCard}>
+            <View style={styles.requestCardContent}>
+              <View style={styles.friendInfo}>
+                <Text style={styles.friendIcon}>👤</Text>
+                <View style={styles.friendDetails}>
+                  <Text style={[styles.friendName, { color: theme.colors.text }]} numberOfLines={1}>{request.fromUsername}</Text>
+                  <Text style={[styles.friendStatus, { color: theme.colors.textSecondary }]}>
+                    Sent {request.timestamp ? new Date(request.timestamp).toLocaleDateString() : new Date(request.createdAt || Date.now()).toLocaleDateString()}
+                  </Text>
+                </View>
               </View>
-            </View>
-            <View style={styles.requestActions}>
-              <TouchableOpacity
-                style={styles.acceptButton}
-                onPress={() => handleAcceptRequest(request.id, request.fromUsername)}
-              >
-                <Text style={[styles.acceptButtonText, { color: '#fff' }]}>✓</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.rejectButton}
-                onPress={() => handleRejectRequest(request.id)}
-              >
-                <Text style={[styles.rejectButtonText, { color: '#fff' }]}>✗</Text>
-              </TouchableOpacity>
+              <View style={styles.requestActions}>
+                <TouchableOpacity
+                  style={styles.acceptButton}
+                  onPress={() => handleAcceptRequest(request.id, request.fromUsername)}
+                >
+                  <Text style={[styles.acceptButtonText, { color: '#fff' }]}>✓</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.rejectButton}
+                  onPress={() => handleRejectRequest(request.id)}
+                >
+                  <Text style={[styles.rejectButtonText, { color: '#fff' }]}>✗</Text>
+                </TouchableOpacity>
+              </View>
             </View>
           </IslandCard>
           ))
@@ -994,18 +1009,20 @@ const styles = StyleSheet.create({
     paddingBottom: 0,
   },
   requestCard: {
-    backgroundColor: 'rgba(255,255,255,0.15)',
-    borderRadius: 12,
-    padding: 15,
     marginBottom: 10,
+  },
+  requestCardContent: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+    width: '100%',
   },
   friendInfo: {
     flexDirection: 'row',
     alignItems: 'center',
     marginBottom: 12,
+    flex: 1,
+    marginRight: 12,
   },
   friendIconContainer: {
     position: 'relative',
