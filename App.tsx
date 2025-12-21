@@ -22,7 +22,7 @@ import {
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { LinearGradient } from 'expo-linear-gradient';
-import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaProvider, SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import DrawingNotepad from './DrawingNotepad';
 import UsernameSetupScreen from './components/UsernameSetupScreen';
 import PlayerProfileScreen from './components/PlayerProfileScreen';
@@ -109,6 +109,13 @@ const { width } = Dimensions.get('window');
 
 function AppContent() {
   // State and hooks
+  let insets;
+  try {
+    insets = useSafeAreaInsets();
+  } catch (e) {
+    // Fallback if SafeAreaProvider is not available
+    insets = { top: 0, bottom: 0, left: 0, right: 0 };
+  }
   const [authenticatedUser, setAuthenticatedUser] = useState<AuthUser | null>(null);
   const [authInitialized, setAuthInitialized] = useState(false);
   const [showAuthScreen, setShowAuthScreen] = useState(false);
@@ -152,6 +159,7 @@ function AppContent() {
   const [spaceIncorrectFeedback, setSpaceIncorrectFeedback] = useState(false);
   const [emailVerified, setEmailVerified] = useState(true); // Default to true to avoid showing banner unnecessarily
   const [showVerificationBanner, setShowVerificationBanner] = useState(false);
+  const [questionNumber, setQuestionNumber] = useState(1);
   
   // Loading progress tracking
   const [loadingProgress, setLoadingProgress] = useState(0);
@@ -953,7 +961,7 @@ function AppContent() {
           </View>
         )}
 
-        <View style={styles.setupContainerClean}>
+        <View style={[styles.setupContainerClean, { paddingBottom: insets.bottom + 20 }]}>
           {/* Header Section - now only logo shown in MainMenuIslands */}
           <View style={[styles.headerSection, { marginTop: -40 }]} />
 
@@ -1157,7 +1165,7 @@ function AppContent() {
           style={styles.container}
         >
           <SafeAreaView style={styles.gameContainer} edges={['top', 'left', 'right']}>
-            <View style={styles.gameContent}>
+            <View style={[styles.gameContent, { paddingBottom: insets.bottom + 10 }]}>
               {/* Floating Island Buttons - Top Row */}
               <View style={styles.gameHeaderIsland}>
                 <IslandButton
@@ -1282,8 +1290,8 @@ function AppContent() {
     return (
       <BackgroundWrapper colors={backgroundColors} type={backgroundType} animationType={animationType} style={styles.container}>
         <SafeAreaView style={styles.safeAreaContainer} edges={['top', 'left', 'right']}>
-          <ScrollView 
-            contentContainerStyle={styles.resultsContainer}
+          <ScrollView
+            contentContainerStyle={[styles.resultsContainer, { paddingBottom: insets.bottom + 20 }]}
             showsVerticalScrollIndicator={false}
             bounces={false}
           >
@@ -1544,7 +1552,7 @@ function AppContent() {
           style={styles.container}
         >
           <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
-            <View style={styles.difficultySelectContainer}>
+            <View style={[styles.difficultySelectContainer, { paddingBottom: insets.bottom + 20 }]}>
               <View style={[styles.difficultySelectCard, { backgroundColor: theme.colors.card }]}>
                 <Text style={[styles.difficultySelectTitle, { color: theme.colors.text }]}>
                   Select Difficulty

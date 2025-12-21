@@ -357,15 +357,23 @@ class DatabaseService {
   }
 
   async removeFriend(playerId, friendId) {
+    console.log('[Database] removeFriend called:', playerId, 'removing', friendId);
     const player = await this.getPlayer(playerId);
-    if (!player || !player.friends) return false;
+    if (!player || !player.friends) {
+      console.log('[Database] Player not found or has no friends array');
+      return false;
+    }
 
     const index = player.friends.indexOf(friendId);
-    if (index === -1) return false;
+    if (index === -1) {
+      console.log('[Database] Friend not in player friends list');
+      return false;
+    }
 
     // Remove friend from player's list
     player.friends.splice(index, 1);
     await this.savePlayer(player);
+    console.log('[Database] Removed friend from player list. New friends:', player.friends);
 
     // Also remove player from friend's list (bidirectional)
     const friend = await this.getPlayer(friendId);
@@ -374,7 +382,10 @@ class DatabaseService {
       if (friendIndex !== -1) {
         friend.friends.splice(friendIndex, 1);
         await this.savePlayer(friend);
+        console.log('[Database] Removed player from friend list (bidirectional)');
       }
+    } else {
+      console.log('[Database] Friend player not found or has no friends array (ghost friend) - skipping bidirectional removal');
     }
 
     return true;

@@ -1257,17 +1257,61 @@ app.get('/api/friends/status/:playerId1/:playerId2', async (req, res) => {
 app.post('/api/friends/remove', async (req, res) => {
   try {
     const { playerId, friendId } = req.body;
-    
+
+    console.log('[API] Remove friend request:', playerId, 'removing', friendId);
     const success = await database.removeFriend(playerId, friendId);
-    
+
     if (!success) {
-      return res.status(400).json({ error: 'Cannot remove friend' });
+      console.error('[API] removeFriend returned false');
+      return res.status(400).json({ error: 'Cannot remove friend', success: false });
     }
-    
+
+    console.log('[API] Friend removed successfully');
     res.json({ success: true });
   } catch (error) {
     console.error('[API] Error removing friend:', error);
-    res.status(500).json({ error: 'Failed to remove friend' });
+    res.status(500).json({ error: 'Failed to remove friend', success: false });
+  }
+});
+
+// Cleanup ghost friends (friends that don't exist anymore)
+app.post('/api/friends/cleanup-ghosts', async (req, res) => {
+  try {
+    const { playerId } = req.body;
+    console.log('[API] Cleaning up ghost friends for player:', playerId);
+
+    const player = await database.getPlayer(playerId);
+    if (!player || !player.friends) {
+      return res.json({ success: true, removed: 0, message: 'No friends to clean' });
+    }
+
+    const ghostFriends = [];
+
+    // Check each friend to see if they exist
+    for (const friendId of player.friends) {
+      const friend = await database.getPlayer(friendId);
+      if (!friend) {
+        console.log('[API] Found ghost friend:', friendId);
+        ghostFriends.push(friendId);
+      }
+    }
+
+    // Remove ghost friends
+    if (ghostFriends.length > 0) {
+      player.friends = player.friends.filter(id => !ghostFriends.includes(id));
+      await database.savePlayer(player);
+      console.log('[API] Removed', ghostFriends.length, 'ghost friends');
+    }
+
+    res.json({
+      success: true,
+      removed: ghostFriends.length,
+      ghostFriends: ghostFriends,
+      remainingFriends: player.friends
+    });
+  } catch (error) {
+    console.error('[API] Error cleaning up ghost friends:', error);
+    res.status(500).json({ error: 'Failed to cleanup ghost friends', success: false });
   }
 });
 

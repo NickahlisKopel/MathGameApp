@@ -13,7 +13,7 @@ import {
   Image,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Background, ProfileIcon, DailyChallenge, DailyChallengeSubmission, RARITY_COLORS } from '../types/Shop';
 import { PlayerProfile } from '../types/Player';
 import { ShopService } from '../services/ShopService';
@@ -71,6 +71,13 @@ const PROFILE_ICON_IMAGES: { [key: string]: any } = {
 };
 
 export default function ShopScreen({ visible, onClose, player, onPlayerUpdated, activeBackgroundColors, activeBackgroundType, activeAnimationType, onBackgroundChanged }: Props) {
+  let insets;
+  try {
+    insets = useSafeAreaInsets();
+  } catch (e) {
+    // Fallback for when SafeAreaProvider is not available
+    insets = { top: 0, bottom: 20, left: 0, right: 0 };
+  }
   const { theme } = useTheme();
   const [activeTab, setActiveTab] = useState<TabType>('backgrounds');
   const [backgrounds, setBackgrounds] = useState<{ [category: string]: { unlocked: Background[]; locked: Background[] } }>({});
@@ -789,7 +796,7 @@ export default function ShopScreen({ visible, onClose, player, onPlayerUpdated, 
         type={activeBackgroundType} 
         style={[styles.container, { justifyContent: 'center', alignItems: 'center', paddingTop: 0 }]}
       >
-        <SafeAreaView style={[styles.safeArea, { justifyContent: 'center', alignItems: 'center' }]} edges={['top', 'left', 'right']}>
+        <SafeAreaView style={[styles.safeArea, { justifyContent: 'center', alignItems: 'center', paddingBottom: insets.bottom }]} edges={['top', 'left', 'right']}>
           {/* Header - Bubble Island Style */}
           <View style={styles.headerBubbleRow}>
             <IslandCard variant="floating" padding={16} style={styles.headerTitleBubble}>

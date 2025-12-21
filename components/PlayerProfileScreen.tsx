@@ -14,7 +14,7 @@ import {
   Image,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { PlayerProfile, Achievement, GameResult } from '../types/Player';
 import { PlayerStorageService } from '../services/PlayerStorageService';
 import { useTheme } from '../contexts/ThemeContext';
@@ -76,6 +76,13 @@ const BackgroundWrapper: React.FC<{
 };
 
 export default function PlayerProfileScreen({ player, onPlayerUpdated, onClose, onProfileReset, onLogout, visible, backgroundColors, backgroundType, initialTab = 'overview', onOpenFriends }: Props) {
+  let insets;
+  try {
+    insets = useSafeAreaInsets();
+  } catch (e) {
+    // Fallback for when SafeAreaProvider is not available
+    insets = { top: 0, bottom: 20, left: 0, right: 0 };
+  }
   const { theme, toggleTheme, isDarkMode } = useTheme();
   const [activeTab, setActiveTab] = useState<TabType>(initialTab);
   const [gameHistory, setGameHistory] = useState<GameResult[]>([]);
@@ -1009,7 +1016,7 @@ export default function PlayerProfileScreen({ player, onPlayerUpdated, onClose, 
   return (
     <Modal visible={visible} animationType="slide" presentationStyle="fullScreen">
       <BackgroundWrapper colors={backgroundColors} type={backgroundType} style={styles.container}>
-        <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
+        <SafeAreaView style={[styles.safeArea, { paddingBottom: insets.bottom }]} edges={['top', 'left', 'right']}>
           {/* Header - Island Style */}
           <View style={styles.header}>
             <IslandButton

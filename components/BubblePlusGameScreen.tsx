@@ -8,7 +8,7 @@ import {
   Dimensions,
   Alert,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { IslandButton } from './IslandButton';
 import { IslandCard } from './IslandCard';
@@ -66,6 +66,13 @@ export const BubblePlusGameScreen: React.FC<BubblePlusGameScreenProps> = ({
   backgroundType,
   animationType,
 }) => {
+  let insets;
+  try {
+    insets = useSafeAreaInsets();
+  } catch (e) {
+    // Fallback for when SafeAreaProvider is not available
+    insets = { top: 0, bottom: 20, left: 0, right: 0 };
+  }
   const { theme } = useTheme();
   const [score, setScore] = useState(0);
   const [questionNumber, setQuestionNumber] = useState(1);
@@ -474,7 +481,7 @@ export const BubblePlusGameScreen: React.FC<BubblePlusGameScreenProps> = ({
         setShowIncorrectFeedback(false);
       }}
     >
-      <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
+      <SafeAreaView style={[styles.container, { paddingBottom: insets.bottom }]} edges={['top', 'left', 'right']}>
         {/* Header */}
         <View style={styles.header}>
           <IslandButton

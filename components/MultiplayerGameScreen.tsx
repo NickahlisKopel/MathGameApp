@@ -8,7 +8,7 @@ import {
   Animated,
   Dimensions,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { localMultiplayer } from '../services/localMultiplayer';
 import { localAuth } from '../services/localAuth';
 import { GameRewards } from '../utils/GameRewards';
@@ -44,6 +44,13 @@ export const MultiplayerGameScreen: React.FC<MultiplayerGameScreenProps> = ({
   onBackToMenu,
   difficulty,
 }) => {
+  let insets;
+  try {
+    insets = useSafeAreaInsets();
+  } catch (e) {
+    // Fallback for when SafeAreaProvider is not available
+    insets = { top: 0, bottom: 20, left: 0, right: 0 };
+  }
   const { backgroundColors, backgroundType, animationType } = useBackground();
   const [gameState, setGameState] = useState<'waiting' | 'playing' | 'finished'>('waiting');
   const [currentEquation, setCurrentEquation] = useState<Equation | null>(null);
@@ -469,7 +476,7 @@ export const MultiplayerGameScreen: React.FC<MultiplayerGameScreenProps> = ({
           setShowIncorrectFeedback(false);
         }}
       >
-        <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
+        <SafeAreaView style={[styles.container, { paddingBottom: insets.bottom }]} edges={['top', 'left', 'right']}>
           <View style={styles.waitingContainer}>
             <Text style={styles.title}>🎮 Multiplayer Math Battle</Text>
             <Text style={styles.subtitle}>Connecting to game...</Text>
@@ -493,7 +500,7 @@ export const MultiplayerGameScreen: React.FC<MultiplayerGameScreenProps> = ({
         setShowIncorrectFeedback(false);
       }}
     >
-      <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
+      <SafeAreaView style={[styles.container, { paddingBottom: insets.bottom }]} edges={['top', 'left', 'right']}>
         <View style={styles.gameContainer}>
         {/* Header */}
         <View style={styles.header}>

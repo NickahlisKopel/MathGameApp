@@ -6,7 +6,7 @@ import {
   TouchableOpacity,
   ScrollView,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { PlayerProfile } from '../types/Player';
 import { useBackground } from '../hooks/useBackground';
 import { useTheme } from '../contexts/ThemeContext';
@@ -40,6 +40,13 @@ export const MultiplayerResultsScreen: React.FC<MultiplayerResultsScreenProps> =
   onPlayAgain,
   onBackToMenu,
 }) => {
+  let insets;
+  try {
+    insets = useSafeAreaInsets();
+  } catch (e) {
+    // Fallback for when SafeAreaProvider is not available
+    insets = { top: 0, bottom: 20, left: 0, right: 0 };
+  }
   // Background and theme hooks
   const { backgroundColors, backgroundType, animationType, isLoading: backgroundLoading } = useBackground();
   const { theme } = useTheme();
@@ -93,7 +100,7 @@ export const MultiplayerResultsScreen: React.FC<MultiplayerResultsScreenProps> =
 
   return (
     <BackgroundWrapper colors={backgroundColors} type={backgroundType} animationType={animationType} style={styles.container}>
-      <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
+      <SafeAreaView style={[styles.container, { paddingBottom: insets.bottom }]} edges={['top', 'left', 'right']}>
       <ScrollView contentContainerStyle={styles.scrollContent}>
         <Text style={styles.title}>🏆 Multiplayer Results</Text>
         

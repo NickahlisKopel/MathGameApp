@@ -243,7 +243,12 @@ export class ServerFriendsService {
   static async removeFriend(friendId: string): Promise<boolean> {
     try {
       const player = await PlayerStorageService.loadPlayerProfile();
-      if (!player) return false;
+      if (!player) {
+        console.error('[ServerFriends] No player profile found for removeFriend');
+        return false;
+      }
+
+      console.log('[ServerFriends] Removing friend:', friendId, 'from player:', player.id);
 
       const SERVER_URL = await getServerUrl();
       const response = await fetch(`${SERVER_URL}/api/friends/remove`, {
@@ -256,17 +261,21 @@ export class ServerFriendsService {
       });
 
       const data = await response.json();
-      
+      console.log('[ServerFriends] Remove friend response:', data);
+
       if (data.success) {
         // Update local profile from server
         const updatedPlayer = await this.getPlayerFromServer(player.id);
         if (updatedPlayer) {
+          console.log('[ServerFriends] Updated friends list from server:', updatedPlayer.friends);
           player.friends = updatedPlayer.friends || [];
           await PlayerStorageService.savePlayerProfile(player);
         }
+        return true;
+      } else {
+        console.error('[ServerFriends] Server returned success=false:', data.error);
+        return false;
       }
-      
-      return data.success || false;
     } catch (error) {
       console.error('[ServerFriends] Error removing friend:', error);
       return false;

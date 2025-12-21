@@ -9,7 +9,7 @@ import {
   Dimensions,
   Platform,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { PlayerProfile } from '../types/Player';
 import { socketMultiplayerService } from '../services/socketMultiplayerService';
 import { authService } from '../services/AuthService';
@@ -32,6 +32,13 @@ export const OnlineMultiplayerScreen: React.FC<OnlineMultiplayerScreenProps> = (
   onGameEnd,
   onBackToMenu,
 }) => {
+  let insets;
+  try {
+    insets = useSafeAreaInsets();
+  } catch (e) {
+    // Fallback for when SafeAreaProvider is not available
+    insets = { top: 0, bottom: 20, left: 0, right: 0 };
+  }
   const { backgroundColors, backgroundType, animationType, isLoading: backgroundLoading } = useBackground();
   const { theme } = useTheme();
   
@@ -605,7 +612,7 @@ export const OnlineMultiplayerScreen: React.FC<OnlineMultiplayerScreenProps> = (
         setShowIncorrectFeedback(false);
       }}
     >
-      <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
+      <SafeAreaView style={[styles.container, { paddingBottom: insets.bottom }]} edges={['top', 'left', 'right']}>
         <View style={styles.header}>
           <TouchableOpacity style={styles.backButton} onPress={onBackToMenu}>
             <Text style={styles.backButtonText}>← Back</Text>

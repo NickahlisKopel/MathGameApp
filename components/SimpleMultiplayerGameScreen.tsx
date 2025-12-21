@@ -9,7 +9,7 @@ import {
   Dimensions,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { simpleMultiplayer, GameMode } from '../services/simpleMultiplayer';
 import { GameRewards } from '../utils/GameRewards';
 import { PlayerStorageService } from '../services/PlayerStorageService';
@@ -40,6 +40,13 @@ export const SimpleMultiplayerGameScreen: React.FC<SimpleMultiplayerGameScreenPr
   difficulty,
   gameMode,
 }) => {
+  let insets;
+  try {
+    insets = useSafeAreaInsets();
+  } catch (e) {
+    // Fallback for when SafeAreaProvider is not available
+    insets = { top: 0, bottom: 20, left: 0, right: 0 };
+  }
   // Background and theme hooks
   const { backgroundColors, backgroundType, animationType, isLoading: backgroundLoading } = useBackground();
   const { theme, isDarkMode, reduceMotion } = useTheme();
@@ -365,7 +372,7 @@ export const SimpleMultiplayerGameScreen: React.FC<SimpleMultiplayerGameScreenPr
   if (gameState === 'setup') {
     return (
       <BackgroundWrapper colors={backgroundColors} type={backgroundType} animationType={animationType} style={styles.container}>
-        <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
+        <SafeAreaView style={[styles.container, { paddingBottom: insets.bottom }]} edges={['top', 'left', 'right']}>
           <View style={styles.setupContainer}>
             <Text style={styles.setupText}>Setting up {gameMode === 'bot' ? 'Bot Battle' : 'Local 1v1'}...</Text>
           </View>
@@ -377,7 +384,7 @@ export const SimpleMultiplayerGameScreen: React.FC<SimpleMultiplayerGameScreenPr
   if (gameState === 'finished') {
     return (
       <BackgroundWrapper colors={backgroundColors} type={backgroundType} animationType={animationType} style={styles.container}>
-        <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
+        <SafeAreaView style={[styles.container, { paddingBottom: insets.bottom }]} edges={['top', 'left', 'right']}>
           <View style={styles.finishedContainer}>
             <Text style={styles.gameOverText}>Game Over!</Text>
             {gameResults && (
@@ -397,7 +404,7 @@ export const SimpleMultiplayerGameScreen: React.FC<SimpleMultiplayerGameScreenPr
 
   return (
     <BackgroundWrapper colors={backgroundColors} type={backgroundType} animationType={animationType} style={styles.container}>
-      <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
+      <SafeAreaView style={[styles.container, { paddingBottom: insets.bottom }]} edges={['top', 'left', 'right']}>
       <View style={styles.header}>
         <TouchableOpacity style={styles.backButton} onPress={onBackToMenu}>
           <Text style={styles.backButtonText}>← Back</Text>

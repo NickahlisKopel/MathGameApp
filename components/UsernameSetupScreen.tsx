@@ -13,7 +13,7 @@ import {
   ScrollView,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useBackground } from '../hooks/useBackground';
 import { useTheme, getContrastColor } from '../contexts/ThemeContext';
 
@@ -24,6 +24,13 @@ interface Props {
 const { width, height } = Dimensions.get('window');
 
 export default function UsernameSetupScreen({ onUsernameCreated }: Props) {
+  let insets;
+  try {
+    insets = useSafeAreaInsets();
+  } catch (e) {
+    // Fallback for when SafeAreaProvider is not available
+    insets = { top: 0, bottom: 20, left: 0, right: 0 };
+  }
   const { backgroundColors, backgroundType } = useBackground();
   const { theme } = useTheme();
   const [username, setUsername] = useState('');
@@ -105,7 +112,7 @@ export default function UsernameSetupScreen({ onUsernameCreated }: Props) {
 
   return (
     <LinearGradient colors={backgroundColors as any} style={styles.container}>
-      <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
+      <SafeAreaView style={[styles.safeArea, { paddingBottom: insets.bottom }]} edges={['top', 'left', 'right']}>
         <KeyboardAvoidingView 
           behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
           style={styles.keyboardAvoidingView}

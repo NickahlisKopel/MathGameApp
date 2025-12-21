@@ -10,7 +10,7 @@ import {
   RefreshControl,
   Modal,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { PlayerProfile, FriendRequest } from '../types/Player';
 import { ServerFriendsService } from '../services/ServerFriendsService';
@@ -38,6 +38,13 @@ const FriendsScreen: React.FC<FriendsScreenProps> = ({
   backgroundType: propBackgroundType,
   onChallengeFriend,
 }) => {
+  let insets;
+  try {
+    insets = useSafeAreaInsets();
+  } catch (e) {
+    // Fallback for when SafeAreaProvider is not available
+    insets = { top: 0, bottom: 20, left: 0, right: 0 };
+  }
   const { backgroundColors: hookColors, backgroundType: hookType, animationType: hookAnimationType } = useBackground();
   const { theme } = useTheme();
   
@@ -94,16 +101,31 @@ const FriendsScreen: React.FC<FriendsScreenProps> = ({
       socketMultiplayerService.onFriendRequestReceived = async (data: { request: { id: string; fromUserId: string; fromUsername: string } }) => {
         console.log('[FriendsScreen] Realtime friend request received:', data.request);
 
+        // Immediately add the request to the UI (optimistic update)
+        const newRequest: FriendRequest = {
+          id: data.request.id,
+          fromUserId: data.request.fromUserId,
+          fromUsername: data.request.fromUsername,
+          createdAt: new Date().toISOString(),
+        };
+        setFriendRequests(prev => {
+          console.log('[FriendsScreen] Adding request to state. Previous count:', prev.length);
+          return [...prev, newRequest];
+        });
+
+        console.log('[FriendsScreen] Request added to state, now reloading friends data');
+
         // Force reload by clearing the loading flag first
         setIsLoadingFriends(false);
 
-        // Reload ALL friends data (not just requests)
-        await loadFriends();
+        // Reload ALL friends data (not just requests) in background
+        loadFriends().then(() => {
+          console.log('[FriendsScreen] Background reload complete after realtime request');
+        });
 
-        console.log('[FriendsScreen] Friends data reloaded after realtime request');
-
-        // Force a small delay to ensure state update completes
+        // Show alert with a small delay to let state update
         setTimeout(() => {
+          console.log('[FriendsScreen] Showing friend request alert');
           Alert.alert(
             'New Friend Request',
             `${data.request.fromUsername} sent you a friend request!`,
@@ -111,6 +133,7 @@ const FriendsScreen: React.FC<FriendsScreenProps> = ({
               {
                 text: 'View',
                 onPress: () => {
+                  console.log('[FriendsScreen] Switching to requests tab');
                   setSelectedTab('requests');
                 }
               },
@@ -120,7 +143,7 @@ const FriendsScreen: React.FC<FriendsScreenProps> = ({
               }
             ]
           );
-        }, 200);
+        }, 100);
       };
     } catch (error) {
       console.error('[FriendsScreen] Error setting up listeners:', error);
@@ -199,7 +222,7 @@ const FriendsScreen: React.FC<FriendsScreenProps> = ({
       
       console.log('[FriendsScreen] Fetching usernames for', friends.length, 'friends');
       // Fetch usernames and avatars for each friend
-      const friendsWithNames = await Promise.all(
+      const friendsWithNamesRaw = await Promise.all(
         friends.map(async (friendId) => {
           const friendData = await ServerFriendsService.getPlayerFromServer(friendId);
           console.log('[FriendsScreen] Friend data for', friendId, ':', friendData?.username, friendData?.customization?.avatar);
@@ -208,9 +231,63 @@ const FriendsScreen: React.FC<FriendsScreenProps> = ({
             username: friendData?.username || friendId,
             avatar: friendData?.customization?.avatar,
             profileIcon: friendData?.customization?.profileIcon,
+            exists: !!friendData, // Track if the friend exists
           };
         })
       );
+
+      // Filter out ghost friends (players that don't exist anymore - 404)
+      const friendsWithNames = friendsWithNamesRaw.filter(friend => friend.exists);
+      const ghostFriends = friendsWithNamesRaw.filter(friend => !friend.exists);
+
+      if (ghostFriends.length > 0) {
+        console.warn('[FriendsScreen] Found', ghostFriends.length, 'ghost friends (deleted accounts):', ghostFriends.map(f => f.id));
+
+        // Auto-cleanup: Try batch cleanup endpoint first, fallback to individual removal
+        try {
+          const SERVER_URL = await import('../config/ServerConfig').then(m => m.getServerUrl());
+          const player = await import('../services/PlayerStorageService').then(m => m.PlayerStorageService.loadPlayerProfile());
+
+          if (player) {
+            console.log('[FriendsScreen] Calling ghost cleanup endpoint');
+            try {
+              const response = await fetch(`${SERVER_URL}/api/friends/cleanup-ghosts`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ playerId: player.id }),
+              });
+
+              // Check if response is JSON
+              const contentType = response.headers.get('content-type');
+              if (contentType && contentType.includes('application/json')) {
+                const result = await response.json();
+                console.log('[FriendsScreen] Ghost cleanup result:', result);
+
+                if (result.success) {
+                  console.log('[FriendsScreen] Successfully removed', result.removed, 'ghost friends');
+                  return; // Success, exit early
+                }
+              } else {
+                console.warn('[FriendsScreen] Cleanup endpoint not available (not JSON response). Falling back to individual removal.');
+              }
+            } catch (endpointError) {
+              console.warn('[FriendsScreen] Cleanup endpoint failed:', endpointError, 'Falling back to individual removal.');
+            }
+
+            // Fallback: Remove ghost friends one by one
+            console.log('[FriendsScreen] Using fallback: removing ghost friends individually');
+            for (const ghostFriend of ghostFriends) {
+              console.log('[FriendsScreen] Removing ghost friend:', ghostFriend.id);
+              const removed = await ServerFriendsService.removeFriend(ghostFriend.id);
+              console.log('[FriendsScreen] Ghost friend removal result:', ghostFriend.id, '=', removed);
+            }
+            console.log('[FriendsScreen] Ghost friend cleanup complete (fallback method)');
+          }
+        } catch (error) {
+          console.error('[FriendsScreen] Error cleaning up ghost friends:', error);
+        }
+      }
+
       console.log('[FriendsScreen] Friends loaded with names:', friendsWithNames);
       console.log('[FriendsScreen] Setting friendsData state to:', friendsWithNames.length, 'friends');
       setFriendsData(friendsWithNames);
@@ -361,12 +438,13 @@ const FriendsScreen: React.FC<FriendsScreenProps> = ({
       // Immediately remove the request from UI for instant feedback
       setFriendRequests(prev => prev.filter(req => req.id !== requestId));
 
-      Alert.alert('Success', `You are now friends with ${username}!`);
-      // Force a complete reload of friends data
+      // Force a complete reload of friends data BEFORE showing alert
       setIsLoadingFriends(false); // Reset loading flag in case it's stuck
       await loadFriends();
       // Also trigger a refresh to ensure everything is synced
       onRefresh?.();
+
+      Alert.alert('Success', `You are now friends with ${username}!`);
     } else {
       Alert.alert('Error', 'Failed to accept friend request. Please try again.');
     }
@@ -378,8 +456,11 @@ const FriendsScreen: React.FC<FriendsScreenProps> = ({
       // Immediately remove the request from UI for instant feedback
       setFriendRequests(prev => prev.filter(req => req.id !== requestId));
 
-      Alert.alert('Rejected', 'Friend request rejected');
+      // Reload friends data BEFORE showing alert
+      setIsLoadingFriends(false); // Reset loading flag
       await loadFriends();
+
+      Alert.alert('Rejected', 'Friend request rejected');
     }
   };
 
@@ -420,11 +501,19 @@ const FriendsScreen: React.FC<FriendsScreenProps> = ({
           text: 'Remove',
           style: 'destructive',
           onPress: async () => {
+            // Immediately remove from UI for instant feedback
+            setFriendsData(prev => prev.filter(f => f.id !== friendId));
+            setFriendIds(prev => prev.filter(id => id !== friendId));
+
             const success = await ServerFriendsService.removeFriend(friendId);
             if (success) {
-              Alert.alert('Removed', 'Friend has been removed');
+              // Reload to ensure we have the latest data from server
+              setIsLoadingFriends(false); // Reset loading flag
               await loadFriends();
+              Alert.alert('Removed', 'Friend has been removed');
             } else {
+              // Revert the optimistic update if it failed
+              await loadFriends();
               Alert.alert('Error', 'Could not remove friend');
             }
           },
@@ -510,29 +599,32 @@ const FriendsScreen: React.FC<FriendsScreenProps> = ({
     </ScrollView>
   );
 
-  const renderRequestsList = () => (
-    <ScrollView
-      style={styles.listContainer}
-      refreshControl={
-        <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />
-      }
-      onScroll={() => setShowSuggestions(false)}
-      scrollEventThrottle={400}
-    >
-      {friendRequests.length === 0 ? (
-        <View style={styles.emptyState}>
-          <Text style={styles.emptyIcon}>📬</Text>
-          <Text style={[styles.emptyText, { color: theme.colors.text }]}>No pending requests</Text>
-        </View>
-      ) : (
-        friendRequests.map((request) => (
+  const renderRequestsList = () => {
+    console.log('[FriendsScreen] Rendering requests list. Count:', friendRequests.length, 'Requests:', friendRequests);
+
+    return (
+      <ScrollView
+        style={styles.listContainer}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />
+        }
+        onScroll={() => setShowSuggestions(false)}
+        scrollEventThrottle={400}
+      >
+        {friendRequests.length === 0 ? (
+          <View style={styles.emptyState}>
+            <Text style={styles.emptyIcon}>📬</Text>
+            <Text style={[styles.emptyText, { color: theme.colors.text }]}>No pending requests</Text>
+          </View>
+        ) : (
+          friendRequests.map((request) => (
           <IslandCard key={request.id} variant="elevated" padding={15} style={styles.requestCard}>
             <View style={styles.friendInfo}>
               <Text style={styles.friendIcon}>👤</Text>
               <View style={styles.friendDetails}>
                 <Text style={[styles.friendName, { color: theme.colors.text }]}>{request.fromUsername}</Text>
                 <Text style={[styles.friendStatus, { color: theme.colors.textSecondary }]}>
-                  Sent {new Date(request.timestamp).toLocaleDateString()}
+                  Sent {request.timestamp ? new Date(request.timestamp).toLocaleDateString() : new Date(request.createdAt || Date.now()).toLocaleDateString()}
                 </Text>
               </View>
             </View>
@@ -551,15 +643,16 @@ const FriendsScreen: React.FC<FriendsScreenProps> = ({
               </TouchableOpacity>
             </View>
           </IslandCard>
-        ))
-      )}
-    </ScrollView>
-  );
+          ))
+        )}
+      </ScrollView>
+    );
+  };
 
   return (
     <Modal visible={true} animationType="slide" presentationStyle="fullScreen">
       <BackgroundWrapper colors={backgroundColors} type={backgroundType} animationType={animationType} style={styles.container}>
-        <SafeAreaView style={styles.container} edges={['left', 'right']}>
+        <SafeAreaView style={[styles.container, { paddingBottom: insets.bottom }]} edges={['top', 'left', 'right']}>
           {/* Header - Island Style */}
           <View style={styles.header}>
             <IslandButton
