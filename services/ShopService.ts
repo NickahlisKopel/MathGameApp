@@ -207,6 +207,37 @@ export class ShopService {
     }
   }
 
+  // Add a custom background (solid or gradient), mark it unlocked and select it
+  static async addCustomBackground(colors: string[], type: 'solid' | 'gradient' | 'custom' | 'animated', name?: string): Promise<string | null> {
+    try {
+      const shopData = await this.loadShopData();
+
+      const id = `custom_${Date.now().toString(36)}`;
+      const newBg = {
+        id,
+        name: name || (type === 'solid' ? `${colors[0]}` : `Custom Gradient`),
+        type,
+        colors,
+        preview: type === 'solid' ? '⬛' : '🌈',
+        rarity: 'special',
+        category: 'Custom',
+        unlockType: 'default',
+        isUnlocked: true,
+        unlockedAt: new Date(),
+      };
+
+      shopData.backgrounds.push(newBg as any);
+      shopData.selectedBackground = id;
+
+      await this.saveShopData(shopData);
+
+      return id;
+    } catch (error) {
+      console.error('Error adding custom background:', error);
+      return null;
+    }
+  }
+
   // Get current active background
   static async getActiveBackground(): Promise<Background | null> {
     try {

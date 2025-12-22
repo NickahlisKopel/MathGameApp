@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import {
   View,
   Text,
-  TextInput,
   TouchableOpacity,
   StyleSheet,
   Alert,
@@ -12,6 +11,8 @@ import {
   Animated,
   ScrollView,
 } from 'react-native';
+import { NeumorphicInput } from './neumorphic/NeumorphicInput';
+import { NeumorphicButton } from './neumorphic/NeumorphicButton';
 import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useBackground } from '../hooks/useBackground';
@@ -143,22 +144,18 @@ export default function UsernameSetupScreen({ onUsernameCreated }: Props) {
               <Text style={[styles.inputLabel, { color: getContrastColor(backgroundType, theme) }]}>Choose Your Username</Text>
               
               <View style={styles.inputContainer}>
-                <TextInput
-                  style={[
-                    styles.textInput,
-                    username.length > 0 && validateUsername(username) ? styles.inputError : {},
-                  ]}
+                <NeumorphicInput
                   value={username}
                   onChangeText={setUsername}
                   placeholder="Enter your username..."
-                  placeholderTextColor={theme.colors.placeholderText}
                   maxLength={15}
                   autoCapitalize="none"
                   autoCorrect={false}
                   returnKeyType="done"
                   onSubmitEditing={handleCreateUsername}
-                  editable={!isLoading}
-                />
+                  label="Username"
+                  containerStyle={{ alignItems: 'stretch' }}
+        />
                 <Text style={[styles.characterCount, { color: getContrastColor(backgroundType, theme) }]}>
                   {username.length}/15
                 </Text>
@@ -170,31 +167,9 @@ export default function UsernameSetupScreen({ onUsernameCreated }: Props) {
                 </Text>
               )}
 
-              <TouchableOpacity
-                style={styles.suggestionButton}
-                onPress={() => setUsername(getSuggestion())}
-                disabled={isLoading}
-              >
-                <Text style={[styles.suggestionText, { color: getContrastColor(backgroundType, theme) }]}>
-                  💡 Get a random suggestion
-                </Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={[
-                  styles.createButton,
-                  (!username.trim() || validateUsername(username) || isLoading) && styles.createButtonDisabled,
-                ]}
-                onPress={handleCreateUsername}
-                disabled={!username.trim() || !!validateUsername(username) || isLoading}
-              >
-                <Text style={[
-                  styles.createButtonText,
-                  (!username.trim() || validateUsername(username) || isLoading) && styles.createButtonTextDisabled,
-                ]}>
-                  {isLoading ? 'Creating Profile...' : 'Create Profile'}
-                </Text>
-              </TouchableOpacity>
+              <NeumorphicButton title="💡 Get a random suggestion" onPress={() => setUsername(getSuggestion())} variant="secondary" size="small" />
+              <View style={{ height: 12 }} />
+              <NeumorphicButton title={isLoading ? 'Creating Profile...' : 'Create Profile'} onPress={handleCreateUsername} fullWidth disabled={!username.trim() || !!validateUsername(username) || isLoading} />
             </View>
 
             <View style={styles.tipsContainer}>

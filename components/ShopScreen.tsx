@@ -789,11 +789,15 @@ export default function ShopScreen({ visible, onClose, player, onPlayerUpdated, 
     </ScrollView>
   );
 
+  // Use preview background when previewing an item
+  const wrapperColors = showPreview && previewBackground ? previewBackground.colors : (activeBackgroundColors.length >= 1 ? activeBackgroundColors : ['#667eea', '#764ba2']);
+  const wrapperType = showPreview && previewBackground ? previewBackground.type : activeBackgroundType;
+
   return (
     <Modal visible={visible} animationType="slide" presentationStyle="fullScreen">
       <BackgroundWrapper 
-        colors={activeBackgroundColors.length >= 1 ? activeBackgroundColors : ['#667eea', '#764ba2']} 
-        type={activeBackgroundType} 
+        colors={wrapperColors}
+        type={wrapperType}
         style={[styles.container, { justifyContent: 'center', alignItems: 'center', paddingTop: 0 }]}
       >
         <SafeAreaView style={[styles.safeArea, { justifyContent: 'center', alignItems: 'center', paddingBottom: insets.bottom }]} edges={['top', 'left', 'right']}>

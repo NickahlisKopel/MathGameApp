@@ -19,6 +19,7 @@ import {
   Platform,
   ScrollView,
   Dimensions,
+  Modal,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -30,6 +31,9 @@ import ShopScreen from './components/ShopScreen';
 import SignInScreen from './components/SignInScreen';
 import MatchmakingButton from './components/MatchmakingButton';
 import FriendsScreen from './components/FriendsScreen';
+import { NeumorphicProfileScreen } from './components/neumorphic/NeumorphicProfileScreen';
+import { NeumorphicShopScreen } from './components/neumorphic/NeumorphicShopScreen';
+import { NeumorphicFriendsScreen } from './components/neumorphic/NeumorphicFriendsScreen';
 import LobbyScreen from './components/LobbyScreen';
 import { PlayerProfile } from './types/Player';
 import { PlayerStorageService } from './services/PlayerStorageService';
@@ -49,6 +53,8 @@ import { IslandButton } from './components/IslandButton';
 import { IslandCard } from './components/IslandCard';
 import { IslandMenu } from './components/IslandMenu';
 import { MainMenuIslands } from './components/MainMenuIslands';
+import { NeumorphicMainMenu } from './components/neumorphic/NeumorphicMainMenu';
+import { useNeumorphicColors } from './styles/neumorphicTheme';
 import BubblePopGameScreen from './components/BubblePopGameScreen';
 import BubblePlusGameScreen from './components/BubblePlusGameScreen';
 
@@ -123,7 +129,8 @@ function AppContent() {
   const [showStreakModal, setShowStreakModal] = useState(false);
   const [streakValue, setStreakValue] = useState(0);
   const { backgroundColors, backgroundType, animationType, refreshBackground } = useBackground();
-  const { theme, isDarkMode, reduceMotion } = useTheme();
+  const { theme, isDarkMode, reduceMotion, toggleTheme } = useTheme();
+  const neumorphicColors = useNeumorphicColors();
   const [gameState, setGameState] = useState<string>('loading');
   const [gamePlayer, setGamePlayer] = useState<{ id: number; name: string; score: number; currentAnswer: string; isCorrect: boolean | null; timeSpent: number }>({
     id: 1,
@@ -961,12 +968,19 @@ function AppContent() {
           </View>
         )}
 
-        <View style={[styles.setupContainerClean, { paddingBottom: insets.bottom + 20 }]}>
-          {/* Header Section - now only logo shown in MainMenuIslands */}
-          <View style={[styles.headerSection, { marginTop: -40 }]} />
-
-          {/* Main Menu - Island Image Buttons with Scaffold Play Menu */}
-          <MainMenuIslands
+        <View style={[styles.setupContainerClean, { paddingBottom: insets.bottom + 20 }]}> 
+          {/* Theme toggle (header-right) */}
+          <View style={{ position: 'absolute', right: 16, top: insets.top + 8, zIndex: 50 }}>
+            <TouchableOpacity
+              onPress={() => toggleTheme()}
+              accessibilityLabel="Toggle theme"
+              style={{ padding: 8 }}
+            >
+              <Text style={{ fontSize: 18 }}>{isDarkMode ? '🌙' : '☀️'}</Text>
+            </TouchableOpacity>
+          </View>
+          {/* Neumorphic Main Menu */}
+          <NeumorphicMainMenu
             onClassicMode={() => {
               setGameMode('classic');
               startGame();
@@ -1096,6 +1110,7 @@ function AppContent() {
               setProfileInitialTab('settings');
               setShowProfile(true);
             }}
+            playerName={playerProfile?.username}
           />
         </View>
         {showOnlineDifficultySelect && (
@@ -1420,6 +1435,7 @@ function AppContent() {
   return (
     <SafeAreaProvider>
       <StatusBar style={getStatusBarStyle()} />
+      <BackgroundWrapper colors={backgroundColors} type={backgroundType} animationType={animationType} style={styles.container}>
       {/* Multiplayer test button (dev only) - Hidden */}
       {/* <View style={{ position: 'absolute', top: 44, right: 16, zIndex: 1000 }}>
         <MultiplayerTestButton />
@@ -1757,56 +1773,49 @@ function AppContent() {
       />
       
       {/* Player Profile Modal */}
-      {playerProfile && (
-        <PlayerProfileScreen
-          visible={showProfile}
-          player={playerProfile}
-          onPlayerUpdated={handlePlayerUpdated}
-          onProfileReset={handleProfileReset}
-          onClose={() => setShowProfile(false)}
-          onLogout={async (reset) => {
-            // Clear player profile from storage
-            await AsyncStorage.removeItem('player_profile');
-            
-            // Sign out via AuthService
-            await authService.signOut();
-            setAuthenticatedUser(null);
-            setPlayerProfile(null);
-            setShowAuthScreen(true);
-            
-            if (reset) {
-              handleProfileReset();
-            }
-          }}
-          backgroundColors={backgroundColors}
-          backgroundType={backgroundType}
-          animationType={animationType}
-          initialTab={profileInitialTab}
-          onOpenFriends={() => {
-            setShowProfile(false);
-            setShowFriends(true);
-          }}
-        />
+      {playerProfile && showProfile && (
+        <Modal visible={showProfile} animationType="slide" presentationStyle="fullScreen">
+          <NeumorphicProfileScreen
+            player={playerProfile}
+            onPlayerUpdated={handlePlayerUpdated}
+            onClose={() => setShowProfile(false)}
+            onOpenFriends={() => {
+              setShowProfile(false);
+              setShowFriends(true);
+            }}
+            onLogout={async () => {
+              // Clear player profile from storage
+              await AsyncStorage.removeItem('player_profile');
+
+              // Sign out via AuthService
+              await authService.signOut();
+              setAuthenticatedUser(null);
+              setPlayerProfile(null);
+              setShowProfile(false);
+              setShowAuthScreen(true);
+            }}
+            onProfileReset={handleProfileReset}
+          />
+        </Modal>
       )}
 
       {/* Friends Screen */}
       {showFriends && playerProfile && (
-        <FriendsScreen
-          playerProfile={playerProfile}
-          onBack={() => {
-            setShowFriends(false);
-            // Don't open profile, just go back to main menu
-          }}
-          onRefresh={async () => {
-            const profile = await PlayerStorageService.loadPlayerProfile();
-            if (profile) {
-              setPlayerProfile(profile);
-            }
-          }}
-          backgroundColors={backgroundColors}
-          backgroundType={backgroundType}
-          onChallengeFriend={handleChallengeFriend}
-        />
+        <Modal visible={showFriends} animationType="slide" presentationStyle="fullScreen">
+          <NeumorphicFriendsScreen
+            playerProfile={playerProfile}
+            onBack={() => {
+              setShowFriends(false);
+            }}
+            onRefresh={async () => {
+              const profile = await PlayerStorageService.loadPlayerProfile();
+              if (profile) {
+                setPlayerProfile(profile);
+              }
+            }}
+            onChallengeFriend={handleChallengeFriend}
+          />
+        </Modal>
       )}
 
       {/* Incoming Challenge Popup */}
@@ -1861,27 +1870,26 @@ function AppContent() {
       )}
       
       {/* Shop Modal */}
-      {playerProfile && (
-        <ShopScreen
-          visible={showShop}
-          player={playerProfile}
-          onPlayerUpdated={handlePlayerUpdated}
-          onClose={() => {
-            setShowShop(false);
-            setTimeout(() => {
-              refreshBackground(); // Refresh background when shop closes
-            }, 100);
-          }}
-          activeBackgroundColors={backgroundColors}
-          activeBackgroundType={backgroundType}
-          activeAnimationType={animationType}
-          onBackgroundChanged={() => {
-            setTimeout(() => {
-              refreshBackground(); // Refresh immediately when background changes
-            }, 50);
-          }}
-        />
+      {playerProfile && showShop && (
+        <Modal visible={showShop} animationType="slide" presentationStyle="fullScreen">
+          <NeumorphicShopScreen
+            player={playerProfile}
+            onPlayerUpdated={handlePlayerUpdated}
+            onClose={() => {
+              setShowShop(false);
+              setTimeout(() => {
+                refreshBackground(); // Refresh background when shop closes
+              }, 100);
+            }}
+            onBackgroundChanged={() => {
+              setTimeout(() => {
+                refreshBackground(); // Refresh immediately when background changes
+              }, 50);
+            }}
+          />
+        </Modal>
       )}
+      </BackgroundWrapper>
     </SafeAreaProvider>
   );
 }

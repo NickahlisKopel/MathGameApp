@@ -136,6 +136,30 @@ export class PlayerStorageService {
     }
   }
 
+  // Save theme presets for a player (stored separately from profile)
+  static async savePlayerThemes(playerId: string, themes: Array<any>): Promise<void> {
+    try {
+      const key = `player_themes_${playerId}`;
+      await AsyncStorage.setItem(key, JSON.stringify(themes));
+    } catch (error) {
+      console.error('Error saving player themes:', error);
+      throw new Error('Failed to save player themes');
+    }
+  }
+
+  static async loadPlayerThemes(playerId: string): Promise<Array<any>> {
+    try {
+      const key = `player_themes_${playerId}`;
+      const data = await AsyncStorage.getItem(key);
+      if (!data) return [];
+      const themes = JSON.parse(data);
+      return Array.isArray(themes) ? themes : [];
+    } catch (error) {
+      console.error('Error loading player themes:', error);
+      return [];
+    }
+  }
+
   // Save player to all profiles collection (for friend lookups)
   static async saveToAllProfiles(player: PlayerProfile): Promise<void> {
     try {

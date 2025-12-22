@@ -5,7 +5,6 @@ import {
   StyleSheet,
   TouchableOpacity,
   ScrollView,
-  TextInput,
   Alert,
   RefreshControl,
   Modal,
@@ -20,6 +19,8 @@ import { IslandButton } from './IslandButton';
 import { IslandCard } from './IslandCard';
 import { IslandMenu } from './IslandMenu';
 import { BackgroundWrapper } from './BackgroundWrapper';
+import { NeumorphicInput } from './neumorphic/NeumorphicInput';
+import { NeumorphicButton } from './neumorphic/NeumorphicButton';
 
 interface FriendsScreenProps {
   playerProfile: PlayerProfile;
@@ -685,22 +686,24 @@ const FriendsScreen: React.FC<FriendsScreenProps> = ({
           {/* Add Friend Section - Island Style */}
           <View style={styles.searchContainer}>
             <IslandCard variant="elevated" style={styles.addFriendSection}>
-              <TextInput
-                style={[styles.searchInput, { color: theme.colors.text, backgroundColor: theme.colors.surface }]}
-                placeholder="Search by username"
-                placeholderTextColor={theme.colors.textTertiary}
-                value={searchQuery}
-                onChangeText={handleSearchChange}
-                autoCapitalize="none"
-                onFocus={() => {
-                  if (searchSuggestions.length > 0) {
-                    setShowSuggestions(true);
-                  }
-                }}
-              />
-              <TouchableOpacity style={styles.addButton} onPress={handleAddFriend}>
-                <Text style={[styles.addButtonText, { color: '#fff' }]}>➕ Add</Text>
-              </TouchableOpacity>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                <View style={{ flex: 1 }}>
+                  <NeumorphicInput
+                    value={searchQuery}
+                    onChangeText={handleSearchChange}
+                    placeholder="Search by username"
+                    label=""
+                    containerStyle={{ marginBottom: 0 }}
+                    autoCapitalize="none"
+                    onFocus={() => {
+                      if (searchSuggestions.length > 0) {
+                        setShowSuggestions(true);
+                      }
+                    }}
+                  />
+                </View>
+                <NeumorphicButton title="➕ Add" onPress={handleAddFriend} size="small" />
+              </View>
             </IslandCard>
             
             {/* Autocomplete Suggestions */}

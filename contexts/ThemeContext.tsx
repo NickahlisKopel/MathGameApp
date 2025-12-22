@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { PlayerStorageService } from '../services/PlayerStorageService';
+import { ShopService } from '../services/ShopService';
 
 export interface ThemeColors {
   // Background colors
@@ -101,6 +102,9 @@ interface ThemeContextType {
   isDarkMode: boolean;
   reduceMotion: boolean;
   toggleReduceMotion: () => void;
+  presets: Array<any>;
+  saveThemePreset: (name: string) => Promise<void>;
+  applyThemePreset: (id: string) => Promise<void>;
 }
 
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
@@ -112,6 +116,7 @@ interface ThemeProviderProps {
 export const ThemeProvider: React.FC<ThemeProviderProps> = ({ children }) => {
   const [isDarkMode, setIsDarkMode] = useState(false);
   const [reduceMotion, setReduceMotion] = useState(false);
+  const [presets, setPresets] = useState<Array<any>>([]);
 
   useEffect(() => {
     // Load theme and motion preferences from player settings
@@ -127,6 +132,13 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({ children }) => {
         }
         if (player.settings.reduceMotion !== undefined) {
           setReduceMotion(player.settings.reduceMotion);
+        }
+        // Load presets for this player if available
+        try {
+          const themes = await PlayerStorageService.loadPlayerThemes(player.id);
+          setPresets(themes || []);
+        } catch (e) {
+          console.warn('No saved theme presets');
         }
       }
     } catch (error) {
@@ -158,13 +170,69 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({ children }) => {
     }
   };
 
+  // Save a theme preset: captures current background and neumorphic mode
+  const saveThemePreset = async (name: string) => {
+    try {
+      const player = await PlayerStorageService.loadPlayerProfile();
+      if (!player) throw new Error('No player');
+
+      // Capture current active background
+      const activeBg = await ShopService.getActiveBackground();
+      const preset = {
+        id: `theme_${Date.now().toString(36)}`,
+        name,
+        createdAt: new Date().toISOString(),
+        backgroundId: activeBg?.id || null,
+        neumorphicMode: isDarkMode ? 'dark' : 'light',
+      };
+
+      const existing = await PlayerStorageService.loadPlayerThemes(player.id);
+      const updated = [...existing, preset];
+      await PlayerStorageService.savePlayerThemes(player.id, updated);
+      setPresets(updated);
+
+      // Optionally set it as the selected theme id in player customization
+      await PlayerStorageService.updatePlayerCustomization({ theme: preset.id });
+    } catch (error) {
+      console.error('Failed to save theme preset:', error);
+      throw error;
+    }
+  };
+
+  const applyThemePreset = async (id: string) => {
+    try {
+      const player = await PlayerStorageService.loadPlayerProfile();
+      if (!player) throw new Error('No player');
+
+      const themes = await PlayerStorageService.loadPlayerThemes(player.id);
+      const preset = themes.find((t: any) => t.id === id);
+      if (!preset) throw new Error('Preset not found');
+
+      // Apply neumorphic mode
+      const targetDark = preset.neumorphicMode === 'dark';
+      setIsDarkMode(targetDark);
+      await PlayerStorageService.updatePlayerSettings({ darkMode: targetDark });
+
+      // Apply background if present
+      if (preset.backgroundId) {
+        await ShopService.setActiveBackground(preset.backgroundId);
+      }
+
+      // Save selected theme id to customization
+      await PlayerStorageService.updatePlayerCustomization({ theme: preset.id });
+    } catch (error) {
+      console.error('Failed to apply theme preset:', error);
+      throw error;
+    }
+  };
+
   const theme: Theme = {
     isDark: isDarkMode,
     colors: isDarkMode ? darkTheme : lightTheme,
   };
 
   return (
-    <ThemeContext.Provider value={{ theme, toggleTheme, isDarkMode, reduceMotion, toggleReduceMotion }}>
+    <ThemeContext.Provider value={{ theme, toggleTheme, isDarkMode, reduceMotion, toggleReduceMotion, presets, saveThemePreset, applyThemePreset }}>
       {children}
     </ThemeContext.Provider>
   );

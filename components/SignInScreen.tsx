@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, TextInput, Button, Alert, StyleSheet } from 'react-native';
+import { View, Text, Alert, StyleSheet } from 'react-native';
+import { NeumorphicInput } from './neumorphic/NeumorphicInput';
+import { NeumorphicButton } from './neumorphic/NeumorphicButton';
 import { localAuth, LocalUser } from '../services/localAuth';
 
 interface SignInScreenProps {
@@ -50,24 +52,29 @@ const SignInScreen: React.FC<SignInScreenProps> = ({ onSignedIn }) => {
   return (
     <View style={styles.container}>
       <Text style={styles.title}>Sign In</Text>
-      <TextInput
-        style={styles.input}
+
+      <NeumorphicInput
         placeholder="Email"
         value={email}
         onChangeText={setEmail}
         autoCapitalize="none"
         keyboardType="email-address"
+        label="Email"
       />
-      <TextInput
-        style={styles.input}
+
+      <NeumorphicInput
         placeholder="Password"
         value={password}
         onChangeText={setPassword}
         secureTextEntry
+        label="Password"
       />
-      <Button title="Sign In" onPress={handleSignIn} disabled={loading} />
-      <Button title="Register" onPress={handleRegister} disabled={loading} />
-      <Button title="Play as Guest" onPress={async () => {
+
+      <NeumorphicButton title="Sign In" onPress={handleSignIn} fullWidth />
+      <View style={{ height: 12 }} />
+      <NeumorphicButton title="Register" onPress={handleRegister} variant="secondary" fullWidth />
+      <View style={{ height: 12 }} />
+      <NeumorphicButton title="Play as Guest" onPress={async () => {
         setLoading(true);
         try {
           await localAuth.signInAnonymously();
@@ -75,8 +82,8 @@ const SignInScreen: React.FC<SignInScreenProps> = ({ onSignedIn }) => {
           setError(e.message);
         }
         setLoading(false);
-      }} disabled={loading} />
-     
+      }} variant="secondary" fullWidth />
+
       {error && <Text style={styles.error}>{error}</Text>}
     </View>
   );

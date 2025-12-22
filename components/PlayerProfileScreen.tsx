@@ -9,10 +9,10 @@ import {
   Dimensions,
   Switch,
   Modal,
-  TextInput,
-  Button,
   Image,
 } from 'react-native';
+import { NeumorphicInput } from './neumorphic/NeumorphicInput';
+import { NeumorphicButton } from './neumorphic/NeumorphicButton';
 import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { PlayerProfile, Achievement, GameResult } from '../types/Player';
@@ -1063,8 +1063,7 @@ export default function PlayerProfileScreen({ player, onPlayerUpdated, onClose, 
               Cost: 100 🪙 (You have {player.coins} 🪙)
             </Text>
             
-            <TextInput
-              style={[styles.usernameInput, { backgroundColor: theme.colors.inputBackground, borderColor: theme.colors.border, color: theme.colors.inputText }]}
+            <NeumorphicInput
               value={newUsername}
               onChangeText={setNewUsername}
               placeholder="Enter new username"
@@ -1072,34 +1071,13 @@ export default function PlayerProfileScreen({ player, onPlayerUpdated, onClose, 
               maxLength={20}
               autoCapitalize="none"
               autoCorrect={false}
+              label="New Username"
             />
-            
+
             <View style={styles.usernameModalButtons}>
-              <TouchableOpacity
-                style={styles.cancelButton}
-                onPress={() => {
-                  setShowUsernameModal(false);
-                  setNewUsername('');
-                }}
-              >
-                <Text style={[styles.cancelButtonText, { color: theme.colors.textTertiary }]}>Cancel</Text>
-              </TouchableOpacity>
-              
-              <TouchableOpacity
-                style={[
-                  styles.confirmButton,
-                  (!newUsername.trim() || newUsername.trim() === player.username || player.coins < 100) && styles.confirmButtonDisabled
-                ]}
-                onPress={handleUsernameChange}
-                disabled={!newUsername.trim() || newUsername.trim() === player.username || player.coins < 100 || loading}
-              >
-                <Text style={[
-                  styles.confirmButtonText,
-                  (!newUsername.trim() || newUsername.trim() === player.username || player.coins < 100) && styles.confirmButtonTextDisabled
-                ]}>
-                  {loading ? 'Changing...' : 'Change'}
-                </Text>
-              </TouchableOpacity>
+              <NeumorphicButton title="Cancel" onPress={() => { setShowUsernameModal(false); setNewUsername(''); }} variant="secondary" />
+              <View style={{ width: 12 }} />
+              <NeumorphicButton title={loading ? 'Changing...' : 'Change'} onPress={handleUsernameChange} disabled={!newUsername.trim() || newUsername.trim() === player.username || player.coins < 100 || loading} />
             </View>
           </View>
         </View>
@@ -1110,15 +1088,17 @@ export default function PlayerProfileScreen({ player, onPlayerUpdated, onClose, 
         <View style={styles.modalContainer}>
           <View style={styles.modalContent}>
             <Text style={styles.modalTitle}>Change Avatar</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="Enter image URL or select an image"
+            <NeumorphicInput
               value={newAvatarUrl}
               onChangeText={setNewAvatarUrl}
+              placeholder="Enter image URL or select an image"
+              label="Avatar URL"
             />
-            <Button title="Save Avatar" onPress={handleAvatarChange} disabled={loading} />
-            <Button title="Pick Image" onPress={handlePickAndUploadAvatar} disabled={loading} />
-            <Button title="Cancel" onPress={() => setShowAvatarModal(false)} />
+            <NeumorphicButton title="Save Avatar" onPress={handleAvatarChange} />
+            <View style={{ height: 8 }} />
+            <NeumorphicButton title="Pick Image" onPress={handlePickAndUploadAvatar} variant="secondary" />
+            <View style={{ height: 8 }} />
+            <NeumorphicButton title="Cancel" onPress={() => setShowAvatarModal(false)} variant="secondary" />
           </View>
         </View>
       </Modal>

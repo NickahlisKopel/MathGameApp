@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
-  TextInput,
   TouchableOpacity,
   StyleSheet,
   ScrollView,
@@ -11,6 +10,8 @@ import {
   Alert,
   ActivityIndicator,
 } from 'react-native';
+import { NeumorphicInput } from './neumorphic/NeumorphicInput';
+import { NeumorphicButton } from './neumorphic/NeumorphicButton';
 import { authService, AuthProvider } from '../services/AuthService';
 import * as AppleAuthentication from 'expo-apple-authentication';
 import { Ionicons } from '@expo/vector-icons';
@@ -200,31 +201,17 @@ export default function AuthenticationScreen({
         )}
 
         {/* Google Sign In */}
-        <TouchableOpacity
-          style={[styles.authButton, styles.googleButton]}
-          onPress={() => Alert.alert('Setup Required', 'Google Sign-In requires OAuth configuration in your Google Cloud Console')}
-        >
-          <Text style={styles.buttonIcon}>📧</Text>
-          <Text style={styles.buttonText}>Continue with Google</Text>
-        </TouchableOpacity>
+        <NeumorphicButton title="Continue with Google" onPress={() => Alert.alert('Setup Required', 'Google Sign-In requires OAuth configuration in your Google Cloud Console')} fullWidth />
+
+        <View style={{ height: 12 }} />
 
         {/* Facebook Sign In */}
-        <TouchableOpacity
-          style={[styles.authButton, styles.facebookButton]}
-          onPress={() => Alert.alert('Setup Required', 'Facebook Sign-In requires Facebook App ID configuration')}
-        >
-          <Text style={styles.buttonIcon}>👤</Text>
-          <Text style={styles.buttonText}>Continue with Facebook</Text>
-        </TouchableOpacity>
+        <NeumorphicButton title="Continue with Facebook" onPress={() => Alert.alert('Setup Required', 'Facebook Sign-In requires Facebook App ID configuration')} variant="secondary" fullWidth />
+
+        <View style={{ height: 12 }} />
 
         {/* Email/Password */}
-        <TouchableOpacity
-          style={[styles.authButton, styles.emailButton]}
-          onPress={() => setAuthMode('email-signin')}
-        >
-          <Text style={styles.buttonIcon}>✉️</Text>
-          <Text style={styles.buttonText}>Continue with Email</Text>
-        </TouchableOpacity>
+        <NeumorphicButton title="Continue with Email" onPress={() => setAuthMode('email-signin')} fullWidth />
 
         {/* Divider */}
         <View style={styles.divider}>
@@ -235,13 +222,7 @@ export default function AuthenticationScreen({
 
         {/* Offline Mode */}
         {allowOfflineMode && (
-          <TouchableOpacity
-            style={[styles.authButton, styles.offlineButton]}
-            onPress={handleOfflineMode}
-          >
-            <Text style={styles.buttonIcon}>📱</Text>
-            <Text style={styles.buttonText}>Play Offline (Guest Mode)</Text>
-          </TouchableOpacity>
+          <NeumorphicButton title="Play Offline (Guest Mode)" onPress={handleOfflineMode} variant="secondary" fullWidth />
         )}
 
         <Text style={styles.offlineNote}>
@@ -265,26 +246,23 @@ export default function AuthenticationScreen({
       </View>
 
       <View style={styles.formContainer}>
-        <TextInput
-          style={styles.input}
+        <NeumorphicInput
+          label="Email"
           placeholder="Email"
-          placeholderTextColor="#999"
           value={email}
           onChangeText={setEmail}
           keyboardType="email-address"
           autoCapitalize="none"
-          autoCorrect={false}
         />
 
         <View style={styles.passwordContainer}>
-          <TextInput
-            style={[styles.input, styles.passwordInput]}
+          <NeumorphicInput
+            label="Password"
             placeholder="Password"
-            placeholderTextColor="#999"
             value={password}
             onChangeText={setPassword}
             secureTextEntry={!showPassword}
-            autoCapitalize="none"
+            containerStyle={{ marginBottom: 0 }}
           />
           <TouchableOpacity
             style={styles.eyeIcon}
@@ -298,17 +276,7 @@ export default function AuthenticationScreen({
           </TouchableOpacity>
         </View>
 
-        <TouchableOpacity
-          style={[styles.authButton, styles.primaryButton]}
-          onPress={handleEmailSignIn}
-          disabled={loading}
-        >
-          {loading ? (
-            <ActivityIndicator color="#fff" />
-          ) : (
-            <Text style={styles.primaryButtonText}>Sign In</Text>
-          )}
-        </TouchableOpacity>
+        <NeumorphicButton title="Sign In" onPress={handleEmailSignIn} fullWidth disabled={loading} />
 
         <TouchableOpacity
           onPress={handleForgotPassword}
@@ -343,35 +311,31 @@ export default function AuthenticationScreen({
       </View>
 
       <View style={styles.formContainer}>
-        <TextInput
-          style={styles.input}
+        <NeumorphicInput
+          label="Display Name"
           placeholder="Display Name"
-          placeholderTextColor="#999"
           value={displayName}
           onChangeText={setDisplayName}
           autoCapitalize="words"
         />
 
-        <TextInput
-          style={styles.input}
+        <NeumorphicInput
+          label="Email"
           placeholder="Email"
-          placeholderTextColor="#999"
           value={email}
           onChangeText={setEmail}
           keyboardType="email-address"
           autoCapitalize="none"
-          autoCorrect={false}
         />
 
         <View style={styles.passwordContainer}>
-          <TextInput
-            style={[styles.input, styles.passwordInput]}
+          <NeumorphicInput
+            label="Password"
             placeholder="Password (min 6 characters)"
-            placeholderTextColor="#999"
             value={password}
             onChangeText={setPassword}
             secureTextEntry={!showPassword}
-            autoCapitalize="none"
+            containerStyle={{ marginBottom: 0 }}
           />
           <TouchableOpacity
             style={styles.eyeIcon}
@@ -385,17 +349,7 @@ export default function AuthenticationScreen({
           </TouchableOpacity>
         </View>
 
-        <TouchableOpacity
-          style={[styles.authButton, styles.primaryButton]}
-          onPress={handleEmailSignUp}
-          disabled={loading}
-        >
-          {loading ? (
-            <ActivityIndicator color="#fff" />
-          ) : (
-            <Text style={styles.primaryButtonText}>Create Account</Text>
-          )}
-        </TouchableOpacity>
+        <NeumorphicButton title="Create Account" onPress={handleEmailSignUp} fullWidth disabled={loading} />
 
         <TouchableOpacity
           onPress={() => setAuthMode('email-signin')}
