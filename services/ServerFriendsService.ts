@@ -3,6 +3,28 @@ import { PlayerStorageService } from './PlayerStorageService';
 import { getServerUrl } from '../config/ServerConfig';
 
 export class ServerFriendsService {
+  // Simple fetch helper with retries and exponential backoff
+  private static async fetchWithRetry(url: string, options: any = {}, retries = 3, backoffMs = 500): Promise<Response> {
+    let attempt = 0;
+    let lastError: any = null;
+
+    while (attempt <= retries) {
+      try {
+        const resp = await fetch(url, options);
+        return resp;
+      } catch (err) {
+        lastError = err;
+        const wait = backoffMs * Math.pow(2, attempt);
+        console.warn(`[ServerFriends] fetchWithRetry attempt=${attempt} failed, retrying in ${wait}ms`, err);
+        // wait before retrying
+        await new Promise(res => setTimeout(res, wait));
+        attempt += 1;
+      }
+    }
+
+    throw lastError;
+  }
+
   /**
    * Sync current player to server
    */
@@ -16,16 +38,21 @@ export class ServerFriendsService {
 
       const SERVER_URL = await getServerUrl();
       console.log(`[ServerFriends] Syncing player ${player.username} (${player.id}) to ${SERVER_URL}`);
-      const response = await fetch(`${SERVER_URL}/api/player/sync`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ player }),
-      });
-      
-      if (response.ok) {
-        console.log('[ServerFriends] Player synced successfully');
-      } else {
-        console.error('[ServerFriends] Sync failed with status:', response.status);
+      try {
+        const response = await this.fetchWithRetry(`${SERVER_URL}/api/player/sync`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ player }),
+        }, 3, 400);
+
+        if (response.ok) {
+          console.log('[ServerFriends] Player synced successfully');
+        } else {
+          const text = await response.text().catch(() => '<no body>');
+          console.error('[ServerFriends] Sync failed with status:', response.status, 'body:', text);
+        }
+      } catch (err) {
+        console.error('[ServerFriends] Sync failed after retries:', err);
       }
     } catch (error) {
       console.error('[ServerFriends] Error syncing player:', error);
@@ -50,32 +77,37 @@ export class ServerFriendsService {
       const correlationId = `cli_${Date.now()}_${Math.random().toString(36).slice(2,8)}`;
       console.log('[ServerFriends] Sending friend request with correlationId:', correlationId);
       const SERVER_URL = await getServerUrl();
-      const response = await fetch(`${SERVER_URL}/api/friends/request`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          fromPlayerId: player.id,
-          toPlayerId: friendId,
-          fromUsername: player.username,
-          correlationId,
-        }),
-      });
+      try {
+        const response = await this.fetchWithRetry(`${SERVER_URL}/api/friends/request`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            fromPlayerId: player.id,
+            toPlayerId: friendId,
+            fromUsername: player.username,
+            correlationId,
+          }),
+        }, 3, 400);
 
-      const data = await response.json();
-      console.log('[ServerFriends] Friend request response:', data);
-      
-      if (response.ok && data.success) {
-        const trace = data.trace || correlationId;
-        if (data.autoAccepted) {
-          console.log('[ServerFriends] Auto-accepted stale reverse request trace=', trace);
-          return { success: true, trace, reason: data.reason };
+        const data = await response.json().catch(() => ({}));
+        console.log('[ServerFriends] Friend request response:', data);
+
+        if (response.ok && data.success) {
+          const trace = data.trace || correlationId;
+          if (data.autoAccepted) {
+            console.log('[ServerFriends] Auto-accepted stale reverse request trace=', trace);
+            return { success: true, trace, reason: data.reason };
+          }
+          console.log('[ServerFriends] Friend request succeeded trace=', trace, 'purged=', data.purged, 'replaced=', data.replaced, 'reason=', data.reason);
+          return { success: true, trace, reason: data.reason, replaced: data.replaced };
+        } else {
+          const errorMsg = data.error || data.message || `HTTP ${response.status}`;
+          console.error('[ServerFriends] Friend request failed:', errorMsg, 'reason=', data.reason);
+          return { success: false, error: errorMsg, trace: data.trace || correlationId, reason: data.reason };
         }
-        console.log('[ServerFriends] Friend request succeeded trace=', trace, 'purged=', data.purged, 'replaced=', data.replaced, 'reason=', data.reason);
-        return { success: true, trace, reason: data.reason, replaced: data.replaced };
-      } else {
-        const errorMsg = data.error || data.message || 'Unknown error';
-        console.error('[ServerFriends] Friend request failed:', errorMsg, 'reason=', data.reason);
-        return { success: false, error: errorMsg, trace: data.trace || correlationId, reason: data.reason };
+      } catch (err) {
+        console.error('[ServerFriends] Error adding friend (fetch failed):', err);
+        return { success: false, error: err instanceof Error ? err.message : 'Network error' };
       }
     } catch (error) {
       console.error('[ServerFriends] Error adding friend:', error);
@@ -176,15 +208,21 @@ export class ServerFriendsService {
         return null;
       }
       const SERVER_URL = await getServerUrl();
-      const response = await fetch(`${SERVER_URL}/api/player/${playerId}`);
-      
-      if (!response.ok) {
-        console.error('[ServerFriends] Failed to get player, status:', response.status);
+      try {
+        const response = await this.fetchWithRetry(`${SERVER_URL}/api/player/${playerId}`, {}, 2, 300);
+
+        if (!response.ok) {
+          const text = await response.text().catch(() => '<no body>');
+          console.error('[ServerFriends] Failed to get player, status:', response.status, 'body:', text);
+          return null;
+        }
+
+        const data = await response.json().catch(() => ({}));
+        return data.player || null;
+      } catch (err) {
+        console.error('[ServerFriends] Error getting player (fetch failed):', err);
         return null;
       }
-      
-      const data = await response.json();
-      return data.player || null;
     } catch (error) {
       console.error('[ServerFriends] Error getting player:', error);
       return null;
