@@ -3,7 +3,6 @@ import { Buffer } from 'buffer';
 if (typeof global.Buffer === 'undefined') {
   global.Buffer = Buffer;
 }
-
 import React, { useState, useEffect, useCallback } from 'react';
 import { StatusBar } from 'expo-status-bar';
 import {
@@ -57,6 +56,7 @@ import { NeumorphicMainMenu } from './components/neumorphic/NeumorphicMainMenu';
 import { useNeumorphicColors } from './styles/neumorphicTheme';
 import BubblePopGameScreen from './components/BubblePopGameScreen';
 import BubblePlusGameScreen from './components/BubblePlusGameScreen';
+
 
 // Types
 interface Equation {
@@ -1775,36 +1775,30 @@ function AppContent() {
       {/* Player Profile Modal */}
       {playerProfile && showProfile && (
         <Modal visible={showProfile} animationType="slide" presentationStyle="fullScreen">
-          <NeumorphicProfileScreen
-            player={playerProfile}
-            onPlayerUpdated={handlePlayerUpdated}
-            onClose={() => setShowProfile(false)}
-            onOpenFriends={() => {
+          <PlayerProfileScreen player={playerProfile} onPlayerUpdated={handlePlayerUpdated} onClose={() => setShowProfile(false)} onOpenFriends={() => {
               setShowProfile(false);
               setShowFriends(true);
-            }}
+            } }
             onLogout={async () => {
-              // Clear player profile from storage
               await AsyncStorage.removeItem('player_profile');
 
-              // Sign out via AuthService
               await authService.signOut();
               setAuthenticatedUser(null);
               setPlayerProfile(null);
               setShowProfile(false);
               setShowAuthScreen(true);
-            }}
-            onProfileReset={handleProfileReset}
-          />
+            } }
+            onProfileReset={handleProfileReset} visible={false} backgroundColors={[]} backgroundType={'solid'}>
+
+          </PlayerProfileScreen>
+          
         </Modal>
       )}
 
       {/* Friends Screen */}
       {showFriends && playerProfile && (
         <Modal visible={showFriends} animationType="slide" presentationStyle="fullScreen">
-          <NeumorphicFriendsScreen
-            playerProfile={playerProfile}
-            onBack={() => {
+          <FriendsScreen playerProfile={playerProfile} onBack={() => {
               setShowFriends(false);
             }}
             onRefresh={async () => {
@@ -1812,9 +1806,9 @@ function AppContent() {
               if (profile) {
                 setPlayerProfile(profile);
               }
-            }}
-            onChallengeFriend={handleChallengeFriend}
-          />
+            }} onChallengeFriend={handleChallengeFriend}>
+
+          </FriendsScreen>
         </Modal>
       )}
 

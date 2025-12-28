@@ -2,7 +2,7 @@
   "expo": {
     "name": "MathGameApp",
     "slug": "MathGameApp",
-    "version": "1.12.0",
+    "version": "1.14.0",
     "orientation": "portrait",
     "icon": "./assets/MathGameAppLogoRedesign.png",
     "userInterfaceStyle": "light",
@@ -46,7 +46,8 @@
           "color": "#4CAF50",
           "sounds": []
         }
-      ]
+      ],
+      "expo-web-browser"
     ],
     "extra": {
       "eas": {

@@ -501,7 +501,7 @@
     "globalconfig": "C:\\Users\\niksu\\AppData\\Roaming\\npm\\etc\\npmrc",
     "global_prefix": "C:\\Users\\niksu\\AppData\\Roaming\\npm",
     "init_module": "C:\\Users\\niksu\\.npm-init.js",
-    "local_prefix": "C:\\Users\\niksu\\Downloads\\MathGameApp-be6d7bdc79482e692d0ae3466116e74aef3ee623",
+    "local_prefix": "C:\\Users\\niksu\\Downloads\\MathGameApp-be6d7bdc79482e692d0ae3466116e74aef3ee623\\server",
     "node_gyp": "C:\\Users\\niksu\\AppData\\Roaming\\npm\\node_modules\\npm\\node_modules\\node-gyp\\bin\\node-gyp.js",
     "npm_version": "11.6.0",
     "prefix": "C:\\Users\\niksu\\AppData\\Roaming\\npm",
