@@ -2,16 +2,17 @@ import React, { useRef, useState } from 'react';
 import { View, Text, Image, StyleSheet, Pressable, Animated } from 'react-native';
 
 interface MainMenuIslandsProps {
-  onClassicMode: () => void;
-  onTimesTableMode: () => void;
-  onBubblePopMode: () => void;
-  onBubblePlusMode: () => void;
-  onLocalPvPMode: () => void;
-  onOnlinePvPMode: () => void;
-  onShop: () => void;
-  onFriends: () => void;
-  onProfile: () => void;
-  onSettings: () => void;
+  onClassicMode: () => void | Promise<void>;
+  onTimesTableMode: () => void | Promise<void>;
+  onBubblePopMode: () => void | Promise<void>;
+  onBubblePlusMode: () => void | Promise<void>;
+  onLocalPvPMode: () => void | Promise<void>;
+  onOnlinePvPMode: () => void | Promise<void>;
+  onShop: () => void | Promise<void>;
+  onFriends: () => void | Promise<void>;
+  onProfile: () => void | Promise<void>;
+  onSettings: () => void | Promise<void>;
+  playerName?: string | undefined;
 }
 
 const PopImageButton: React.FC<{ source: any; size?: number; onPress: () => void; testID?: string }>
@@ -114,7 +115,7 @@ const PopEmojiButton: React.FC<{ emoji: string; size?: number; onPress: () => vo
           elevation: 8,
         }}
       >
-        <View style={{ fontSize: size * 0.5 }}>
+        <View>
           {/* Bubble emoji with text fallback */}
           <View style={{ alignItems: 'center' }}>
             {/* eslint-disable-next-line react-native/no-inline-styles */}

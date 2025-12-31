@@ -19,6 +19,7 @@ import { IslandButton } from './IslandButton';
 import { IslandCard } from './IslandCard';
 import { IslandMenu } from './IslandMenu';
 import { BackgroundWrapper } from './BackgroundWrapper';
+import * as Clipboard from 'expo-clipboard';
 import { NeumorphicInput } from './neumorphic/NeumorphicInput';
 import { NeumorphicButton } from './neumorphic/NeumorphicButton';
 
@@ -107,7 +108,9 @@ const FriendsScreen: React.FC<FriendsScreenProps> = ({
           id: data.request.id,
           fromUserId: data.request.fromUserId,
           fromUsername: data.request.fromUsername,
-          createdAt: new Date().toISOString(),
+          timestamp: new Date(),
+          toUserId: '',
+          status: 'pending',
         };
         setFriendRequests(prev => {
           console.log('[FriendsScreen] Adding request to state. Previous count:', prev.length);
@@ -639,7 +642,7 @@ const FriendsScreen: React.FC<FriendsScreenProps> = ({
                 <View style={styles.friendDetails}>
                   <Text style={[styles.friendName, { color: theme.colors.text }]} numberOfLines={1}>{request.fromUsername}</Text>
                   <Text style={[styles.friendStatus, { color: theme.colors.textSecondary }]}>
-                    Sent {request.timestamp ? new Date(request.timestamp).toLocaleDateString() : new Date(request.createdAt || Date.now()).toLocaleDateString()}
+                    Sent {request.timestamp ? new Date(request.timestamp).toLocaleDateString() : new Date(Date.now()).toLocaleDateString()}
                   </Text>
                 </View>
               </View>
@@ -845,12 +848,22 @@ const FriendsScreen: React.FC<FriendsScreenProps> = ({
         {/* Content */}
         {selectedTab === 'friends' ? renderFriendsList() : renderRequestsList()}
 
-        {/* My Info - Island Style */}
-        <IslandCard variant="floating" style={styles.myIdSection}>
-          <Text style={[styles.myIdLabel, { color: theme.colors.textSecondary }]}>Your Username:</Text>
-          <Text style={[styles.myIdText, { color: theme.colors.text }]}>{playerProfile.username}</Text>
-          <Text style={[styles.myIdSubtext, { color: theme.colors.textTertiary }]}>Friends can search for you by username!</Text>
-        </IslandCard>
+        {/* My Info - Island Style (tap to copy) */}
+        <TouchableOpacity onPress={async () => {
+            try {
+              await Clipboard.setStringAsync(playerProfile.username);
+              Alert.alert('Copied', 'Your username has been copied to the clipboard');
+            } catch (e) {
+              console.error('[FriendsScreen] Clipboard error', e);
+              Alert.alert('Error', 'Could not copy username');
+            }
+          }} activeOpacity={0.8}>
+          <IslandCard variant="floating" style={styles.myIdSection}>
+            <Text style={[styles.myIdLabel, { color: theme.colors.textSecondary }]}>Your Username:</Text>
+            <Text style={[styles.myIdText, { color: theme.colors.text }]} selectable numberOfLines={1}>{playerProfile.username}</Text>
+            <Text style={[styles.myIdSubtext, { color: theme.colors.textTertiary }]}>Tap to copy</Text>
+          </IslandCard>
+        </TouchableOpacity>
       </SafeAreaView>
     </BackgroundWrapper>
 

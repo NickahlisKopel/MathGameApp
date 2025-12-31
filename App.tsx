@@ -31,9 +31,6 @@ import ShopScreen from './components/ShopScreen';
 import SignInScreen from './components/SignInScreen';
 import MatchmakingButton from './components/MatchmakingButton';
 import FriendsScreen from './components/FriendsScreen';
-import { NeumorphicProfileScreen } from './components/neumorphic/NeumorphicProfileScreen';
-import { NeumorphicShopScreen } from './components/neumorphic/NeumorphicShopScreen';
-import { NeumorphicFriendsScreen } from './components/neumorphic/NeumorphicFriendsScreen';
 import LobbyScreen from './components/LobbyScreen';
 import { PlayerProfile } from './types/Player';
 import { PlayerStorageService } from './services/PlayerStorageService';
@@ -53,8 +50,7 @@ import { IslandButton } from './components/IslandButton';
 import { IslandCard } from './components/IslandCard';
 import { IslandMenu } from './components/IslandMenu';
 import { MainMenuIslands } from './components/MainMenuIslands';
-import { NeumorphicMainMenu } from './components/neumorphic/NeumorphicMainMenu';
-import { useNeumorphicColors } from './styles/neumorphicTheme';
+// removed useNeumorphicColors - using ThemeContext instead
 import BubblePopGameScreen from './components/BubblePopGameScreen';
 import BubblePlusGameScreen from './components/BubblePlusGameScreen';
 
@@ -130,7 +126,7 @@ function AppContent() {
   const [streakValue, setStreakValue] = useState(0);
   const { backgroundColors, backgroundType, animationType, refreshBackground } = useBackground();
   const { theme, isDarkMode, reduceMotion, toggleTheme } = useTheme();
-  const neumorphicColors = useNeumorphicColors();
+  // neumorphicColors removed — components now use ThemeContext
   const [gameState, setGameState] = useState<string>('loading');
   const [gamePlayer, setGamePlayer] = useState<{ id: number; name: string; score: number; currentAnswer: string; isCorrect: boolean | null; timeSpent: number }>({
     id: 1,
@@ -150,7 +146,16 @@ function AppContent() {
   const [gameTime, setGameTime] = useState(60);
   const [timeLeft, setTimeLeft] = useState(gameTime);
   const [equationCount, setEquationCount] = useState(0);
-  const [difficulty, setDifficulty] = useState<'easy' | 'medium' | 'hard'>('easy');
+  type Difficulty = 'easy' | 'medium' | 'hard';
+  const [difficultyByMode, setDifficultyByMode] = useState<Record<string, Difficulty>>({
+    classic: 'easy',
+    times_tables: 'easy',
+    multiplayer: 'medium',
+    bubble_pop: 'easy',
+    bubble_plus: 'easy',
+  });
+  const getDifficultyForMode = (mode: string) => difficultyByMode[mode] || 'easy';
+  const setDifficultyForMode = (mode: string, value: Difficulty) => setDifficultyByMode(prev => ({ ...prev, [mode]: value }));
   // Online PvP difficulty selection modal
   const [showOnlineDifficultySelect, setShowOnlineDifficultySelect] = useState(false);
   const [gameMode, setGameMode] = useState<'classic' | 'times_tables' | 'multiplayer' | 'bubble_pop' | 'bubble_plus'>('classic');
@@ -490,8 +495,8 @@ function AppContent() {
     
     socketMultiplayerService.sendFriendChallenge(friendId, difficulty);
     
-    // Navigate to multiplayer screen to wait for friend
-    setDifficulty(difficulty);
+    // Navigate to multiplayer screen to wait for friend and set multiplayer difficulty
+    setDifficultyForMode('multiplayer', difficulty);
     setGameState('online-pvp');
   };
 
@@ -504,7 +509,7 @@ function AppContent() {
       socketMultiplayerService.acceptFriendChallenge(incomingChallenge.challengeId, incomingChallenge.from.id);
       setIncomingChallenge(null);
       console.log('[App] Setting game state to online-pvp with difficulty:', incomingChallenge.difficulty);
-      setDifficulty(incomingChallenge.difficulty as 'easy' | 'medium' | 'hard');
+      setDifficultyForMode('multiplayer', incomingChallenge.difficulty as 'easy' | 'medium' | 'hard');
       setGameState('online-pvp'); // Navigate to multiplayer screen
     })();
   };
@@ -562,8 +567,9 @@ function AppContent() {
   // Generate random math equations based on difficulty
   const generateEquation = useCallback((): Equation => {
     let num1: number, num2: number, operation: string, answer: number;
+    const modeDifficulty = getDifficultyForMode(gameMode);
 
-    switch (difficulty) {
+    switch (modeDifficulty) {
       case 'easy':
         num1 = Math.floor(Math.random() * 10) + 1;
         num2 = Math.floor(Math.random() * 10) + 1;
@@ -617,7 +623,7 @@ function AppContent() {
       question: `${num1} ${operation} ${num2} = ?`,
       answer,
     };
-  }, [difficulty]);
+  }, [difficultyByMode, gameMode]);
 
   // Start new game
   const startGame = () => {
@@ -778,7 +784,7 @@ function AppContent() {
         gamePlayer.score,
         equationCount,
         gameTimeSpent,
-        difficulty
+        getDifficultyForMode(gameMode)
       );
       
       await PlayerStorageService.saveGameResult(gameResult);
@@ -980,8 +986,7 @@ function AppContent() {
             </TouchableOpacity>
           </View>
           {/* Neumorphic Main Menu */}
-          <NeumorphicMainMenu
-            onClassicMode={() => {
+          <MainMenuIslands onClassicMode={() => {
               setGameMode('classic');
               startGame();
             }}
@@ -1110,8 +1115,10 @@ function AppContent() {
               setProfileInitialTab('settings');
               setShowProfile(true);
             }}
-            playerName={playerProfile?.username}
-          />
+            playerName={playerProfile?.username}>
+            
+          </MainMenuIslands>
+          
         </View>
         {showOnlineDifficultySelect && (
           <View style={styles.difficultyModalOverlay}>
@@ -1122,7 +1129,7 @@ function AppContent() {
                 <TouchableOpacity
                   style={[styles.difficultyOptionButton, styles.difficultyEasy]}
                   onPress={() => {
-                    setDifficulty('easy');
+                    setDifficultyForMode('multiplayer', 'easy');
                     setShowOnlineDifficultySelect(false);
                     setGameState('online-pvp');
                   }}
@@ -1132,7 +1139,7 @@ function AppContent() {
                 <TouchableOpacity
                   style={[styles.difficultyOptionButton, styles.difficultyMedium]}
                   onPress={() => {
-                    setDifficulty('medium');
+                    setDifficultyForMode('multiplayer', 'medium');
                     setShowOnlineDifficultySelect(false);
                     setGameState('online-pvp');
                   }}
@@ -1142,7 +1149,7 @@ function AppContent() {
                 <TouchableOpacity
                   style={[styles.difficultyOptionButton, styles.difficultyHard]}
                   onPress={() => {
-                    setDifficulty('hard');
+                    setDifficultyForMode('multiplayer', 'hard');
                     setShowOnlineDifficultySelect(false);
                     setGameState('online-pvp');
                   }}
@@ -1358,7 +1365,7 @@ function AppContent() {
                 </View>
                 <View style={styles.summaryRow}>
                   <Text style={[styles.summaryLabel, { color: theme.colors.textSecondary }]}>Difficulty:</Text>
-                  <Text style={[styles.summaryValue, { color: theme.colors.text }]}>{difficulty.toUpperCase()}</Text>
+                  <Text style={[styles.summaryValue, { color: theme.colors.text }]}>{currentDifficulty.toUpperCase()}</Text>
                 </View>
                 <View style={styles.summaryRow}>
                   <Text style={[styles.summaryLabel, { color: theme.colors.textSecondary }]}>Time Played:</Text>
@@ -1431,6 +1438,8 @@ function AppContent() {
       </SafeAreaProvider>
     );
   }
+
+  const currentDifficulty = getDifficultyForMode(gameMode);
 
   return (
     <SafeAreaProvider>
@@ -1581,7 +1590,7 @@ function AppContent() {
                   <TouchableOpacity
                     style={[styles.difficultyOptionButtonLarge, styles.difficultyEasy]}
                     onPress={() => {
-                      setDifficulty('easy');
+                      setDifficultyForMode(gameMode, 'easy');
                       setGameState('playing');
                     }}
                   >
@@ -1592,7 +1601,7 @@ function AppContent() {
                   <TouchableOpacity
                     style={[styles.difficultyOptionButtonLarge, styles.difficultyMedium]}
                     onPress={() => {
-                      setDifficulty('medium');
+                      setDifficultyForMode(gameMode, 'medium');
                       setGameState('playing');
                     }}
                   >
@@ -1603,7 +1612,7 @@ function AppContent() {
                   <TouchableOpacity
                     style={[styles.difficultyOptionButtonLarge, styles.difficultyHard]}
                     onPress={() => {
-                      setDifficulty('hard');
+                      setDifficultyForMode(gameMode, 'hard');
                       setGameState('playing');
                     }}
                   >
@@ -1624,12 +1633,13 @@ function AppContent() {
         </BackgroundWrapper>
       )}
       {gameState === 'setup' && renderSetup()}
+      const currentDifficulty = getDifficultyForMode(gameMode);
       {gameState === 'playing' && gameMode !== 'bubble_pop' && gameMode !== 'bubble_plus' && renderGame()}
       {gameState === 'finished' && renderResults()}
       {gameState === 'bot-battle' && playerProfile && (
         <SimpleMultiplayerGameScreen
           playerProfile={playerProfile}
-          difficulty={difficulty}
+          difficulty={currentDifficulty}
           gameMode="bot"
           onGameEnd={(results: any) => {
             setMultiplayerResults(results);
@@ -1640,7 +1650,7 @@ function AppContent() {
       )}
       {gameState === 'playing' && gameMode === 'bubble_pop' && (
         <BubblePopGameScreen
-          difficulty={difficulty}
+          difficulty={currentDifficulty}
           onBack={handleBubbleGameBack}
           onGameComplete={handleBubbleGameComplete}
           backgroundColors={backgroundColors}
@@ -1650,7 +1660,7 @@ function AppContent() {
       )}
       {gameState === 'playing' && gameMode === 'bubble_plus' && (
         <BubblePlusGameScreen
-          difficulty={difficulty}
+          difficulty={currentDifficulty}
           onBack={handleBubbleGameBack}
           onGameComplete={handleBubbleGameComplete}
           backgroundColors={backgroundColors}
@@ -1661,7 +1671,7 @@ function AppContent() {
       {gameState === 'local-1v1' && playerProfile && (
         <SimpleMultiplayerGameScreen
           playerProfile={playerProfile}
-          difficulty={difficulty}
+          difficulty={currentDifficulty}
           gameMode="local1v1"
           onGameEnd={(results: any) => {
             setMultiplayerResults(results);
@@ -1673,7 +1683,7 @@ function AppContent() {
       {gameState === 'online-pvp' && playerProfile && (
         <OnlineMultiplayerScreen
           playerProfile={playerProfile}
-          difficulty={difficulty}
+          difficulty={currentDifficulty}
           onGameEnd={async (results: any) => {
             // Calculate experience based on score and difficulty
             const correctAnswers = results.score / 10; // Each correct answer is 10 points
@@ -1689,12 +1699,12 @@ function AppContent() {
             const accuracy = results.totalQuestions > 0 ? (correctAnswers / results.totalQuestions) * 100 : 0;
             
             // Create a GameResult object for history
-            const gameResult = {
+              const gameResult = {
               score: correctAnswers, // Store number of correct answers, not points
               totalQuestions: results.totalQuestions || 10,
               accuracy,
               averageTime: 0, // Not tracked in multiplayer
-              difficulty: results.difficulty || difficulty,
+              difficulty: results.difficulty || currentDifficulty,
               coinsEarned: results.coinsEarned || 0,
               experienceGained,
               playedAt: new Date(),
@@ -1775,26 +1785,31 @@ function AppContent() {
       {/* Player Profile Modal */}
       {playerProfile && showProfile && (
         <Modal visible={showProfile} animationType="slide" presentationStyle="fullScreen">
-          <NeumorphicProfileScreen
-            player={playerProfile}
-            onPlayerUpdated={handlePlayerUpdated}
-            onClose={() => setShowProfile(false)}
-            onOpenFriends={() => {
-              setShowProfile(false);
-              setShowFriends(true);
-            }}
-            onLogout={async () => {
-              // Clear player profile from storage
-              await AsyncStorage.removeItem('player_profile');
+          <PlayerProfileScreen
+              player={playerProfile}
+              onPlayerUpdated={handlePlayerUpdated}
+              onClose={() => setShowProfile(false)}
+              onOpenFriends={() => {
+                setShowProfile(false);
+                setShowFriends(true);
+              } }
+              onLogout={async () => {
+                // Clear player profile from storage
+                await AsyncStorage.removeItem('player_profile');
 
-              // Sign out via AuthService
-              await authService.signOut();
-              setAuthenticatedUser(null);
-              setPlayerProfile(null);
-              setShowProfile(false);
-              setShowAuthScreen(true);
-            }}
-            onProfileReset={handleProfileReset}
+                // Sign out via AuthService
+                await authService.signOut();
+                setAuthenticatedUser(null);
+                setPlayerProfile(null);
+                setShowProfile(false);
+                setShowAuthScreen(true);
+              } }
+              onProfileReset={handleProfileReset}
+              /* Pass current app background so the profile modal matches the active background */
+              visible={true}
+              backgroundColors={backgroundColors}
+              backgroundType={backgroundType}
+              animationType={animationType}
           />
         </Modal>
       )}
@@ -1802,8 +1817,7 @@ function AppContent() {
       {/* Friends Screen */}
       {showFriends && playerProfile && (
         <Modal visible={showFriends} animationType="slide" presentationStyle="fullScreen">
-          <NeumorphicFriendsScreen
-            playerProfile={playerProfile}
+          <FriendsScreen playerProfile={playerProfile}
             onBack={() => {
               setShowFriends(false);
             }}
@@ -1813,8 +1827,10 @@ function AppContent() {
                 setPlayerProfile(profile);
               }
             }}
-            onChallengeFriend={handleChallengeFriend}
-          />
+            onChallengeFriend={handleChallengeFriend}>
+
+          </FriendsScreen>
+         
         </Modal>
       )}
 
@@ -1871,23 +1887,25 @@ function AppContent() {
       
       {/* Shop Modal */}
       {playerProfile && showShop && (
-        <Modal visible={showShop} animationType="slide" presentationStyle="fullScreen">
-          <NeumorphicShopScreen
-            player={playerProfile}
-            onPlayerUpdated={handlePlayerUpdated}
-            onClose={() => {
-              setShowShop(false);
-              setTimeout(() => {
-                refreshBackground(); // Refresh background when shop closes
-              }, 100);
-            }}
-            onBackgroundChanged={() => {
-              setTimeout(() => {
-                refreshBackground(); // Refresh immediately when background changes
-              }, 50);
-            }}
-          />
-        </Modal>
+        <ShopScreen
+          player={playerProfile}
+          onPlayerUpdated={handlePlayerUpdated}
+          onClose={() => {
+            setShowShop(false);
+            setTimeout(() => {
+              refreshBackground(); // Refresh background when shop closes
+            }, 100);
+          }}
+          onBackgroundChanged={() => {
+            setTimeout(() => {
+              refreshBackground(); // Refresh immediately when background changes
+            }, 50);
+          }}
+          visible={showShop}
+          activeBackgroundColors={backgroundColors}
+          activeBackgroundType={backgroundType}
+          activeAnimationType={animationType}
+        />
       )}
       </BackgroundWrapper>
     </SafeAreaProvider>

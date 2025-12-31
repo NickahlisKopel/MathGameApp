@@ -23,6 +23,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { IslandButton } from './IslandButton';
 import { IslandCard } from './IslandCard';
 import { IslandMenu } from './IslandMenu';
+import ThemeEditor from './ThemeEditor';
 
 // Static image mapping for profile icons
 const PROFILE_ICON_IMAGES: { [key: string]: any } = {
@@ -92,6 +93,7 @@ export default function PlayerProfileScreen({ player, onPlayerUpdated, onClose, 
   const [showAvatarModal, setShowAvatarModal] = useState(false);
   const [newAvatarUrl, setNewAvatarUrl] = useState('');
   const [profileIconData, setProfileIconData] = useState<any>(null);
+  const [showThemeEditor, setShowThemeEditor] = useState(false);
 
   useEffect(() => {
     if (visible) {
@@ -826,6 +828,14 @@ export default function PlayerProfileScreen({ player, onPlayerUpdated, onClose, 
           <Text style={styles.onlineButtonText}>🌐 Go Online</Text>
         </TouchableOpacity>
         
+        <TouchableOpacity
+          style={[styles.primaryButton, { marginVertical: 12 }]}
+          onPress={() => setShowThemeEditor(true)}
+          disabled={loading}
+        >
+          <Text style={styles.primaryButtonText}>🎨 Edit Theme</Text>
+        </TouchableOpacity>
+
         <TouchableOpacity 
           style={[styles.dangerButton, loading && styles.dangerButtonDisabled]} 
           onPress={resetPlayerData}
@@ -1099,6 +1109,22 @@ export default function PlayerProfileScreen({ player, onPlayerUpdated, onClose, 
             <NeumorphicButton title="Pick Image" onPress={handlePickAndUploadAvatar} variant="secondary" />
             <View style={{ height: 8 }} />
             <NeumorphicButton title="Cancel" onPress={() => setShowAvatarModal(false)} variant="secondary" />
+          </View>
+        </View>
+      </Modal>
+
+      {/* Theme Editor Modal */}
+      <Modal visible={showThemeEditor} animationType="slide" transparent>
+        <View style={styles.modalOverlay}>
+          <View style={[styles.themeEditorModal, { backgroundColor: theme.colors.card }]}> 
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+              <Text style={[styles.usernameModalTitle, { color: theme.colors.text }]}>Theme Editor</Text>
+              <TouchableOpacity onPress={() => setShowThemeEditor(false)}>
+                <Text style={{ color: theme.colors.accent }}>Close</Text>
+              </TouchableOpacity>
+            </View>
+            <View style={{ height: 12 }} />
+            <ThemeEditor />
           </View>
         </View>
       </Modal>
@@ -1469,6 +1495,18 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: 'bold',
   },
+  primaryButton: {
+    backgroundColor: '#1976d2',
+    borderRadius: 10,
+    paddingVertical: 12,
+    alignItems: 'center',
+    marginTop: 6,
+  },
+  primaryButtonText: {
+    color: 'white',
+    fontSize: 16,
+    fontWeight: '600',
+  },
   warningButton: {
     backgroundColor: '#ff9800',
     borderRadius: 10,
@@ -1647,6 +1685,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: 'rgba(0, 0, 0, 0.7)',
     padding: 20,
+  },
+  themeEditorModal: {
+    width: '100%',
+    maxWidth: 700,
+    borderRadius: 12,
+    padding: 16,
   },
   modalContent: {
     width: '100%',

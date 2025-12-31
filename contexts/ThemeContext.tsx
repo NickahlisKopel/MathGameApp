@@ -105,6 +105,13 @@ interface ThemeContextType {
   presets: Array<any>;
   saveThemePreset: (name: string) => Promise<void>;
   applyThemePreset: (id: string) => Promise<void>;
+  // Custom theme editing
+  customColors: ThemeColors | null;
+  updateColor: (key: keyof ThemeColors, value: string) => void;
+  setCustomTheme: (colors: ThemeColors) => void;
+  clearCustomTheme: () => void;
+  saveCustomThemePreset: (name: string) => Promise<void>;
+  applyCustomPreset: (id: string) => Promise<void>;
 }
 
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
@@ -117,6 +124,7 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({ children }) => {
   const [isDarkMode, setIsDarkMode] = useState(false);
   const [reduceMotion, setReduceMotion] = useState(false);
   const [presets, setPresets] = useState<Array<any>>([]);
+  const [customColors, setCustomColors] = useState<ThemeColors | null>(null);
 
   useEffect(() => {
     // Load theme and motion preferences from player settings
@@ -145,6 +153,17 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({ children }) => {
       console.error('Error loading preferences:', error);
     }
   };
+
+  // Update a single color value in the custom override
+  const updateColor = (key: keyof ThemeColors, value: string) => {
+    setCustomColors(prev => ({ ...(prev || {}), [key]: value } as ThemeColors));
+  };
+
+  const setCustomTheme = (colors: ThemeColors) => {
+    setCustomColors(colors);
+  };
+
+  const clearCustomTheme = () => setCustomColors(null);
 
   const toggleTheme = async () => {
     const newDarkMode = !isDarkMode;
@@ -226,13 +245,72 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({ children }) => {
     }
   };
 
+  // Save a custom theme preset that contains explicit color mappings
+  const saveCustomThemePreset = async (name: string) => {
+    try {
+      const player = await PlayerStorageService.loadPlayerProfile();
+      if (!player) throw new Error('No player');
+
+      const colorsToSave = customColors || (isDarkMode ? darkTheme : lightTheme);
+      const preset = {
+        id: `theme_${Date.now().toString(36)}`,
+        name,
+        createdAt: new Date().toISOString(),
+        colors: colorsToSave,
+        neumorphicMode: isDarkMode ? 'dark' : 'light',
+      };
+
+      const existing = await PlayerStorageService.loadPlayerThemes(player.id);
+      const updated = [...existing, preset];
+      await PlayerStorageService.savePlayerThemes(player.id, updated);
+      setPresets(updated);
+
+      await PlayerStorageService.updatePlayerCustomization({ theme: preset.id });
+    } catch (error) {
+      console.error('Failed to save custom theme preset:', error);
+      throw error;
+    }
+  };
+
+  // Apply a preset that contains explicit colors
+  const applyCustomPreset = async (id: string) => {
+    try {
+      const player = await PlayerStorageService.loadPlayerProfile();
+      if (!player) throw new Error('No player');
+
+      const themes = await PlayerStorageService.loadPlayerThemes(player.id);
+      const preset = themes.find((t: any) => t.id === id);
+      if (!preset) throw new Error('Preset not found');
+
+      if (preset.colors) {
+        setCustomColors(preset.colors as ThemeColors);
+      }
+
+      const targetDark = preset.neumorphicMode === 'dark';
+      setIsDarkMode(targetDark);
+      await PlayerStorageService.updatePlayerSettings({ darkMode: targetDark });
+
+      if (preset.backgroundId) {
+        try { await ShopService.setActiveBackground(preset.backgroundId); } catch (e) { /* ignore */ }
+      }
+
+      await PlayerStorageService.updatePlayerCustomization({ theme: preset.id });
+    } catch (error) {
+      console.error('Failed to apply custom preset:', error);
+      throw error;
+    }
+  };
+
+  const base = isDarkMode ? darkTheme : lightTheme;
+  const mergedColors: ThemeColors = customColors ? ({ ...base, ...customColors } as ThemeColors) : base;
+
   const theme: Theme = {
     isDark: isDarkMode,
-    colors: isDarkMode ? darkTheme : lightTheme,
+    colors: mergedColors,
   };
 
   return (
-    <ThemeContext.Provider value={{ theme, toggleTheme, isDarkMode, reduceMotion, toggleReduceMotion, presets, saveThemePreset, applyThemePreset }}>
+    <ThemeContext.Provider value={{ theme, toggleTheme, isDarkMode, reduceMotion, toggleReduceMotion, presets, saveThemePreset, applyThemePreset, customColors, updateColor, setCustomTheme, clearCustomTheme, saveCustomThemePreset, applyCustomPreset }}>
       {children}
     </ThemeContext.Provider>
   );
