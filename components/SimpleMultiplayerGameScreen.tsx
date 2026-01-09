@@ -31,6 +31,9 @@ interface SimpleMultiplayerGameScreenProps {
   onBackToMenu: () => void;
   difficulty: 'easy' | 'medium' | 'hard';
   gameMode: GameMode;
+  backgroundColors?: string[];
+  backgroundType?: string;
+  animationType?: string;
 }
 
 export const SimpleMultiplayerGameScreen: React.FC<SimpleMultiplayerGameScreenProps> = ({
@@ -48,7 +51,15 @@ export const SimpleMultiplayerGameScreen: React.FC<SimpleMultiplayerGameScreenPr
     insets = { top: 0, bottom: 20, left: 0, right: 0 };
   }
   // Background and theme hooks
-  const { backgroundColors, backgroundType, animationType, isLoading: backgroundLoading } = useBackground();
+  const { backgroundColors: hookBackgroundColors, backgroundType: hookBackgroundType, animationType: hookAnimationType, isLoading: backgroundLoading } = useBackground();
+  const initialColors = (backgroundColors && backgroundColors.length >= 1)
+    ? backgroundColors
+    : (hookBackgroundColors && hookBackgroundColors.length >= 1 ? hookBackgroundColors : [theme.colors.primary || '#ffffff', theme.colors.secondary || '#f0f0f0']);
+  const type = backgroundType || hookBackgroundType;
+  const animType = animationType || hookAnimationType;
+  const colors = (type !== 'solid' && initialColors.length === 1)
+    ? [initialColors[0], theme.colors.secondary || '#f0f0f0']
+    : initialColors;
   const { theme, isDarkMode, reduceMotion } = useTheme();
   
   const [gameState, setGameState] = useState<'setup' | 'playing' | 'finished'>('setup');
@@ -371,7 +382,7 @@ export const SimpleMultiplayerGameScreen: React.FC<SimpleMultiplayerGameScreenPr
 
   if (gameState === 'setup') {
     return (
-      <BackgroundWrapper colors={backgroundColors} type={backgroundType} animationType={animationType} style={styles.container}>
+      <BackgroundWrapper colors={colors} type={type} animationType={animType} style={styles.container}>
         <SafeAreaView style={[styles.container, { paddingBottom: insets.bottom }]} edges={['top', 'left', 'right']}>
           <View style={styles.setupContainer}>
             <Text style={styles.setupText}>Setting up {gameMode === 'bot' ? 'Bot Battle' : 'Local 1v1'}...</Text>
@@ -383,7 +394,7 @@ export const SimpleMultiplayerGameScreen: React.FC<SimpleMultiplayerGameScreenPr
 
   if (gameState === 'finished') {
     return (
-      <BackgroundWrapper colors={backgroundColors} type={backgroundType} animationType={animationType} style={styles.container}>
+      <BackgroundWrapper colors={colors} type={type} animationType={animType} style={styles.container}>
         <SafeAreaView style={[styles.container, { paddingBottom: insets.bottom }]} edges={['top', 'left', 'right']}>
           <View style={styles.finishedContainer}>
             <Text style={styles.gameOverText}>Game Over!</Text>
@@ -403,7 +414,7 @@ export const SimpleMultiplayerGameScreen: React.FC<SimpleMultiplayerGameScreenPr
   }
 
   return (
-    <BackgroundWrapper colors={backgroundColors} type={backgroundType} animationType={animationType} style={styles.container}>
+    <BackgroundWrapper colors={colors} type={type} animationType={animType} style={styles.container}>
       <SafeAreaView style={[styles.container, { paddingBottom: insets.bottom }]} edges={['top', 'left', 'right']}>
       <View style={styles.header}>
         <TouchableOpacity style={styles.backButton} onPress={onBackToMenu}>

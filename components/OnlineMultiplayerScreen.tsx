@@ -22,6 +22,9 @@ interface OnlineMultiplayerScreenProps {
   difficulty: 'easy' | 'medium' | 'hard';
   onGameEnd: (results: any) => void;
   onBackToMenu: () => void;
+  backgroundColors?: string[];
+  backgroundType?: string;
+  animationType?: string;
 }
 
 type GameState = 'connecting' | 'matchmaking' | 'ready' | 'playing' | 'finished';
@@ -39,7 +42,16 @@ export const OnlineMultiplayerScreen: React.FC<OnlineMultiplayerScreenProps> = (
     // Fallback for when SafeAreaProvider is not available
     insets = { top: 0, bottom: 20, left: 0, right: 0 };
   }
-  const { backgroundColors, backgroundType, animationType, isLoading: backgroundLoading } = useBackground();
+  const { backgroundColors: hookBackgroundColors, backgroundType: hookBackgroundType, animationType: hookAnimationType, isLoading: backgroundLoading } = useBackground();
+  // Prefer props passed from App to ensure selected background persists across modals/screens
+  const initialColors = (backgroundColors && backgroundColors.length >= 1)
+    ? backgroundColors
+    : (hookBackgroundColors && hookBackgroundColors.length >= 1 ? hookBackgroundColors : [theme.colors.primary || '#ffffff', theme.colors.secondary || '#f0f0f0']);
+  const type = backgroundType || hookBackgroundType;
+  const animType = animationType || hookAnimationType;
+  const colors = (type !== 'solid' && initialColors.length === 1)
+    ? [initialColors[0], theme.colors.secondary || '#f0f0f0']
+    : initialColors;
   const { theme } = useTheme();
   
   const [gameState, setGameState] = useState<GameState>('connecting');
@@ -601,9 +613,9 @@ export const OnlineMultiplayerScreen: React.FC<OnlineMultiplayerScreenProps> = (
 
   return (
     <BackgroundWrapper
-      colors={backgroundColors}
-      type={backgroundType}
-      animationType={animationType}
+      colors={colors}
+      type={type}
+      animationType={animType}
       style={styles.container}
       onCorrectAnswer={showCorrectFeedback}
       onIncorrectAnswer={showIncorrectFeedback}

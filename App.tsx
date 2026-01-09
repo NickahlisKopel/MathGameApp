@@ -1639,6 +1639,9 @@ function AppContent() {
       {gameState === 'bot-battle' && playerProfile && (
         <SimpleMultiplayerGameScreen
           playerProfile={playerProfile}
+          backgroundColors={backgroundColors}
+          backgroundType={backgroundType}
+          animationType={animationType}
           difficulty={currentDifficulty}
           gameMode="bot"
           onGameEnd={(results: any) => {
@@ -1671,6 +1674,9 @@ function AppContent() {
       {gameState === 'local-1v1' && playerProfile && (
         <SimpleMultiplayerGameScreen
           playerProfile={playerProfile}
+          backgroundColors={backgroundColors}
+          backgroundType={backgroundType}
+          animationType={animationType}
           difficulty={currentDifficulty}
           gameMode="local1v1"
           onGameEnd={(results: any) => {
@@ -1683,6 +1689,9 @@ function AppContent() {
       {gameState === 'online-pvp' && playerProfile && (
         <OnlineMultiplayerScreen
           playerProfile={playerProfile}
+          backgroundColors={backgroundColors}
+          backgroundType={backgroundType}
+          animationType={animationType}
           difficulty={currentDifficulty}
           onGameEnd={async (results: any) => {
             // Calculate experience based on score and difficulty
@@ -1758,6 +1767,9 @@ function AppContent() {
       {gameState === 'multiplayer_results' && multiplayerResults && (
         <MultiplayerResultsScreen
           results={multiplayerResults}
+          backgroundColors={backgroundColors}
+          backgroundType={backgroundType}
+          animationType={animationType}
           onPlayAgain={() => {
             setMultiplayerResults(null);
             // Return to the previous mode
@@ -1818,6 +1830,8 @@ function AppContent() {
       {showFriends && playerProfile && (
         <Modal visible={showFriends} animationType="slide" presentationStyle="fullScreen">
           <FriendsScreen playerProfile={playerProfile}
+            backgroundColors={backgroundColors}
+            backgroundType={backgroundType}
             onBack={() => {
               setShowFriends(false);
             }}

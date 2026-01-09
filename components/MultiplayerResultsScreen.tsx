@@ -33,6 +33,9 @@ interface MultiplayerResultsScreenProps {
   };
   onPlayAgain: () => void;
   onBackToMenu: () => void;
+  backgroundColors?: string[];
+  backgroundType?: string;
+  animationType?: string;
 }
 
 export const MultiplayerResultsScreen: React.FC<MultiplayerResultsScreenProps> = ({
@@ -48,7 +51,12 @@ export const MultiplayerResultsScreen: React.FC<MultiplayerResultsScreenProps> =
     insets = { top: 0, bottom: 20, left: 0, right: 0 };
   }
   // Background and theme hooks
-  const { backgroundColors, backgroundType, animationType, isLoading: backgroundLoading } = useBackground();
+  const { backgroundColors: hookBackgroundColors, backgroundType: hookBackgroundType, animationType: hookAnimationType, isLoading: backgroundLoading } = useBackground();
+  const colors = (backgroundColors && backgroundColors.length >= 2)
+    ? backgroundColors
+    : (hookBackgroundColors && hookBackgroundColors.length >= 2 ? hookBackgroundColors : [theme.colors.primary || '#ffffff', theme.colors.secondary || '#f0f0f0']);
+  const type = backgroundType || hookBackgroundType;
+  const animType = animationType || hookAnimationType;
   const { theme } = useTheme();
 
   // Handle new simple multiplayer format
@@ -99,7 +107,7 @@ export const MultiplayerResultsScreen: React.FC<MultiplayerResultsScreenProps> =
   }
 
   return (
-    <BackgroundWrapper colors={backgroundColors} type={backgroundType} animationType={animationType} style={styles.container}>
+    <BackgroundWrapper colors={colors} type={type} animationType={animType} style={styles.container}>
       <SafeAreaView style={[styles.container, { paddingBottom: insets.bottom }]} edges={['top', 'left', 'right']}>
       <ScrollView contentContainerStyle={styles.scrollContent}>
         <Text style={styles.title}>🏆 Multiplayer Results</Text>

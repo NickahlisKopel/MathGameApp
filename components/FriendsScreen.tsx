@@ -29,6 +29,7 @@ interface FriendsScreenProps {
   onRefresh?: () => void;
   backgroundColors?: string[];
   backgroundType?: string;
+  animationType?: string;
   onChallengeFriend?: (friendId: string, difficulty: 'easy' | 'medium' | 'hard') => void;
 }
 
@@ -47,14 +48,19 @@ const FriendsScreen: React.FC<FriendsScreenProps> = ({
     // Fallback for when SafeAreaProvider is not available
     insets = { top: 0, bottom: 20, left: 0, right: 0 };
   }
-  const { backgroundColors: hookColors, backgroundType: hookType, animationType: hookAnimationType } = useBackground();
+  const { backgroundColors: hookColors, backgroundType: hookType, animationType: hookAnimationType, isLoading: hookIsLoading } = useBackground();
   const { theme } = useTheme();
-  
-  // Use prop colors if provided, otherwise use hook
-  const backgroundColors = propBackgroundColors && propBackgroundColors.length >= 2 
-    ? propBackgroundColors 
-    : (hookColors.length >= 2 ? hookColors : ['#4A90E2', '#63B3ED']);
+
+  // Resolve background colors and type. Prefer props, then hook, then theme defaults.
+  const initialColors = (propBackgroundColors && propBackgroundColors.length >= 1)
+    ? propBackgroundColors
+    : (hookColors && hookColors.length >= 1 ? hookColors : [theme.colors.primary || '#ffffff', theme.colors.secondary || '#f0f0f0']);
   const backgroundType = propBackgroundType || hookType;
+
+  // If non-solid background but only a single color is available, synthesize a second color from theme
+  const backgroundColors = (backgroundType !== 'solid' && initialColors.length === 1)
+    ? [initialColors[0], theme.colors.secondary || '#f0f0f0']
+    : initialColors;
   const animationType = hookAnimationType;
   const [selectedTab, setSelectedTab] = useState<'friends' | 'requests'>('friends');
   const [friendIds, setFriendIds] = useState<string[]>([]);
@@ -669,8 +675,8 @@ const FriendsScreen: React.FC<FriendsScreenProps> = ({
   };
 
   return (
-    <Modal visible={true} animationType="slide" presentationStyle="fullScreen">
-      <BackgroundWrapper colors={backgroundColors} type={backgroundType} animationType={animationType} style={styles.container}>
+    <>
+    <BackgroundWrapper colors={backgroundColors} type={backgroundType} animationType={animationType} style={styles.container}>
         <SafeAreaView style={[styles.container, { paddingBottom: insets.bottom }]} edges={['top', 'left', 'right']}>
           {/* Header - Island Style */}
           <View style={styles.header}>
@@ -871,7 +877,7 @@ const FriendsScreen: React.FC<FriendsScreenProps> = ({
     {showChallengeModal && selectedFriend && (
       <View style={styles.challengeModalOverlay}>
         <View style={[styles.challengeModalContent, { backgroundColor: theme.colors.card }]}>
-          <Text style={[styles.challengeModalTitle, { color: theme.colors.text }]}>Challenge {selectedFriend.name}</Text>
+          <Text style={[styles.challengeModalTitle, { color: theme.colors.text }]}>Challenge {selectedFriend?.name}</Text>
           <Text style={[styles.challengeModalSubtitle, { color: theme.colors.textSecondary }]}>Select Difficulty:</Text>
           
           <TouchableOpacity
@@ -910,9 +916,9 @@ const FriendsScreen: React.FC<FriendsScreenProps> = ({
         </View>
       </View>
     )}
-    </Modal>
+    </>
   );
-};
+}
 
 const styles = StyleSheet.create({
   container: {

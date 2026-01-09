@@ -12,7 +12,9 @@
     "db:maintenance": "node scripts/mongoMaintenance.js",
     "db:setup-indexes": "node scripts/setupIndexes.js",
     "db:stats": "node scripts/dbStats.js",
-    "db:test": "node scripts/testConnection.js"
+    "db:test": "node scripts/testConnection.js",
+    "android": "expo run:android",
+    "ios": "expo run:ios"
   },
   "dependencies": {
     "@getbrevo/brevo": "^3.0.1",
@@ -20,7 +22,10 @@
     "express": "^4.18.2",
     "mongodb": "^7.0.0",
     "socket.io": "^4.6.1",
-    "better-sqlite3": "^12.4.5"
+    "better-sqlite3": "^12.4.5",
+    "expo": "~54.0.30",
+    "react": "19.1.0",
+    "react-native": "0.81.5"
   },
   "devDependencies": {
     "@types/better-sqlite3": "^7.6.13",
