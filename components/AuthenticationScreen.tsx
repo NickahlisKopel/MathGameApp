@@ -9,9 +9,9 @@ import {
   KeyboardAvoidingView,
   Alert,
   ActivityIndicator,
+  TextInput,
 } from 'react-native';
-import { NeumorphicInput } from './neumorphic/NeumorphicInput';
-import { NeumorphicButton } from './neumorphic/NeumorphicButton';
+
 import { authService, AuthProvider } from '../services/AuthService';
 import * as AppleAuthentication from 'expo-apple-authentication';
 import { Ionicons } from '@expo/vector-icons';
@@ -159,6 +159,57 @@ export default function AuthenticationScreen({
     );
   };
 
+  /* Simple replacement components for former Neumorphic UI */
+  const AuthButton: React.FC<{
+    title: string;
+    onPress: () => void;
+    variant?: 'primary' | 'secondary';
+    fullWidth?: boolean;
+    disabled?: boolean;
+  }> = ({ title, onPress, variant = 'primary', fullWidth, disabled }) => (
+    <TouchableOpacity
+      onPress={onPress}
+      style={[
+        styles.authButton,
+        variant === 'primary' ? styles.primaryButton : styles.offlineButton,
+        fullWidth && { width: '100%' },
+        disabled && { opacity: 0.6 },
+      ]}
+      disabled={!!disabled}
+    >
+      <Text style={styles.buttonText}>{title}</Text>
+    </TouchableOpacity>
+  );
+
+  const AuthInput: React.FC<{
+    label?: React.ReactNode;
+    placeholder?: string;
+    value: string;
+    onChangeText: (t: string) => void;
+    keyboardType?: any;
+    autoCapitalize?: any;
+    secureTextEntry?: boolean;
+    containerStyle?: any;
+  }> = ({ label, placeholder, value, onChangeText, keyboardType, autoCapitalize, secureTextEntry, containerStyle }) => (
+    <View style={[{ marginBottom: 12 }, containerStyle]}>
+      {label ? (typeof label === 'string' || typeof label === 'number' ? (
+        <Text style={[styles.inputLabelText, { color: '#aaa', marginBottom: 6 }]}>{label}</Text>
+      ) : (
+        label
+      )) : null}
+      <TextInput
+        style={styles.input}
+        placeholder={placeholder}
+        placeholderTextColor="#888"
+        value={value}
+        onChangeText={onChangeText}
+        keyboardType={keyboardType}
+        autoCapitalize={autoCapitalize}
+        secureTextEntry={secureTextEntry}
+      />
+    </View>
+  );
+
   const renderSelectionScreen = () => (
     <View style={styles.container}>
       <View style={styles.header}>
@@ -201,17 +252,17 @@ export default function AuthenticationScreen({
         )}
 
         {/* Google Sign In */}
-        <NeumorphicButton title="Continue with Google" onPress={() => Alert.alert('Setup Required', 'Google Sign-In requires OAuth configuration in your Google Cloud Console')} fullWidth />
+        <AuthButton title="Continue with Google" onPress={() => Alert.alert('Setup Required', 'Google Sign-In requires OAuth configuration in your Google Cloud Console')} fullWidth />
 
         <View style={{ height: 12 }} />
 
         {/* Facebook Sign In */}
-        <NeumorphicButton title="Continue with Facebook" onPress={() => Alert.alert('Setup Required', 'Facebook Sign-In requires Facebook App ID configuration')} variant="secondary" fullWidth />
+        <AuthButton title="Continue with Facebook" onPress={() => Alert.alert('Setup Required', 'Facebook Sign-In requires Facebook App ID configuration')} variant="secondary" fullWidth />
 
         <View style={{ height: 12 }} />
 
         {/* Email/Password */}
-        <NeumorphicButton title="Continue with Email" onPress={() => setAuthMode('email-signin')} fullWidth />
+        <AuthButton title="Continue with Email" onPress={() => setAuthMode('email-signin')} fullWidth />
 
         {/* Divider */}
         <View style={styles.divider}>
@@ -222,7 +273,7 @@ export default function AuthenticationScreen({
 
         {/* Offline Mode */}
         {allowOfflineMode && (
-          <NeumorphicButton title="Play Offline (Guest Mode)" onPress={handleOfflineMode} variant="secondary" fullWidth />
+          <AuthButton title="Play Offline (Guest Mode)" onPress={handleOfflineMode} variant="secondary" fullWidth />
         )}
 
         <Text style={styles.offlineNote}>
@@ -246,7 +297,7 @@ export default function AuthenticationScreen({
       </View>
 
       <View style={styles.formContainer}>
-        <NeumorphicInput
+        <AuthInput
           label="Email"
           placeholder="Email"
           value={email}
@@ -256,7 +307,7 @@ export default function AuthenticationScreen({
         />
 
         <View style={styles.passwordContainer}>
-          <NeumorphicInput
+          <AuthInput
             label="Password"
             placeholder="Password"
             value={password}
@@ -276,7 +327,7 @@ export default function AuthenticationScreen({
           </TouchableOpacity>
         </View>
 
-        <NeumorphicButton title="Sign In" onPress={handleEmailSignIn} fullWidth disabled={loading} />
+        <AuthButton title="Sign In" onPress={handleEmailSignIn} fullWidth disabled={loading} />
 
         <TouchableOpacity
           onPress={handleForgotPassword}
@@ -311,7 +362,7 @@ export default function AuthenticationScreen({
       </View>
 
       <View style={styles.formContainer}>
-        <NeumorphicInput
+        <AuthInput
           label="Display Name"
           placeholder="Display Name"
           value={displayName}
@@ -319,7 +370,7 @@ export default function AuthenticationScreen({
           autoCapitalize="words"
         />
 
-        <NeumorphicInput
+        <AuthInput
           label="Email"
           placeholder="Email"
           value={email}
@@ -329,7 +380,7 @@ export default function AuthenticationScreen({
         />
 
         <View style={styles.passwordContainer}>
-          <NeumorphicInput
+          <AuthInput
             label="Password"
             placeholder="Password (min 6 characters)"
             value={password}
@@ -349,7 +400,7 @@ export default function AuthenticationScreen({
           </TouchableOpacity>
         </View>
 
-        <NeumorphicButton title="Create Account" onPress={handleEmailSignUp} fullWidth disabled={loading} />
+        <AuthButton title="Create Account" onPress={handleEmailSignUp} fullWidth disabled={loading} />
 
         <TouchableOpacity
           onPress={() => setAuthMode('email-signin')}
@@ -527,5 +578,9 @@ const styles = StyleSheet.create({
   switchModeLink: {
     color: '#4CAF50',
     fontWeight: '600',
+  },
+  inputLabelText: {
+    fontSize: 12,
+    color: '#aaa',
   },
 });

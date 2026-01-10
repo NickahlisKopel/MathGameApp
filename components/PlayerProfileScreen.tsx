@@ -10,9 +10,9 @@ import {
   Switch,
   Modal,
   Image,
+  TextInput,
 } from 'react-native';
-import { NeumorphicInput } from './neumorphic/NeumorphicInput';
-import { NeumorphicButton } from './neumorphic/NeumorphicButton';
+
 import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { PlayerProfile, Achievement, GameResult } from '../types/Player';
@@ -94,6 +94,54 @@ export default function PlayerProfileScreen({ player, onPlayerUpdated, onClose, 
   const [newAvatarUrl, setNewAvatarUrl] = useState('');
   const [profileIconData, setProfileIconData] = useState<any>(null);
   const [showThemeEditor, setShowThemeEditor] = useState(false);
+  
+  // Local lightweight UI replacements for neumorphic components
+  const AuthButton: React.FC<{
+    title: string;
+    onPress: () => void;
+    variant?: 'primary' | 'secondary';
+    disabled?: boolean;
+  }> = ({ title, onPress, variant = 'primary', disabled }) => (
+    <TouchableOpacity
+      onPress={onPress}
+      disabled={!!disabled}
+      style={[
+        variant === 'primary' ? styles.confirmButton : styles.cancelButton,
+        disabled && styles.confirmButtonDisabled,
+      ]}
+    >
+      <Text style={[styles.confirmButtonText, variant === 'secondary' && styles.cancelButtonText]}>
+        {title}
+      </Text>
+    </TouchableOpacity>
+  );
+
+  const AuthInput: React.FC<{
+    value: string;
+    onChangeText: (t: string) => void;
+    placeholder?: string;
+    label?: string | React.ReactNode;
+    containerStyle?: any;
+    maxLength?: number;
+    autoCapitalize?: any;
+    autoCorrect?: boolean;
+  }> = ({ value, onChangeText, placeholder, label, containerStyle, maxLength, autoCapitalize, autoCorrect }) => (
+    <View style={containerStyle}>
+      {label ? (typeof label === 'string' || typeof label === 'number' ? (
+        <Text style={styles.usernameModalSubtitle}>{label}</Text>
+      ) : label) : null}
+      <TextInput
+        value={value}
+        onChangeText={onChangeText}
+        placeholder={placeholder}
+        placeholderTextColor="#999"
+        style={styles.usernameInput}
+        maxLength={maxLength}
+        autoCapitalize={autoCapitalize}
+        autoCorrect={autoCorrect}
+      />
+    </View>
+  );
 
   useEffect(() => {
     if (visible) {
@@ -1073,11 +1121,10 @@ export default function PlayerProfileScreen({ player, onPlayerUpdated, onClose, 
               Cost: 100 🪙 (You have {player.coins} 🪙)
             </Text>
             
-            <NeumorphicInput
+            <AuthInput
               value={newUsername}
               onChangeText={setNewUsername}
               placeholder="Enter new username"
-              placeholderTextColor={theme.colors.placeholderText}
               maxLength={20}
               autoCapitalize="none"
               autoCorrect={false}
@@ -1085,9 +1132,9 @@ export default function PlayerProfileScreen({ player, onPlayerUpdated, onClose, 
             />
 
             <View style={styles.usernameModalButtons}>
-              <NeumorphicButton title="Cancel" onPress={() => { setShowUsernameModal(false); setNewUsername(''); }} variant="secondary" />
+              <AuthButton title="Cancel" onPress={() => { setShowUsernameModal(false); setNewUsername(''); }} variant="secondary" />
               <View style={{ width: 12 }} />
-              <NeumorphicButton title={loading ? 'Changing...' : 'Change'} onPress={handleUsernameChange} disabled={!newUsername.trim() || newUsername.trim() === player.username || player.coins < 100 || loading} />
+              <AuthButton title={loading ? 'Changing...' : 'Change'} onPress={handleUsernameChange} disabled={!newUsername.trim() || newUsername.trim() === player.username || player.coins < 100 || loading} />
             </View>
           </View>
         </View>
@@ -1098,17 +1145,17 @@ export default function PlayerProfileScreen({ player, onPlayerUpdated, onClose, 
         <View style={styles.modalContainer}>
           <View style={styles.modalContent}>
             <Text style={styles.modalTitle}>Change Avatar</Text>
-            <NeumorphicInput
+            <AuthInput
               value={newAvatarUrl}
               onChangeText={setNewAvatarUrl}
               placeholder="Enter image URL or select an image"
               label="Avatar URL"
             />
-            <NeumorphicButton title="Save Avatar" onPress={handleAvatarChange} />
+            <AuthButton title="Save Avatar" onPress={handleAvatarChange} />
             <View style={{ height: 8 }} />
-            <NeumorphicButton title="Pick Image" onPress={handlePickAndUploadAvatar} variant="secondary" />
+            <AuthButton title="Pick Image" onPress={handlePickAndUploadAvatar} variant="secondary" />
             <View style={{ height: 8 }} />
-            <NeumorphicButton title="Cancel" onPress={() => setShowAvatarModal(false)} variant="secondary" />
+            <AuthButton title="Cancel" onPress={() => setShowAvatarModal(false)} variant="secondary" />
           </View>
         </View>
       </Modal>

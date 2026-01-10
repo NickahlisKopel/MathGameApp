@@ -459,113 +459,62 @@ export const SpaceBackground: React.FC<SpaceBackgroundProps> = ({
           />
         ))}
 
-        {/* Spaceship */}
-        {spaceshipVisible && (
-          <Animated.View style={{
-            position: 'absolute',
-            left: animated ? spaceshipX : width * 0.5 - 50,
-            top: animated ? spaceshipY : height * 0.25,
-            transform: [{ 
-              rotate: spaceshipRotation.interpolate({
-                inputRange: [-180, 180],
-                outputRange: ['-180deg', '180deg'],
-              })
-            }],
-          }}>
-            <Svg width="100" height="65" viewBox="0 0 100 65">
-              <Defs>
-                <LinearGradient id="spaceshipBodyGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-                  <Stop offset="0%" stopColor="#E1F5FE" />
-                  <Stop offset="50%" stopColor="#B3E5FC" />
-                  <Stop offset="100%" stopColor="#81D4FA" />
-                </LinearGradient>
-                <LinearGradient id="spaceshipWingGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-                  <Stop offset="0%" stopColor="#CFD8DC" />
-                  <Stop offset="100%" stopColor="#90A4AE" />
-                </LinearGradient>
-                <LinearGradient id="engineGradient" x1="0%" y1="0%" x2="0%" y2="100%">
-                  <Stop offset="0%" stopColor="#FF7043" />
-                  <Stop offset="50%" stopColor="#FF5722" />
-                  <Stop offset="100%" stopColor="#E64A19" />
-                </LinearGradient>
-              </Defs>
-
-              {/* Spaceship wings */}
-              <Path
-                d={spaceshipWingPath}
-                fill="url(#spaceshipWingGradient)"
-                stroke="#607D8B"
-                strokeWidth="1"
-              />
-              
-              {/* Spaceship main body */}
-              <Path
-                d={spaceshipBodyPath}
-                fill="url(#spaceshipBodyGradient)"
-                stroke="#0277BD"
-                strokeWidth="2"
-              />
-              
-              {/* Spaceship window/cockpit - front of ship */}
-              <Circle
-                cx="50"
-                cy="50"
-                r="6"
-                fill="#1565C0"
-                opacity="0.8"
-              />
-              <Circle
-                cx="50"
-                cy="50"
-                r="4"
-                fill="#42A5F5"
-                opacity="0.6"
-              />
-
-              {/* Dynamic Engine thrusters - rear of ship (left side) */}
-              <AnimatedCircle 
-                cx="10" 
-                cy="45" 
-                r={thrusterSize} 
-                fill="url(#engineGradient)" 
-                opacity={thrusterOpacity} 
-              />
-              <AnimatedCircle 
-                cx="10" 
-                cy="55" 
-                r={thrusterSize} 
-                fill="url(#engineGradient)" 
-                opacity={thrusterOpacity} 
-              />
-              
-              {/* Dynamic Engine glow effect */}
-              <AnimatedCircle 
-                cx="10" 
-                cy="45" 
-                r={thrusterGlowSize} 
-                fill="#FF5722" 
-                opacity={thrusterGlowOpacity}
-              />
-              <AnimatedCircle 
-                cx="10" 
-                cy="55" 
-                r={thrusterGlowSize} 
-                fill="#FF5722" 
-                opacity={thrusterGlowOpacity}
-              />
-
-              {/* Spaceship details */}
-              <Circle cx="35" cy="45" r="2" fill="#0D47A1" />
-              <Circle cx="35" cy="55" r="2" fill="#0D47A1" />
-            </Svg>
-          </Animated.View>
-        )}
+        {/* Spaceship: moved out of the main SVG to avoid invalid children inside <Svg> */}
 
         {/* Additional cosmic elements */}
         <Circle cx={width * 0.9} cy={height * 0.15} r="8" fill="#FFC107" opacity="0.6" />
         <Circle cx={width * 0.1} cy={height * 0.8} r="6" fill="#9C27B0" opacity="0.5" />
         <Circle cx={width * 0.85} cy={height * 0.7} r="4" fill="#4CAF50" opacity="0.4" />
       </Svg>
+
+      {spaceshipVisible && (
+        <Animated.View style={{
+          position: 'absolute',
+          left: animated ? spaceshipX : width * 0.5 - 50,
+          top: animated ? spaceshipY : height * 0.25,
+          transform: [
+            {
+              rotate: spaceshipRotation.interpolate({
+                inputRange: [-180, 180],
+                outputRange: ['-180deg', '180deg'],
+              }),
+            },
+          ],
+        }}>
+          <Svg width="100" height="65" viewBox="0 0 100 65">
+            <Defs>
+              <LinearGradient id="spaceshipBodyGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                <Stop offset="0%" stopColor="#E1F5FE" />
+                <Stop offset="50%" stopColor="#B3E5FC" />
+                <Stop offset="100%" stopColor="#81D4FA" />
+              </LinearGradient>
+              <LinearGradient id="spaceshipWingGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                <Stop offset="0%" stopColor="#CFD8DC" />
+                <Stop offset="100%" stopColor="#90A4AE" />
+              </LinearGradient>
+              <LinearGradient id="engineGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+                <Stop offset="0%" stopColor="#FF7043" />
+                <Stop offset="50%" stopColor="#FF5722" />
+                <Stop offset="100%" stopColor="#E64A19" />
+              </LinearGradient>
+            </Defs>
+
+            <Path d={spaceshipWingPath} fill="url(#spaceshipWingGradient)" stroke="#607D8B" strokeWidth="1" />
+            <Path d={spaceshipBodyPath} fill="url(#spaceshipBodyGradient)" stroke="#0277BD" strokeWidth="2" />
+
+            <Circle cx="50" cy="50" r="6" fill="#1565C0" opacity="0.8" />
+            <Circle cx="50" cy="50" r="4" fill="#42A5F5" opacity="0.6" />
+
+            <AnimatedCircle cx="10" cy="45" r={thrusterSize} fill="url(#engineGradient)" opacity={thrusterOpacity} />
+            <AnimatedCircle cx="10" cy="55" r={thrusterSize} fill="url(#engineGradient)" opacity={thrusterOpacity} />
+            <AnimatedCircle cx="10" cy="45" r={thrusterGlowSize} fill="#FF5722" opacity={thrusterGlowOpacity} />
+            <AnimatedCircle cx="10" cy="55" r={thrusterGlowSize} fill="#FF5722" opacity={thrusterGlowOpacity} />
+
+            <Circle cx="35" cy="45" r="2" fill="#0D47A1" />
+            <Circle cx="35" cy="55" r="2" fill="#0D47A1" />
+          </Svg>
+        </Animated.View>
+      )}
 
       {children}
     </Animated.View>

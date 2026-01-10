@@ -1,5 +1,5 @@
 import React from 'react';
-import { View } from 'react-native';
+import { View, Text } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import SpaceBackground from './SpaceBackground';
 import ForestBackground from './ForestBackground';
@@ -25,6 +25,13 @@ export const BackgroundWrapper: React.FC<BackgroundWrapperProps> = ({
   onIncorrectAnswer, 
   feedbackReset 
 }) => {
+  // Normalize children: wrap raw text nodes in <Text> to avoid RN runtime errors
+  const normalizedChildren = React.Children.map(children, (child) => {
+    if (typeof child === 'string' || typeof child === 'number') {
+      return <Text>{child}</Text>;
+    }
+    return child as React.ReactNode;
+  });
   if (type === 'animated' && animationType === 'space') {
     return (
       <SpaceBackground 
@@ -35,7 +42,7 @@ export const BackgroundWrapper: React.FC<BackgroundWrapperProps> = ({
         onIncorrectAnswer={onIncorrectAnswer}
         feedbackReset={feedbackReset}
       >
-        <View style={style}>{children}</View>
+        <View style={style}>{normalizedChildren}</View>
       </SpaceBackground>
     );
   } else if (type === 'animated' && animationType === 'forest') {
@@ -48,13 +55,13 @@ export const BackgroundWrapper: React.FC<BackgroundWrapperProps> = ({
         onIncorrectAnswer={onIncorrectAnswer}
         feedbackReset={feedbackReset}
       >
-        <View style={style}>{children}</View>
+        <View style={style}>{normalizedChildren}</View>
       </ForestBackground>
     );
   } else if (type === 'solid') {
-    return <View style={[style, { backgroundColor: colors[0] }]}>{children}</View>;
+    return <View style={[style, { backgroundColor: colors[0] }]}>{normalizedChildren}</View>;
   } else {
     // Ensure at least two colors for LinearGradient
-    return <LinearGradient colors={colors as [string, string, ...string[]]} style={style}>{children}</LinearGradient>;
+    return <LinearGradient colors={colors as [string, string, ...string[]]} style={style}>{normalizedChildren}</LinearGradient>;
   }
 };

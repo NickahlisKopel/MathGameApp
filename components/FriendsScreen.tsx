@@ -8,6 +8,7 @@ import {
   Alert,
   RefreshControl,
   Modal,
+  TextInput,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -20,8 +21,7 @@ import { IslandCard } from './IslandCard';
 import { IslandMenu } from './IslandMenu';
 import { BackgroundWrapper } from './BackgroundWrapper';
 import * as Clipboard from 'expo-clipboard';
-import { NeumorphicInput } from './neumorphic/NeumorphicInput';
-import { NeumorphicButton } from './neumorphic/NeumorphicButton';
+
 
 interface FriendsScreenProps {
   playerProfile: PlayerProfile;
@@ -77,6 +77,52 @@ const FriendsScreen: React.FC<FriendsScreenProps> = ({
   const [isLookingForGame, setIsLookingForGame] = useState(false);
   const [availableFriends, setAvailableFriends] = useState<{ id: string; name: string; difficulty: string }[]>([]);
   const [selectedDifficulty, setSelectedDifficulty] = useState<'easy' | 'medium' | 'hard'>('medium');
+
+  // Minimal local controls to replace removed neumorphic components
+  const AuthButton: React.FC<{
+    title: string;
+    onPress: () => void;
+    variant?: 'primary' | 'secondary';
+    size?: 'small' | 'medium' | 'large';
+  }> = ({ title, onPress, variant = 'primary', size = 'medium' }) => (
+    <TouchableOpacity
+      onPress={onPress}
+      style={[
+        styles.addButton,
+        variant === 'secondary' && styles.offlineButton,
+        size === 'small' && { paddingHorizontal: 12, paddingVertical: 8 },
+      ]}
+    >
+      <Text style={styles.addButtonText}>{title}</Text>
+    </TouchableOpacity>
+  );
+
+  const AuthInput: React.FC<{
+    value: string;
+    onChangeText: (t: string) => void;
+    placeholder?: string;
+    label?: string | React.ReactNode;
+    containerStyle?: any;
+    autoCapitalize?: any;
+    onFocus?: () => void;
+  }> = ({ value, onChangeText, placeholder, label, containerStyle, autoCapitalize, onFocus }) => (
+    <View style={[{ width: '100%' }, containerStyle]}>
+      {label ? (typeof label === 'string' || typeof label === 'number' ? (
+        <Text style={styles.myIdLabel}>{label}</Text>
+      ) : (
+        label
+      )) : null}
+      <TextInput
+        value={value}
+        onChangeText={onChangeText}
+        placeholder={placeholder}
+        placeholderTextColor="rgba(255,255,255,0.6)"
+        style={styles.searchInput}
+        autoCapitalize={autoCapitalize}
+        onFocus={onFocus}
+      />
+    </View>
+  );
 
   useEffect(() => {
     // Sync player to server when opening friends screen
@@ -697,7 +743,7 @@ const FriendsScreen: React.FC<FriendsScreenProps> = ({
             <IslandCard variant="elevated" style={styles.addFriendSection}>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
                 <View style={{ flex: 1 }}>
-                  <NeumorphicInput
+                  <AuthInput
                     value={searchQuery}
                     onChangeText={handleSearchChange}
                     placeholder="Search by username"
@@ -711,7 +757,7 @@ const FriendsScreen: React.FC<FriendsScreenProps> = ({
                     }}
                   />
                 </View>
-                <NeumorphicButton title="➕ Add" onPress={handleAddFriend} size="small" />
+                <AuthButton title="➕ Add" onPress={handleAddFriend} size="small" />
               </View>
             </IslandCard>
             
@@ -974,6 +1020,11 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 16,
     fontWeight: 'bold',
+  },
+  offlineButton: {
+    backgroundColor: '#444',
+    borderWidth: 1,
+    borderColor: '#666',
   },
   tabs: {
     flexDirection: 'row',

@@ -34,6 +34,9 @@ export const OnlineMultiplayerScreen: React.FC<OnlineMultiplayerScreenProps> = (
   difficulty,
   onGameEnd,
   onBackToMenu,
+  backgroundColors,
+  backgroundType,
+  animationType,
 }) => {
   let insets;
   try {
@@ -43,6 +46,7 @@ export const OnlineMultiplayerScreen: React.FC<OnlineMultiplayerScreenProps> = (
     insets = { top: 0, bottom: 20, left: 0, right: 0 };
   }
   const { backgroundColors: hookBackgroundColors, backgroundType: hookBackgroundType, animationType: hookAnimationType, isLoading: backgroundLoading } = useBackground();
+  const { theme } = useTheme();
   // Prefer props passed from App to ensure selected background persists across modals/screens
   const initialColors = (backgroundColors && backgroundColors.length >= 1)
     ? backgroundColors
@@ -52,7 +56,6 @@ export const OnlineMultiplayerScreen: React.FC<OnlineMultiplayerScreenProps> = (
   const colors = (type !== 'solid' && initialColors.length === 1)
     ? [initialColors[0], theme.colors.secondary || '#f0f0f0']
     : initialColors;
-  const { theme } = useTheme();
   
   const [gameState, setGameState] = useState<GameState>('connecting');
   const [opponent, setOpponent] = useState<any>(null);

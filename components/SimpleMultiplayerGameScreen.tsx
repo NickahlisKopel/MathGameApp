@@ -42,6 +42,9 @@ export const SimpleMultiplayerGameScreen: React.FC<SimpleMultiplayerGameScreenPr
   onBackToMenu,
   difficulty,
   gameMode,
+  backgroundColors,
+  backgroundType,
+  animationType,
 }) => {
   let insets;
   try {
@@ -52,6 +55,7 @@ export const SimpleMultiplayerGameScreen: React.FC<SimpleMultiplayerGameScreenPr
   }
   // Background and theme hooks
   const { backgroundColors: hookBackgroundColors, backgroundType: hookBackgroundType, animationType: hookAnimationType, isLoading: backgroundLoading } = useBackground();
+  const { theme, isDarkMode, reduceMotion } = useTheme();
   const initialColors = (backgroundColors && backgroundColors.length >= 1)
     ? backgroundColors
     : (hookBackgroundColors && hookBackgroundColors.length >= 1 ? hookBackgroundColors : [theme.colors.primary || '#ffffff', theme.colors.secondary || '#f0f0f0']);
@@ -60,7 +64,6 @@ export const SimpleMultiplayerGameScreen: React.FC<SimpleMultiplayerGameScreenPr
   const colors = (type !== 'solid' && initialColors.length === 1)
     ? [initialColors[0], theme.colors.secondary || '#f0f0f0']
     : initialColors;
-  const { theme, isDarkMode, reduceMotion } = useTheme();
   
   const [gameState, setGameState] = useState<'setup' | 'playing' | 'finished'>('setup');
   const [currentEquation, setCurrentEquation] = useState<Equation | null>(null);

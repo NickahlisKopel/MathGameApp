@@ -42,6 +42,9 @@ export const MultiplayerResultsScreen: React.FC<MultiplayerResultsScreenProps> =
   results,
   onPlayAgain,
   onBackToMenu,
+  backgroundColors,
+  backgroundType,
+  animationType,
 }) => {
   let insets;
   try {
@@ -52,12 +55,12 @@ export const MultiplayerResultsScreen: React.FC<MultiplayerResultsScreenProps> =
   }
   // Background and theme hooks
   const { backgroundColors: hookBackgroundColors, backgroundType: hookBackgroundType, animationType: hookAnimationType, isLoading: backgroundLoading } = useBackground();
+  const { theme } = useTheme();
   const colors = (backgroundColors && backgroundColors.length >= 2)
     ? backgroundColors
     : (hookBackgroundColors && hookBackgroundColors.length >= 2 ? hookBackgroundColors : [theme.colors.primary || '#ffffff', theme.colors.secondary || '#f0f0f0']);
   const type = backgroundType || hookBackgroundType;
   const animType = animationType || hookAnimationType;
-  const { theme } = useTheme();
 
   // Handle new simple multiplayer format
   let sortedPlayers: any[] = [];

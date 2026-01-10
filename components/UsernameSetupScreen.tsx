@@ -10,9 +10,8 @@ import {
   Dimensions,
   Animated,
   ScrollView,
+  TextInput,
 } from 'react-native';
-import { NeumorphicInput } from './neumorphic/NeumorphicInput';
-import { NeumorphicButton } from './neumorphic/NeumorphicButton';
 import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useBackground } from '../hooks/useBackground';
@@ -38,6 +37,58 @@ export default function UsernameSetupScreen({ onUsernameCreated }: Props) {
   const [isLoading, setIsLoading] = useState(false);
   const [fadeAnim] = useState(new Animated.Value(0));
   const [slideAnim] = useState(new Animated.Value(height * 0.3));
+
+  // Local replacements for neumorphic UI
+  const AuthInput: React.FC<{
+    value: string;
+    onChangeText: (t: string) => void;
+    placeholder?: string;
+    maxLength?: number;
+    autoCapitalize?: any;
+    autoCorrect?: boolean;
+    returnKeyType?: any;
+    onSubmitEditing?: () => void;
+    label?: string;
+    containerStyle?: any;
+  }> = ({ value, onChangeText, placeholder, maxLength, autoCapitalize, autoCorrect, returnKeyType, onSubmitEditing, label, containerStyle }) => (
+    <View style={containerStyle}>
+      {label ? <Text style={styles.inputLabel}>{label}</Text> : null}
+      <TextInput
+        value={value}
+        onChangeText={onChangeText}
+        placeholder={placeholder}
+        placeholderTextColor="rgba(255,255,255,0.7)"
+        style={styles.textInput}
+        maxLength={maxLength}
+        autoCapitalize={autoCapitalize}
+        autoCorrect={autoCorrect}
+        returnKeyType={returnKeyType}
+        onSubmitEditing={onSubmitEditing}
+      />
+    </View>
+  );
+
+  const AuthButton: React.FC<{
+    title: string;
+    onPress: () => void;
+    variant?: 'primary' | 'secondary';
+    size?: 'small' | 'medium';
+    fullWidth?: boolean;
+    disabled?: boolean;
+  }> = ({ title, onPress, variant = 'primary', size = 'medium', fullWidth, disabled }) => (
+    <TouchableOpacity
+      onPress={onPress}
+      disabled={!!disabled}
+      style={[
+        variant === 'primary' ? styles.primaryButton : styles.offlineButton,
+        fullWidth && { width: '100%' },
+        size === 'small' && { paddingVertical: 10 },
+        disabled && { opacity: 0.6 },
+      ]}
+    >
+      <Text style={styles.primaryButtonText}>{title}</Text>
+    </TouchableOpacity>
+  );
 
   React.useEffect(() => {
     // Entrance animation
@@ -144,7 +195,7 @@ export default function UsernameSetupScreen({ onUsernameCreated }: Props) {
               <Text style={[styles.inputLabel, { color: getContrastColor(backgroundType, theme) }]}>Choose Your Username</Text>
               
               <View style={styles.inputContainer}>
-                <NeumorphicInput
+                <AuthInput
                   value={username}
                   onChangeText={setUsername}
                   placeholder="Enter your username..."
@@ -155,7 +206,7 @@ export default function UsernameSetupScreen({ onUsernameCreated }: Props) {
                   onSubmitEditing={handleCreateUsername}
                   label="Username"
                   containerStyle={{ alignItems: 'stretch' }}
-        />
+                />
                 <Text style={[styles.characterCount, { color: getContrastColor(backgroundType, theme) }]}>
                   {username.length}/15
                 </Text>
@@ -167,9 +218,9 @@ export default function UsernameSetupScreen({ onUsernameCreated }: Props) {
                 </Text>
               )}
 
-              <NeumorphicButton title="💡 Get a random suggestion" onPress={() => setUsername(getSuggestion())} variant="secondary" size="small" />
+              <AuthButton title="💡 Get a random suggestion" onPress={() => setUsername(getSuggestion())} variant="secondary" size="small" />
               <View style={{ height: 12 }} />
-              <NeumorphicButton title={isLoading ? 'Creating Profile...' : 'Create Profile'} onPress={handleCreateUsername} fullWidth disabled={!username.trim() || !!validateUsername(username) || isLoading} />
+              <AuthButton title={isLoading ? 'Creating Profile...' : 'Create Profile'} onPress={handleCreateUsername} fullWidth disabled={!username.trim() || !!validateUsername(username) || isLoading} />
             </View>
 
             <View style={styles.tipsContainer}>
@@ -293,6 +344,31 @@ const styles = StyleSheet.create({
     color: 'white',
     fontSize: 14,
     fontWeight: '600',
+    textAlign: 'center',
+  },
+  primaryButton: {
+    backgroundColor: '#4CAF50',
+    borderRadius: 15,
+    paddingVertical: 18,
+    paddingHorizontal: 25,
+    elevation: 5,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.3,
+    shadowRadius: 5,
+  },
+  offlineButton: {
+    backgroundColor: 'rgba(255, 255, 255, 0.3)',
+    borderRadius: 10,
+    paddingVertical: 10,
+    paddingHorizontal: 15,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.3)',
+  },
+  primaryButtonText: {
+    color: 'white',
+    fontSize: 18,
+    fontWeight: 'bold',
     textAlign: 'center',
   },
   createButton: {
