@@ -32,6 +32,7 @@
     "expo-system-ui": "~6.0.9",
     "expo-web-browser": "~15.0.10",
     "js-polyfills": "^0.1.43",
+    "metro-config": "^0.76.9",
     "mongodb": "^7.0.0",
     "react": "19.1.0",
     "react-native": "^0.81.5",

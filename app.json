@@ -2,16 +2,10 @@
   "expo": {
     "name": "MathGameApp",
     "slug": "MathGameApp",
-    "version": "1.15.1",
+    "version": "1.16.0",
     "orientation": "portrait",
     "icon": "./assets/MathGameAppLogoRedesign.png",
     "userInterfaceStyle": "light",
-    "newArchEnabled": true,
-    "splash": {
-      "image": "./assets/MathGameAppLogoRedesign.png",
-      "resizeMode": "contain",
-      "backgroundColor": "#ffffff"
-    },
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.nickkopel.MathGameApp",
@@ -19,18 +13,11 @@
         "ITSAppUsesNonExemptEncryption": false
       }
     },
-    "notification": {
-      "icon": "./assets/MathGameAppLogoRedesign.png",
-      "color": "#4CAF50",
-      "androidMode": "default",
-      "androidCollapsedTitle": "{{unread_count}} new notifications"
-    },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/MathGameAppLogoRedesign.png",
         "backgroundColor": "#ffffff"
       },
-      "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
       "package": "com.nickkopel.MathGameApp"
     },
