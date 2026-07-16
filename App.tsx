@@ -42,6 +42,7 @@ import ForestBackground from './components/ForestBackground';
 import SimpleMultiplayerGameScreen from './components/SimpleMultiplayerGameScreen';
 import MultiplayerResultsScreen from './components/MultiplayerResultsScreen';
 import { OnlineMultiplayerScreen } from './components/OnlineMultiplayerScreen';
+import { BackgroundWrapper } from './components/BackgroundWrapper';
 import { ThemeProvider, useTheme, getContrastColor } from './contexts/ThemeContext';
 import { localAuth, LocalUser } from './services/localAuth';
 import { authService, AuthUser } from './services/AuthService';
@@ -60,52 +61,7 @@ interface Equation {
   answer: number;
 }
 
-interface BackgroundWrapperProps {
-  colors: string[];
-  type: string;
-  animationType?: string;
-  style: any;
-  children: React.ReactNode;
-  onCorrectAnswer?: boolean;
-  onIncorrectAnswer?: boolean;
-  feedbackReset?: () => void;
-}
-
-// Helper component for backgrounds
-const BackgroundWrapper: React.FC<BackgroundWrapperProps> = ({ colors, type, animationType, style, children, onCorrectAnswer, onIncorrectAnswer, feedbackReset }) => {
-  if (type === 'animated' && animationType === 'space') {
-    return (
-      <SpaceBackground 
-        starCount={50}
-        spaceshipVisible={true}
-        animated={true}
-        onCorrectAnswer={onCorrectAnswer}
-        onIncorrectAnswer={onIncorrectAnswer}
-        feedbackReset={feedbackReset}
-      >
-        <View style={style}>{children}</View>
-      </SpaceBackground>
-    );
-  } else if (type === 'animated' && animationType === 'forest') {
-    return (
-      <ForestBackground 
-        treeCount={8}
-        birdCount={3}
-        animated={true}
-        onCorrectAnswer={onCorrectAnswer}
-        onIncorrectAnswer={onIncorrectAnswer}
-        feedbackReset={feedbackReset}
-      >
-        <View style={style}>{children}</View>
-      </ForestBackground>
-    );
-  } else if (type === 'solid') {
-    return <View style={[style, { backgroundColor: colors[0] }]}>{children}</View>;
-  } else {
-    // Ensure at least two colors for LinearGradient
-    return <LinearGradient colors={colors as [string, string, ...string[]]} style={style}>{children}</LinearGradient>;
-  }
-};
+// Use shared BackgroundWrapper component which normalizes text children
 
 const { width } = Dimensions.get('window');
 
